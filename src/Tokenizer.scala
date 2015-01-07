@@ -22,22 +22,25 @@ class Tokenizer(input: String) {
   def next(): Token = {
     source.eatSpace()
     val loc = curLocation
+    nextImpl().setFrom(loc)
+  }
 
+  private def nextImpl(): Token = {
     if (cur.isDigit) {
       // Try to match a int literal first because they're easy
       val ipart = source.takeWhile(_.isDigit)
-      new IntLiteral(ipart.toInt).setFrom(curLocation)
+      new IntLiteral(ipart.toInt)
     } else if (cur == '\'') {
       // TODO: Match a char literal
-      new CharLiteral('\0').setFrom(curLocation)
+      new CharLiteral('\0')
     } else if (cur == '\"') {
       // TODO: Match a string literal
-      new StringLiteral("").setFrom(curLocation)
+      new StringLiteral("")
     } else {
       // Match an operator
       operators.find(op => source.matchExact(op)).map { op =>
         source.eatExact(op)
-        new Operator(op).setFrom(curLocation)
+        new Operator(op)
       }
 
       // Match a keyword or identifier
@@ -46,11 +49,11 @@ class Tokenizer(input: String) {
                                       c == '_' || c == '$')
 
         if (modifiers.contains(word)) {
-          new Modifier(word).setFrom(curLocation)
+          new Modifier(word)
         } else if (keywords.contains(word)) {
-          new Keyword(word).setFrom(curLocation)
+          new Keyword(word)
         } else if (word == "true" || word == "false") {
-          new BoolLiteral(word.toBoolean).setFrom(curLocation)
+          new BoolLiteral(word.toBoolean)
         } else if (word == "null") {
           new NullLiteral()
         } else if (word == "this") {
@@ -58,7 +61,7 @@ class Tokenizer(input: String) {
         } else if (word == "instanceof") {
           new Operator("instanceof")
         } else {
-          throw new Exception()
+          new Identifier(word)
         }
       }
     }
