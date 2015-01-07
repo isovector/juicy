@@ -1,25 +1,30 @@
 package juicy.source.tokenizer
 
-class CharDFA {
-  // TODO: actually parse a char
+object CharDFA {
+  
   def matchSingleChar(stream: CharStream, end: Option[Char] = None): Option[Char] = {
-    if (!end.isEmpty && stream.cur == end) {
+    if (!end.isEmpty && stream.cur == end.get) {
+      println("Read end char")
       None
     } else if (stream.cur == '\\') {
       stream.next()
+      println("Read: " + stream.cur)
       stream.cur match {
         case 'b' => Some('\b')
         case 'f' => Some('\f')
         case 'n' => Some('\n')
         case 'r' => Some('\r')
         case 't' => Some('\t')
-        case _ => {
+        case '\\' => Some('\\')
+        case '\'' => Some('\'')
+        case '\"' => Some('\"')
+        case x if x.isDigit => {
            val is = stream.takeWhile(_.isDigit)
-           if (is.isEmpty) {
-               None
-           } else {
-               Some(is.toInt.toChar)
-           }
+           Some(is.toInt.toChar)
+        }
+        case _ => {
+          println("Invalid escape:" + stream.cur.toInt)
+          None
         }
       }
     } else {
@@ -29,28 +34,36 @@ class CharDFA {
   
   
   def matchChar(stream: CharStream) : Token = {
+    stream.next()
     val ch = matchSingleChar(stream, Some('\''))
-    if (ch.isEmpty) {
+    stream.next()
+    val end = stream.cur
+    stream.next()
+    if (ch.isEmpty || end != '\'') {
         new Token.Invalid()
     } else {
         new Token.CharLiteral(ch.get)
     }
   }
+  
   def matchString(stream: CharStream): Token = {
+    stream.next()
     var failed = false
-    var chList = List[Char]();
+    var chs = ""
     while (!failed && stream.cur != '\"') {
       val ch = matchSingleChar(stream)
       if(ch.isEmpty) {
         failed = true
       } else {
-        chList ::= ch.get
+        chs += ch.get
       }
+      stream.next()
     }
+    stream.next()
     if (failed) {
-      Token.Invalid()
+      new Token.Invalid()
     } else {
-      Token.StringLiteral(chList.mkString(""))
+      new Token.StringLiteral(chs)
     }
   }
 }
