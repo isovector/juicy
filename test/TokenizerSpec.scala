@@ -63,6 +63,12 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
         new Operator("||"))
   }
 
+  it should "find commas" in {
+    check(
+      new Tokenizer(","),
+        new Comma())
+  }
+
   it should "lex eager boolean operators" in {
     check(
       new Tokenizer("& | !"),
@@ -92,5 +98,19 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
           new Identifier("x"),
           new Terminator(),
         new RBrace())
+  }
+
+  it should "match char literals" in {
+    check(
+      new Tokenizer("'a' '\\\n' '\\\\'"),
+        new CharLiteral('a'),
+        new CharLiteral('\n'),
+        new CharLiteral('\\'))
+  }
+
+  it should "also match string literals" in {
+    check(
+      new Tokenizer("\"sandy \\\"dandy\\\" maguire\""),
+        new StringLiteral("sandy \"dandy\" maguire"))
   }
 }
