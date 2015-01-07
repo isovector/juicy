@@ -1,25 +1,30 @@
 package juicy.source.tokenizer
 
 object CharDFA {
-  
+  private val charCodes = Map[Char,Char](
+      'b' -> '\b',
+      'f' -> '\f',
+      'n' -> '\n',
+      'r' -> '\r',
+      't' -> '\t',
+      '\'' -> '\'',
+      '\"' -> '\"',
+      '\\' -> '\\'
+  )
   def matchSingleChar(stream: CharStream, end: Option[Char] = None): Option[Char] = {
     if (!end.isEmpty && stream.cur == end.get) {
       println("Read end char")
       None
     } else if (stream.cur == '\\') {
       stream.next()
-      println("Read: " + stream.cur)
       stream.cur match {
-        case 'b' => Some('\b')
-        case 'f' => Some('\f')
-        case 'n' => Some('\n')
-        case 'r' => Some('\r')
-        case 't' => Some('\t')
-        case '\\' => Some('\\')
-        case '\'' => Some('\'')
-        case '\"' => Some('\"')
+        case x if charCodes contains x => {
+            stream.next()
+            Some(charCodes(x))
+        }
         case x if x.isDigit => {
            val is = stream.takeWhile(_.isDigit)
+           println(is)
            Some(is.toInt.toChar)
         }
         case _ => {
@@ -28,7 +33,9 @@ object CharDFA {
         }
       }
     } else {
-      Some(stream.cur)
+      val x = stream.cur
+      stream.next()
+      Some(x)
     }
   }
   
@@ -36,10 +43,13 @@ object CharDFA {
   def matchChar(stream: CharStream) : Token = {
     stream.next()
     val ch = matchSingleChar(stream, Some('\''))
-    stream.next()
     val end = stream.cur
     stream.next()
     if (ch.isEmpty || end != '\'') {
+        println("ch: " + ch)
+        println(ch.isEmpty)
+        println("end: " + end.toInt)
+        println(end == '\'')
         new Token.Invalid()
     } else {
         new Token.CharLiteral(ch.get)
@@ -57,7 +67,6 @@ object CharDFA {
       } else {
         chs += ch.get
       }
-      stream.next()
     }
     stream.next()
     if (failed) {

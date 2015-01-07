@@ -102,11 +102,12 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
 
   it should "match char literals" in {
     check(
-      new Tokenizer("'a' '\\n' '\\\\' '\\0'"),
+      new Tokenizer("'a' '\\n' '\\124' '\\\\'"),
         new CharLiteral('a'),
         new CharLiteral('\n'),
-        new CharLiteral('\\'),
-        new CharLiteral('\0'))
+        new CharLiteral(124.toChar),
+        new CharLiteral('\\')
+    )
   }
 
   it should "also match string literals" in {
