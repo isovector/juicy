@@ -66,11 +66,9 @@ class Tokenizer(input: String) {
       val ipart = source.takeWhile(_.isDigit)
       new Token.IntLiteral(ipart.toInt)
     } else if (cur == '\'') {
-      // TODO: Match a char literal
-      new Token.CharLiteral('\0')
+      CharDFA.matchChar(source)
     } else if (cur == '\"') {
-      // TODO: Match a string literal
-      new Token.StringLiteral("")
+      CharDFA.matchString(source)
     } else {
       // Match an operator
       operators.find(op => source.matchExact(op)).map { op =>
