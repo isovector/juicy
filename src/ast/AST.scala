@@ -17,16 +17,39 @@ trait Node {
   }
 }
 
+object Modifiers {
+  type Value = Int
+
+  // Update parse() if you change this list
+  val PUBLIC    = 1 << 0
+  val PROTECTED = 1 << 1
+  val STATIC    = 1 << 2
+  val EXTERN    = 1 << 3
+  val NATIVE    = 1 << 4
+  val ABSTRACT  = 1 << 5
+  val FINAL     = 1 << 6
+
+  def parse(str: String): Value = {
+    str.toLowerCase match {
+      case "public"    => PUBLIC
+      case "protected" => PROTECTED
+      case "static"    => STATIC
+      case "extern"    => EXTERN
+      case "native"    => NATIVE
+      case "abstract"  => ABSTRACT
+      case "final"     => FINAL
+    }
+  }
+}
+
 trait Expression extends Node
 trait Statement extends Node
 trait Definition extends Node
 
 object AST {
-  type Modifiers = Int
-
   case class ClassDefn(
     name: String,
-    mods: Modifiers,
+    mods: Modifiers.Value,
     impls: Seq[String],
     extnds: Seq[String],
     fields: Seq[FieldStmnt],
@@ -37,7 +60,7 @@ object AST {
 
   case class FieldStmnt(
     name: String,
-    mods: Modifiers,
+    mods: Modifiers.Value,
     tname: String,
     value: Option[Expression]
   ) extends Statement {
@@ -46,7 +69,7 @@ object AST {
 
   case class MethodDefn(
     name: String,
-    mods: Modifiers,
+    mods: Modifiers.Value,
     tname: String,
     args: Seq[VarStmnt],
     body: Statement

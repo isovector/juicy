@@ -2,6 +2,17 @@ package juicy.source.tokenizer
 
 import juicy.source.SourceLocation
 
+object Tokenizer {
+  val singleChars: Map[Char, Unit => Token] = Map(
+    ';' -> (Unit => new Token.Terminator()),
+    '(' -> (Unit => new Token.LParen()),
+    ')' -> (Unit => new Token.RParen()),
+    '{' -> (Unit => new Token.LBrace()),
+    '}' -> (Unit => new Token.RBrace()),
+    ',' -> (Unit => new Token.Comma())
+  )
+}
+
 class Tokenizer(input: String) {
   val source = new CharStream(input)
 
@@ -17,14 +28,6 @@ class Tokenizer(input: String) {
   val keywords  = List("if", "for", "while", "class", "override", "new",
                         "return", "import", "package", "interface", "extends",
                         "implements")
-  val single: Map[Char, Unit => Token] = Map(
-    ';' -> (Unit => new Token.Terminator()),
-    '(' -> (Unit => new Token.LParen()),
-    ')' -> (Unit => new Token.RParen()),
-    '{' -> (Unit => new Token.LBrace()),
-    '}' -> (Unit => new Token.RBrace()),
-    ',' -> (Unit => new Token.Comma())
-  )
 
   def eatComments() = {
     while (source.matchExact("//") || source.matchExact("/*")) {
@@ -53,9 +56,9 @@ class Tokenizer(input: String) {
   }
 
   private def nextImpl(): Token = {
-    if (single.contains(cur)) {
+    if (Tokenizer.singleChars.contains(cur)) {
       // Match single character tokens
-      val result = single(cur)()
+      val result = Tokenizer.singleChars(cur)()
       source.next()
       result
     } else if (cur.isDigit) {
