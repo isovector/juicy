@@ -10,14 +10,21 @@ class Tokenizer(input: String) {
 
   // These should be listed from longest to shortest, to ensure that we don't
   // do subtring matching
-  val operators = List("==", ">=", "<=", "!=", "&&", "||",
-                        "+", "-", "*", "/", "&", "|", "!", "(", ")", "[", "]",
-                        "{", "}", ",")
+  val operators = List("==", ">=", "<=", ">", "<", "!=", "&&", "||", "%",
+                        "+", "-", "*", "/", "&", "|", "!", "[", "]")
   val modifiers = List("public", "protected", "static", "extern", "final",
                         "abstract", "native")
   val keywords  = List("if", "for", "while", "class", "override", "new",
                         "return", "import", "package", "interface", "extends",
                         "implements")
+  val single: Map[Char, Unit => Token] = Map(
+    ';' -> (Unit => new Terminator()),
+    '(' -> (Unit => new LParen()),
+    ')' -> (Unit => new RParen()),
+    '{' -> (Unit => new LBrace()),
+    '}' -> (Unit => new RBrace()),
+    ',' -> (Unit => new Comma())
+  )
 
   def next(): Token = {
     source.eatSpace()
@@ -26,7 +33,11 @@ class Tokenizer(input: String) {
   }
 
   private def nextImpl(): Token = {
-    if (cur.isDigit) {
+    if (single.contains(cur)) {
+      val result = single(cur)()
+      source.next()
+      result
+    } else if (cur.isDigit) {
       // Try to match a int literal first because they're easy
       val ipart = source.takeWhile(_.isDigit)
       new IntLiteral(ipart.toInt)

@@ -24,7 +24,7 @@ class CharStream(source: String) {
   def takeWhile(p: Char => Boolean): String = {
     val result = stream.takeWhile(p)
     result.foreach(_ => next())
-    result.toString
+    result.mkString("")
   }
 
   def matchExact(exact: String) = {

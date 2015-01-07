@@ -19,4 +19,10 @@ case class ThisLiteral() extends Token
 case class Modifier(value: String) extends Token
 case class Operator(value: String) extends Token
 case class Identifier(value: String) extends Token
+case class LParen() extends Token
+case class RParen() extends Token
+case class LBrace() extends Token
+case class RBrace() extends Token
+case class Comma() extends Token
+case class Terminator() extends Token
 
