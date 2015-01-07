@@ -18,12 +18,12 @@ class Tokenizer(input: String) {
                         "return", "import", "package", "interface", "extends",
                         "implements")
   val single: Map[Char, Unit => Token] = Map(
-    ';' -> (Unit => new Terminator()),
-    '(' -> (Unit => new LParen()),
-    ')' -> (Unit => new RParen()),
-    '{' -> (Unit => new LBrace()),
-    '}' -> (Unit => new RBrace()),
-    ',' -> (Unit => new Comma())
+    ';' -> (Unit => new Token.Terminator()),
+    '(' -> (Unit => new Token.LParen()),
+    ')' -> (Unit => new Token.RParen()),
+    '{' -> (Unit => new Token.LBrace()),
+    '}' -> (Unit => new Token.RBrace()),
+    ',' -> (Unit => new Token.Comma())
   )
 
   def next(): Token = {
@@ -40,18 +40,18 @@ class Tokenizer(input: String) {
     } else if (cur.isDigit) {
       // Try to match a int literal first because they're easy
       val ipart = source.takeWhile(_.isDigit)
-      new IntLiteral(ipart.toInt)
+      new Token.IntLiteral(ipart.toInt)
     } else if (cur == '\'') {
       // TODO: Match a char literal
-      new CharLiteral('\0')
+      new Token.CharLiteral('\0')
     } else if (cur == '\"') {
       // TODO: Match a string literal
-      new StringLiteral("")
+      new Token.StringLiteral("")
     } else {
       // Match an operator
       operators.find(op => source.matchExact(op)).map { op =>
         source.eatExact(op)
-        new Operator(op)
+        new Token.Operator(op)
       }
 
       // Match a keyword or identifier
@@ -60,19 +60,19 @@ class Tokenizer(input: String) {
                                       c == '_' || c == '$')
 
         if (modifiers.contains(word)) {
-          new Modifier(word)
+          new Token.Modifier(word)
         } else if (keywords.contains(word)) {
-          new Keyword(word)
+          new Token.Keyword(word)
         } else if (word == "true" || word == "false") {
-          new BoolLiteral(word.toBoolean)
+          new Token.BoolLiteral(word.toBoolean)
         } else if (word == "null") {
-          new NullLiteral()
+          new Token.NullLiteral()
         } else if (word == "this") {
-          new ThisLiteral()
+          new Token.ThisLiteral()
         } else if (word == "instanceof") {
-          new Operator("instanceof")
+          new Token.Operator("instanceof")
         } else {
-          new Identifier(word)
+          new Token.Identifier(word)
         }
       }
     }

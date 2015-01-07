@@ -4,6 +4,8 @@ import org.scalatest.matchers.ShouldMatchers
 import juicy.source.tokenizer._
 
 class TokenizerSpec extends FlatSpec with ShouldMatchers {
+  import juicy.source.tokenizer.Token._
+
   "Tokenizer" should "match easy literals" in {
     val tokenizer = new Tokenizer("15 true false null this")
 
