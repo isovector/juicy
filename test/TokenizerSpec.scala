@@ -6,72 +6,91 @@ import juicy.source.tokenizer._
 class TokenizerSpec extends FlatSpec with ShouldMatchers {
   import juicy.source.tokenizer.Token._
 
-  "Tokenizer" should "match easy literals" in {
-    val tokenizer = new Tokenizer("15 true false null this")
+  def check(tokenizer: Tokenizer, expected: Token*) = {
+    expected.toList.foreach { token =>
+      tokenizer.next() should be === token
+    }
+  }
 
-    tokenizer.next() should be === new IntLiteral(15)
-    tokenizer.next() should be === new BoolLiteral(true)
-    tokenizer.next() should be === new BoolLiteral(false)
-    tokenizer.next() should be === new NullLiteral()
-    tokenizer.next() should be === new ThisLiteral()
+  "Tokenizer" should "match easy literals" in {
+    check(
+      new Tokenizer("15 true false null this"),
+        new IntLiteral(15),
+        new BoolLiteral(true),
+        new BoolLiteral(false),
+        new NullLiteral(),
+        new ThisLiteral())
   }
 
   it should "differentiate between modifiers, keywords and identifiers" in {
-    val tokenizer = new Tokenizer("public class Main instanceof")
-
-    tokenizer.next() should be === new Modifier("public")
-    tokenizer.next() should be === new Keyword("class")
-    tokenizer.next() should be === new Identifier("Main")
-    tokenizer.next() should be === new Operator("instanceof")
+    check(
+      new Tokenizer("public class Main instanceof"),
+        new Modifier("public"),
+        new Keyword("class"),
+        new Identifier("Main"),
+        new Operator("instanceof"))
   }
 
   it should "lex arithmetic expressions" in {
-    val tokenizer = new Tokenizer("-2*x+87%x-(x/7)")
-
-    tokenizer.next() should be === new Operator("-")
-    tokenizer.next() should be === new IntLiteral(2)
-    tokenizer.next() should be === new Operator("*")
-    tokenizer.next() should be === new Identifier("x")
-    tokenizer.next() should be === new Operator("+")
-    tokenizer.next() should be === new IntLiteral(87)
-    tokenizer.next() should be === new Operator("%")
-    tokenizer.next() should be === new Identifier("x")
-    tokenizer.next() should be === new Operator("-")
-    tokenizer.next() should be === new LParen()
-    tokenizer.next() should be === new Identifier("x")
-    tokenizer.next() should be === new Operator("/")
-    tokenizer.next() should be === new IntLiteral(7)
-    tokenizer.next() should be === new RParen()
+    check(
+      new Tokenizer("-2*x+87%x-(x/7)"),
+        new Operator("-"),
+        new IntLiteral(2),
+        new Operator("*"),
+        new Identifier("x"),
+        new Operator("+"),
+        new IntLiteral(87),
+        new Operator("%"),
+        new Identifier("x"),
+        new Operator("-"),
+        new LParen(),
+          new Identifier("x"),
+          new Operator("/"),
+          new IntLiteral(7),
+        new RParen())
   }
 
   it should "recognize boolean operators" in {
-    val tokenizer = new Tokenizer("< > <= >= == != && ||")
-
-    tokenizer.next() should be === new Operator("<")
-    tokenizer.next() should be === new Operator(">")
-    tokenizer.next() should be === new Operator("<=")
-    tokenizer.next() should be === new Operator(">=")
-    tokenizer.next() should be === new Operator("==")
-    tokenizer.next() should be === new Operator("!=")
-    tokenizer.next() should be === new Operator("&&")
-    tokenizer.next() should be === new Operator("||")
+    check(
+      new Tokenizer("< > <= >= == != && ||"),
+        new Operator("<"),
+        new Operator(">"),
+        new Operator("<="),
+        new Operator(">="),
+        new Operator("=="),
+        new Operator("!="),
+        new Operator("&&"),
+        new Operator("||"))
   }
 
   it should "lex eager boolean operators" in {
-    val tokenizer = new Tokenizer("& | !")
-
-    tokenizer.next() should be === new Operator("&")
-    tokenizer.next() should be === new Operator("|")
-    tokenizer.next() should be === new Operator("!")
+    check(
+      new Tokenizer("& | !"),
+        new Operator("&"),
+        new Operator("|"),
+        new Operator("!"))
   }
 
   it should "lex a real method" in {
-    val tokenizer = new Tokenizer(
-      "public boolean m(boolean x) { return (x && true) || x; }")
-
-    tokenizer.next() should be === new Modifier("public")
-    tokenizer.next() should be === new Identifier("boolean")
-    tokenizer.next() should be === new Identifier("m")
-    // TODO
+    check(
+      new Tokenizer("public boolean m(boolean x) { return (x && true) || x; }"),
+        new Modifier("public"),
+        new Identifier("boolean"),
+        new Identifier("m"),
+        new LParen(),
+          new Identifier("boolean"),
+          new Identifier("x"),
+        new RParen(),
+        new LBrace(),
+          new Keyword("return"),
+          new LParen(),
+            new Identifier("x"),
+            new Operator("&&"),
+            new BoolLiteral(true),
+          new RParen(),
+          new Operator("||"),
+          new Identifier("x"),
+          new Terminator(),
+        new RBrace())
   }
 }
