@@ -10,8 +10,9 @@ class Tokenizer(input: String) {
 
   // These should be listed from longest to shortest, to ensure that we don't
   // do subtring matching
-  val operators = List("instanceof", "==", ">=", "<=", "!=", "&&", "||",
-                        "+", "-", "*", "/", "&", "|", "!")
+  val operators = List("==", ">=", "<=", "!=", "&&", "||",
+                        "+", "-", "*", "/", "&", "|", "!", "(", ")", "[", "]",
+                        "{", "}", ",")
   val modifiers = List("public", "protected", "static", "extern", "final",
                         "abstract", "native")
   val keywords  = List("if", "for", "while", "class", "override", "new",
@@ -33,10 +34,33 @@ class Tokenizer(input: String) {
       // TODO: Match a string literal
       new StringLiteral("").setFrom(curLocation)
     } else {
+      // Match an operator
       operators.find(op => source.matchExact(op)).map { op =>
         source.eatExact(op)
         new Operator(op).setFrom(curLocation)
-      }.get
+      }
+
+      // Match a keyword or identifier
+      .getOrElse {
+        val word = source.takeWhile(c => c.isLetterOrDigit ||
+                                      c == '_' || c == '$')
+
+        if (modifiers.contains(word)) {
+          new Modifier(word).setFrom(curLocation)
+        } else if (keywords.contains(word)) {
+          new Keyword(word).setFrom(curLocation)
+        } else if (word == "true" || word == "false") {
+          new BoolLiteral(word.toBoolean).setFrom(curLocation)
+        } else if (word == "null") {
+          new NullLiteral()
+        } else if (word == "this") {
+          new ThisLiteral()
+        } else if (word == "instanceof") {
+          new Operator("instanceof")
+        } else {
+          throw new Exception()
+        }
+      }
     }
   }
 }
