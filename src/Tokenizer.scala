@@ -26,14 +26,35 @@ class Tokenizer(input: String) {
     ',' -> (Unit => new Token.Comma())
   )
 
+  def eatComments() = {
+    while (source.matchExact("//") || source.matchExact("/*")) {
+      // eat single line comments
+      if (source.matchExact("//")) {
+        val curLine = source.line
+        while (source.line == curLine) source.next()
+      }
+
+      // eat multiline comments
+      else {
+        while (!source.matchExact("*/")) source.next()
+        source.eatExact("*/")
+      }
+
+      source.eatSpace()
+    }
+  }
+
   def next(): Token = {
     source.eatSpace()
+    eatComments()
+
     val loc = curLocation
     nextImpl().setFrom(loc)
   }
 
   private def nextImpl(): Token = {
     if (single.contains(cur)) {
+      // Match single character tokens
       val result = single(cur)()
       source.next()
       result

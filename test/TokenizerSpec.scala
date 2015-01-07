@@ -102,15 +102,30 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
 
   it should "match char literals" in {
     check(
-      new Tokenizer("'a' '\\\n' '\\\\'"),
+      new Tokenizer("'a' '\\n' '\\\\' '\\0'"),
         new CharLiteral('a'),
         new CharLiteral('\n'),
-        new CharLiteral('\\'))
+        new CharLiteral('\\'),
+        new CharLiteral('\0'))
   }
 
   it should "also match string literals" in {
     check(
       new Tokenizer("\"sandy \\\"dandy\\\" maguire\""),
         new StringLiteral("sandy \"dandy\" maguire"))
+  }
+
+  it should "recognize single line comments" in {
+    check(
+      new Tokenizer("a // b \n // c \n d"),
+        new Identifier("a"),
+        new Identifier("d"))
+  }
+
+  it should "recognize multi line comments" in {
+    check(
+      new Tokenizer("a /* b \n c */ d"),
+        new Identifier("a"),
+        new Identifier("d"))
   }
 }
