@@ -64,7 +64,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         case _ =>
           throw new Exception("Unexpected member in class: " + member.toString)
       }
-
     }
     ensure("}")
 
@@ -134,11 +133,75 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   // Parse `{ Statement[] }`
   def parseBlock(): BlockStmnt = {
     ensure("{")
-    // TODO: parse statements
-    val body = Seq()
+    val body = klein("}".asToken)(parseStmnt)
     ensure("}")
 
     new BlockStmnt(body)
+  }
+
+  def parseStmnt(): Statement = {
+    if (check(";")) {
+      new BlockStmnt(Seq())
+    } else if (check("while")) {
+      parseWhile()
+    } else if (check("for")) {
+      parseFor()
+    } else if (check("if")) {
+      parseIf()
+    } else if (check("{")) {
+      parseBlock()
+    } else {
+      // TODO
+      throw new Exception("PROGRAMMING IS HARD. STATEMENTS NOT IMPLEMENTED")
+    }
+  }
+
+  def parseWhile(): WhileStmnt = {
+    ensure("while")
+    ensure("(")
+    val cond = parseExpr()
+    ensure(")")
+    val body = parseStmnt()
+
+    new WhileStmnt(cond, body)
+  }
+
+  def parseIf(): IfStmnt = {
+    ensure("if")
+    ensure("(")
+    val cond = parseExpr()
+    ensure(")")
+    val then = parseStmnt()
+
+    val otherwise = if (check("else")) {
+      ensure("else")
+      Some(parseStmnt())
+    } else None
+
+    new IfStmnt(cond, then, otherwise)
+  }
+
+  def parseFor(): ForStmnt = {
+    ensure("for")
+
+    ensure("(")
+    // TODO: first
+    val first = None
+    ensure(";")
+
+    val cond = if (!check(";")) {
+      Some(parseExpr())
+    } else None
+    ensure(";")
+
+    val after = if (!check(")")) {
+      Some(parseExpr())
+    } else None
+    ensure(")")
+
+    val body = parseStmnt()
+
+    new ForStmnt(first, cond, after, body)
   }
 
   // Outermost expression parser
@@ -148,6 +211,11 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case IntLiteral(i) =>
         next()
         new ConstIntExpr(i)
+
+      case BoolLiteral(b) =>
+        next()
+        new ConstBoolExpr(b)
+
       case _ => throw new Exception("Expected integer, got " + cur.toString)
     }
   }

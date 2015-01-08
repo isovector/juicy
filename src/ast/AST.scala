@@ -94,12 +94,12 @@ object AST {
   }
 
   case class ForStmnt(
-    first: Statement,
-    cond: Expression,
-    after: Expression,
+    first: Option[Statement],
+    cond: Option[Expression],
+    after: Option[Expression],
     body: Statement
   ) extends Statement {
-    def children = Seq(first, cond, after, body)
+    def children = Seq(body) ++ first.toList ++ cond.toList ++ after.toList
   }
 
   case class BlockStmnt(
@@ -116,6 +116,12 @@ object AST {
 
   case class ConstIntExpr(
     value: Int
+  ) extends Expression {
+    def children = Seq()
+  }
+
+  case class ConstBoolExpr(
+    value: Boolean
   ) extends Expression {
     def children = Seq()
   }
