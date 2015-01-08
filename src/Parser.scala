@@ -82,7 +82,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     parseClass(mods)
   }
 
-  def parseClass(mods: Modifiers.Value): ClassDefn = {
+  def parseClass(mods: Modifiers.Value): ClassDefn = withSource {
     ensure("class")
 
     val name = unwrap(cur) // UNSURE: should this be a qualifiedName?
@@ -124,7 +124,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   // Parse modifiers, types and names, and then delegate parsing to methods
   // or fields.
-  def parseClassMember(): Node = {
+  def parseClassMember(): Node = withSource {
     val mods = parseModifiers()
     val tname = qualifiedName()
     val name = unwrap(ensureIdentifier())
@@ -148,7 +148,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseField(
       name: String,
       mods: Modifiers.Value,
-      tname: String): VarStmnt = {
+      tname: String): VarStmnt = withSource {
     val result = new VarStmnt(name, mods, tname, parseInitializer())
     ensure(";")
     result
@@ -157,7 +157,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseMethod(
       name: String,
       mods: Modifiers.Value,
-      tname: String): MethodDefn = {
+      tname: String): MethodDefn = withSource {
     // BUG: this will always get a body, even if it is abstract
     ensure("(")
 
@@ -178,7 +178,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   // Parse `{ Statement[] }`
-  def parseBlock(): BlockStmnt = {
+  def parseBlock(): BlockStmnt = withSource {
     ensure("{")
     val body = kleene("}".asToken)(parseStmnt)
     ensure("}")
@@ -186,7 +186,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     new BlockStmnt(body)
   }
 
-  def parseStmnt(): Statement = {
+  def parseStmnt(): Statement = withSource {
     if (check(";")) {
       new BlockStmnt(Seq())
     } else if (check("while")) {
@@ -235,7 +235,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     }
   }
 
-  def parseWhile(): WhileStmnt = {
+  def parseWhile(): WhileStmnt = withSource {
     ensure("while")
     ensure("(")
     val cond = parseExpr()
@@ -245,7 +245,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     new WhileStmnt(cond, body)
   }
 
-  def parseIf(): IfStmnt = {
+  def parseIf(): IfStmnt = withSource {
     ensure("if")
     ensure("(")
     val cond = parseExpr()
@@ -260,7 +260,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     new IfStmnt(cond, then, otherwise)
   }
 
-  def parseFor(): ForStmnt = {
+  def parseFor(): ForStmnt = withSource {
     ensure("for")
 
     ensure("(")
@@ -284,12 +284,14 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   // Outermost expression parser
-  def parseExpr(): Expression = {
+  def parseExpr(): Expression = withSource {
     parseExprPrec(0)
   }
 
   // Parse left-associative binary operators with precent `level`
-  def parseExprPrec(level: Int): Expression = {
+  def parseExprPrec(level: Int): Expression = withSource {
+    // TODO: this is probably not a good use for withSource (ideally we want to
+    // track the operator token)
     def parseNextPrec() =
       if (level + 1 < operators.length)
         parseExprPrec(level + 1)
@@ -307,13 +309,13 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     lhs
   }
 
-  def parseUnaryExpr(): Expression = {
+  def parseUnaryExpr(): Expression = withSource {
     // TODO: unary expressions
     parseLiteral()
   }
 
   // Innermost expression parser
-  def parseLiteral(): Expression = {
+  def parseLiteral(): Expression = withSource {
     // TODO: this only does integer literals =)
     cur match {
       case IntLiteral(i) =>

@@ -2,6 +2,9 @@ package juicy.ast
 
 
 trait Node {
+  import juicy.source.tokenizer._
+  var originalToken: Token = new Token.Invalid()
+
   def children: Seq[Node]
 
   def visit[T]

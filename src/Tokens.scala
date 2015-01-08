@@ -3,9 +3,11 @@ package juicy.source.tokenizer
 import juicy.source.SourceLocation
 
 trait Token {
+  var from = new SourceLocation("<unknown>", 0, 0)
+
   def setFrom(loc: SourceLocation): Token = {
-    // TODO: write loc into the token
-    return this
+    from = loc
+    this
   }
 }
 

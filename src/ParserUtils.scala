@@ -80,5 +80,13 @@ trait ParserUtils {
     while (cur != until) results += aggregator
     results.toList
   }
+
+  // Macro to add the original source token to a parser pattern
+  def withSource[T <: Node](parser: => T): T = {
+    val source = cur
+    val result = parser
+    result.originalToken = source
+    result
+  }
 }
 
