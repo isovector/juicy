@@ -10,6 +10,44 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def cur: Token = tokens.cur
   def next() = tokens.next()
 
+  def operators = Seq(
+    Map(
+      "=" -> (Assignment.tupled _)
+    ),
+    Map(
+      "||" -> (LogicOr.tupled _)
+    ),
+    Map(
+      "&&" -> (LogicAnd.tupled _)
+    ),
+    Map(
+      "|" -> (BitOr.tupled _)
+    ),
+    Map(
+      "&" -> (BitAnd.tupled _)
+    ),
+    Map(
+      "==" -> (Eq.tupled _),
+      "!=" -> (NEq.tupled _)
+    ),
+    Map(
+      "<=" -> (LEq.tupled _),
+      ">=" -> (GEq.tupled _),
+      "<" -> (LThan.tupled _),
+      ">" -> (GThan.tupled _),
+      "instanceof" -> (InstanceOf.tupled _)
+    ),
+    Map(
+      "+" -> (Add.tupled _),
+      "-" -> (Sub.tupled _)
+    ),
+    Map(
+      "*" -> (Mul.tupled _),
+      "/" -> (Div.tupled _),
+      "%" -> (Mod.tupled _)
+    )
+  )
+
   def qualifiedName(): String = {
     delimited(".".asToken) {
       unwrap(ensureIdentifier())
@@ -206,6 +244,35 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   // Outermost expression parser
   def parseExpr(): Expression = {
+    parseExprPrec(0)
+  }
+
+  // Parse left-associative binary operators with precent `level`
+  def parseExprPrec(level: Int): Expression = {
+    def parseNextPrec() =
+      if (level + 1 < operators.length)
+        parseExprPrec(level + 1)
+      else parseUnaryExpr()
+
+    var lhs = parseNextPrec()
+    operators(level).foreach { case (sym, constructor) =>
+      while (check(sym)) {
+        next()
+        val rhs = parseNextPrec()
+        lhs = constructor()((lhs, rhs))
+      }
+    }
+
+    lhs
+  }
+
+  def parseUnaryExpr(): Expression = {
+    // TODO: unary expressions
+    parseLiteral()
+  }
+
+  // Innermost expression parser
+  def parseLiteral(): Expression = {
     // TODO: this only does integer literals =)
     cur match {
       case IntLiteral(i) =>
@@ -216,7 +283,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         next()
         new ConstBoolExpr(b)
 
-      case _ => throw new Exception("Expected integer, got " + cur.toString)
+      case _ => throw new Exception("Expected literal, got " + cur.toString)
     }
   }
 }

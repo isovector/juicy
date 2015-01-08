@@ -47,6 +47,14 @@ trait Expression extends Node
 trait Statement extends Node
 trait Definition extends Node
 
+trait BinaryOperator extends Expression {
+  val lhs: Expression
+  val rhs: Expression
+
+  def children = Seq(lhs, rhs)
+}
+
+
 object AST {
   case class ClassDefn(
     name: String,
@@ -125,5 +133,56 @@ object AST {
   ) extends Expression {
     def children = Seq()
   }
+
+  case class Assignment(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class LogicOr(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class LogicAnd(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class BitOr(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class BitAnd(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Eq(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class NEq(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class LEq(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class GEq(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class LThan(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class GThan(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class InstanceOf(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Add(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Sub(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Mul(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Div(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Mod(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
 }
 

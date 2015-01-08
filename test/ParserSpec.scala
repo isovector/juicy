@@ -1,7 +1,7 @@
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 
-import juicy.ast.AST
+import juicy.ast._
 import juicy.ast.Modifiers._
 import juicy.source._
 import juicy.source.tokenizer._
@@ -136,5 +136,19 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     result.cond should be === Some(AST.ConstBoolExpr(false))
     result.after should be === None
     result.body should be === AST.BlockStmnt(Seq())
+  }
+
+  it should "parse binary expressions with precedence" in {
+    def coerce(expr: Expression) = expr.asInstanceOf[BinaryOperator]
+
+    val parser = mkParser("1 + 2 * 5 = true")
+    val result = coerce(parser.parseExpr())
+
+    result.rhs should be === AST.ConstBoolExpr(true)
+    coerce(result.lhs).lhs should be === AST.ConstIntExpr(1)
+
+    val mul = coerce(coerce(result.lhs).rhs)
+    mul.lhs should be === AST.ConstIntExpr(2)
+    mul.rhs should be === AST.ConstIntExpr(5)
   }
 }
