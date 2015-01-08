@@ -92,7 +92,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else Seq()
 
     ensure("{")
-    val members = klein("}".asToken)(parseClassMember)
+    val members = kleene("}".asToken)(parseClassMember)
 
     // Separate members into fields and methods
     val (fields, methods) = members.partition { member =>
@@ -153,7 +153,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     ensure("(")
 
     // While we don't hit a `)`, parse args delimited by `,`
-    val args = klein(")".asToken) {
+    val args = kleene(")".asToken) {
       delimited(",".asToken) {
         val arg_tname = qualifiedName()
         val arg_name = unwrap(ensureIdentifier())
@@ -171,7 +171,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   // Parse `{ Statement[] }`
   def parseBlock(): BlockStmnt = {
     ensure("{")
-    val body = klein("}".asToken)(parseStmnt)
+    val body = kleene("}".asToken)(parseStmnt)
     ensure("}")
 
     new BlockStmnt(body)

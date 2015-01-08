@@ -74,8 +74,8 @@ trait ParserUtils {
     results.toList
   }
 
-  // Implement a klein star (0 or more) of a pattern described by aggregator
-  def klein[T](until: Token)(aggregator: => T): Seq[T] = {
+  // Implement a kleene star (0 or more) of a pattern described by aggregator
+  def kleene[T](until: Token)(aggregator: => T): Seq[T] = {
     val results = new scala.collection.mutable.MutableList[T]()
     while (cur != until) results += aggregator
     results.toList
