@@ -70,7 +70,7 @@ object AST {
   case class MethodDefn(
     name: String,
     mods: Modifiers.Value,
-    tname: String,
+    tname: String, // TODO: *all* tnames need support for arrays
     args: Seq[VarStmnt],
     body: Statement
   ) extends Definition {
@@ -133,6 +133,23 @@ object AST {
   ) extends Expression {
     def children = Seq()
   }
+
+  case class Id(
+    name: String
+  ) extends Expression {
+    def children = Seq()
+  }
+
+  case class Call(
+    method: Expression,
+    args: Seq[Expression]
+  ) extends Expression {
+    def children = args :+ method
+  }
+
+
+  case class Member(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
 
   case class Assignment(lhs: Expression, rhs: Expression)
     extends BinaryOperator

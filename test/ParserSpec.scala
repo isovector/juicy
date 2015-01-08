@@ -151,4 +151,47 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     mul.lhs should be === AST.ConstIntExpr(2)
     mul.rhs should be === AST.ConstIntExpr(5)
   }
+
+  it should "parse variable declarations" in {
+    val parser = mkParser("a.b.c.d var1; java.lang.Object var2 = 5;")
+    val var1 = parser.parseStmnt().asInstanceOf[AST.VarStmnt]
+    val var2 = parser.parseStmnt().asInstanceOf[AST.VarStmnt]
+
+    var1.name should be === "var1"
+    var1.mods should be === NONE
+    var1.tname should be === "a.b.c.d"
+    var1.value should be === None
+
+    var2.name should be === "var2"
+    var2.mods should be === NONE
+    var2.tname should be === "java.lang.Object"
+    var2.value should be === Some(AST.ConstIntExpr(5))
+  }
+
+  it should "parse variable assignment statements" in {
+    def coerce(expr: Expression) = expr.asInstanceOf[AST.Member]
+
+    val parser = mkParser("a.b.c = 1337;")
+    val expr = parser.parseStmnt().asInstanceOf[AST.ExprStmnt].expr
+    val assign = expr.asInstanceOf[AST.Assignment]
+
+    assign.rhs should be === AST.ConstIntExpr(1337)
+    coerce(assign.lhs).rhs should be === AST.Id("c")
+    coerce(coerce(assign.lhs).lhs).rhs should be === AST.Id("b")
+    coerce(coerce(assign.lhs).lhs).lhs should be === AST.Id("a")
+  }
+
+  it should "allow method call statements" in {
+    def coerce(expr: Expression) = expr.asInstanceOf[AST.Member]
+
+    val parser = mkParser("object.method(1, 2, 3);")
+    val expr = parser.parseStmnt().asInstanceOf[AST.ExprStmnt].expr
+    val call = expr.asInstanceOf[AST.Call]
+
+    call.method should be === AST.Member(AST.Id("object"), AST.Id("method"))
+    call.args should have length 3
+    call.args(0) should be === AST.ConstIntExpr(1)
+    call.args(1) should be === AST.ConstIntExpr(2)
+    call.args(2) should be === AST.ConstIntExpr(3)
+  }
 }
