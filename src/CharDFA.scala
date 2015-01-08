@@ -13,7 +13,6 @@ object CharDFA {
   )
   def matchSingleChar(stream: CharStream, end: Option[Char] = None): Option[Char] = {
     if (!end.isEmpty && stream.cur == end.get) {
-      println("Read end char")
       None
     } else if (stream.cur == '\\') {
       stream.next()
@@ -24,7 +23,6 @@ object CharDFA {
         }
         case x if x.isDigit => {
            val is = stream.takeWhile(_.isDigit)
-           println(is)
            Some(is.toInt.toChar)
         }
         case _ => {
@@ -38,24 +36,20 @@ object CharDFA {
       Some(x)
     }
   }
-  
-  
+
+
   def matchChar(stream: CharStream) : Token = {
     stream.next()
     val ch = matchSingleChar(stream, Some('\''))
     val end = stream.cur
     stream.next()
     if (ch.isEmpty || end != '\'') {
-        println("ch: " + ch)
-        println(ch.isEmpty)
-        println("end: " + end.toInt)
-        println(end == '\'')
         new Token.Invalid()
     } else {
         new Token.CharLiteral(ch.get)
     }
   }
-  
+
   def matchString(stream: CharStream): Token = {
     stream.next()
     var failed = false

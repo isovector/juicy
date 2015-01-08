@@ -25,6 +25,7 @@ object Token {
     case class LBrace() extends Token
     case class RBrace() extends Token
     case class Comma() extends Token
+    case class Dot() extends Token
     case class Terminator() extends Token
     case class Invalid() extends Token
 }

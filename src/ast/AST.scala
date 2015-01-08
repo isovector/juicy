@@ -21,6 +21,7 @@ object Modifiers {
   type Value = Int
 
   // Update parse() if you change this list
+  val NONE      = 0
   val PUBLIC    = 1 << 0
   val PROTECTED = 1 << 1
   val STATIC    = 1 << 2
@@ -50,21 +51,12 @@ object AST {
   case class ClassDefn(
     name: String,
     mods: Modifiers.Value,
+    extnds: Option[String],
     impls: Seq[String],
-    extnds: Seq[String],
-    fields: Seq[FieldStmnt],
+    fields: Seq[VarStmnt],
     methods: Seq[MethodDefn]
   ) extends Definition {
     def children = fields ++ methods
-  }
-
-  case class FieldStmnt(
-    name: String,
-    mods: Modifiers.Value,
-    tname: String,
-    value: Option[Expression]
-  ) extends Statement {
-    def children = value.toList
   }
 
   case class MethodDefn(
@@ -79,6 +71,7 @@ object AST {
 
   case class VarStmnt(
     name: String,
+    mods: Modifiers.Value,
     tname: String,
     value: Option[Expression]
   ) extends Statement {
@@ -119,6 +112,12 @@ object AST {
     expr: Expression
   ) extends Statement {
     def children = Seq(expr)
+  }
+
+  case class ConstIntExpr(
+    value: Int
+  ) extends Expression {
+    def children = Seq()
   }
 }
 

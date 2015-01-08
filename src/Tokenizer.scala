@@ -9,7 +9,8 @@ object Tokenizer {
     ')' -> (Unit => new Token.RParen()),
     '{' -> (Unit => new Token.LBrace()),
     '}' -> (Unit => new Token.RBrace()),
-    ',' -> (Unit => new Token.Comma())
+    ',' -> (Unit => new Token.Comma()),
+    '.' -> (Unit => new Token.Dot())
   )
 }
 
@@ -22,7 +23,7 @@ class Tokenizer(input: String) {
   // These should be listed from longest to shortest, to ensure that we don't
   // do subtring matching
   val operators = List("==", ">=", "<=", ">", "<", "!=", "&&", "||", "%",
-                        "+", "-", "*", "/", "&", "|", "!", "[", "]")
+                        "+", "-", "*", "/", "&", "|", "!", "[", "]", "=")
   val modifiers = List("public", "protected", "static", "extern", "final",
                         "abstract", "native")
   val keywords  = List("if", "for", "while", "class", "override", "new",
