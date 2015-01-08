@@ -5,7 +5,6 @@ import juicy.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
 
-
 class Parser(tokens: TokenStream) extends ParserUtils {
   def cur: Token = tokens.cur
   def next() = tokens.next()
@@ -48,10 +47,24 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     )
   )
 
-  def qualifiedName(): String = {
-    delimited(".".asToken) {
+  def consumeArray(): Boolean = {
+      if (check("[")) {
+          next()
+          if (!check("]")) {
+              throw new Exception("Invalid array")
+          } else {
+              next()
+              true
+          }
+      } else {
+          false
+      }
+  }
+
+  def qualifiedName(): Typename = {
+    new Typename(delimited(".".asToken) {
       unwrap(ensureIdentifier())
-    }.mkString(".")
+    }.mkString("."), consumeArray())
   }
 
   // Transform a list of identifiers into a left-assoc tree of member
@@ -147,7 +160,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseField(
       name: String,
       mods: Modifiers.Value,
-      tname: String): VarStmnt = withSource {
+      tname: Typename): VarStmnt = withSource {
     val result = new VarStmnt(name, mods, tname, parseInitializer())
     ensure(";")
     result
@@ -156,7 +169,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseMethod(
       name: String,
       mods: Modifiers.Value,
-      tname: String): MethodDefn = withSource {
+      tname: Typename): MethodDefn = withSource {
     ensure("(")
 
     // While we don't hit a `)`, parse args delimited by `,`
@@ -209,11 +222,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       if (checkIdentifier()) {
         // Variable definition
         val tname = possible_tname.mkString(".")
+        val isArray = consumeArray()
         val name = unwrap(ensureIdentifier())
         val value = parseInitializer()
         ensure(";")
 
-        new VarStmnt(name, Modifiers.NONE, tname, value)
+        new VarStmnt(name, Modifiers.NONE, new Typename(tname, isArray), value)
       } else if (check("=")) {
         // Variable assignment
         val lhs = foldMemberAccess(possible_tname)

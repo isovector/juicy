@@ -57,13 +57,14 @@ trait BinaryOperator extends Expression {
   def children = Seq(lhs, rhs)
 }
 
+case class Typename (name: String, isArray: Boolean=false)
 
 object AST {
   case class ClassDefn(
     name: String,
     mods: Modifiers.Value,
-    extnds: Option[String],
-    impls: Seq[String],
+    extnds: Option[Typename],
+    impls: Seq[Typename],
     fields: Seq[VarStmnt],
     methods: Seq[MethodDefn]
   ) extends Definition {
@@ -73,7 +74,7 @@ object AST {
   case class MethodDefn(
     name: String,
     mods: Modifiers.Value,
-    tname: String, // TODO: *all* tnames need support for arrays
+    tname: Typename,
     args: Seq[VarStmnt],
     body: Option[Statement]
   ) extends Definition {
@@ -83,7 +84,7 @@ object AST {
   case class VarStmnt(
     name: String,
     mods: Modifiers.Value,
-    tname: String,
+    tname: Typename,
     value: Option[Expression]
   ) extends Statement {
     def children = value.toList
@@ -216,5 +217,6 @@ object AST {
 
   case class Mod(lhs: Expression, rhs: Expression)
     extends BinaryOperator
+    
 }
 
