@@ -154,6 +154,18 @@ object AST {
   case class Member(lhs: Expression, rhs: Expression)
     extends BinaryOperator
 
+  case class ConstCharExpr(
+    value: Char
+  ) extends Expression {
+    def children = Seq()
+  }
+  
+  case class ConstStringExpr(
+    value: String
+  ) extends Expression {
+    def children = Seq()
+  }
+  
   case class Assignment(lhs: Expression, rhs: Expression)
     extends BinaryOperator
 

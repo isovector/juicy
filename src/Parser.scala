@@ -334,6 +334,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case BoolLiteral(b) =>
         next()
         new ConstBoolExpr(b)
+      case CharLiteral(c) =>
+        next()
+        new ConstCharExpr(c)
+      case StringLiteral(s) =>
+        next()
+        new ConstStringExpr(s)
 
       case Identifier(id) =>
         foldMemberAccess(delimited(".".asToken)(unwrap(ensureIdentifier)))
