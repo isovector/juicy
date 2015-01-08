@@ -57,7 +57,10 @@ trait BinaryOperator extends Expression {
   def children = Seq(lhs, rhs)
 }
 
-case class Typename (name: String, isArray: Boolean=false)
+case class Typename (name: String, isArray: Boolean=false) {
+    def brackets = if (isArray) "[]" else ""
+    override def toString() = s"$name $brackets"
+}
 
 object AST {
   case class ClassDefn(
