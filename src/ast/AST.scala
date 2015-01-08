@@ -75,9 +75,9 @@ object AST {
     mods: Modifiers.Value,
     tname: String, // TODO: *all* tnames need support for arrays
     args: Seq[VarStmnt],
-    body: Statement
+    body: Option[Statement]
   ) extends Definition {
-    def children = args :+ body
+    def children = args ++ body.toList
   }
 
   case class VarStmnt(

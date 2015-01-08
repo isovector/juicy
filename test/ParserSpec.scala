@@ -75,7 +75,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
   it should "parse class methods" in {
     val parser = mkParser("""
       class Test {
-        void simple() { }
+        void simple();
         protected int add(int a, long b = 0) { }
       } """)
     val results = parser.parseClass(NONE).methods
@@ -85,11 +85,13 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     simple.mods should be  === NONE
     simple.tname should be === "void"
     simple.args should be === Seq()
+    simple.body should be === None
 
     val add = results(1)
     add.name should be  === "add"
     add.mods should be  === PROTECTED
     add.tname should be === "int"
+    add.body should be === Some(AST.BlockStmnt(Seq()))
 
     val arg_a = add.args(0)
     arg_a.name should be === "a"
@@ -128,12 +130,23 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "parse janky for loops" in {
-    // TODO: write a non-janky test also
     val parser = mkParser("for (; false;);")
     val result = parser.parseFor()
 
     result.first should be === None
     result.cond should be === Some(AST.ConstBoolExpr(false))
+    result.after should be === None
+    result.body should be === AST.BlockStmnt(Seq())
+  }
+
+  it should "parse non-janky for loops" in {
+    val parser = mkParser("for (int i = 0; i < 5;);")
+    val result = parser.parseFor()
+
+    result.first should be ===
+      Some(AST.VarStmnt("i", NONE, "int", Some(AST.ConstIntExpr(0))))
+    result.cond should be ===
+      Some(AST.LThan(AST.Id("i"), AST.ConstIntExpr(5)))
     result.after should be === None
     result.body should be === AST.BlockStmnt(Seq())
   }

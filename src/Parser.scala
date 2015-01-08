@@ -69,7 +69,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         case _              => false
     }
 
-    // TODO: check for proper order of modifiers
     (0 /: mods)((agg, token) => agg | Modifiers.parse(unwrap(token)) )
   }
 
@@ -158,7 +157,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       name: String,
       mods: Modifiers.Value,
       tname: String): MethodDefn = withSource {
-    // BUG: this will always get a body, even if it is abstract
     ensure("(")
 
     // While we don't hit a `)`, parse args delimited by `,`
@@ -169,11 +167,18 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         val value = parseInitializer()
         new VarStmnt(arg_name, Modifiers.NONE, arg_tname, value)
       }
-    }.flatMap(xs => xs) // run Seq(Seq()) to Seq()
+    }.flatMap(xs => xs) // flatten Seq(Seq()) to Seq()
 
     ensure(")")
 
-    val body = parseBlock()
+    val body =
+      if (!check(";"))
+        Some(parseBlock())
+      else {
+        next()
+        None
+      }
+
     new MethodDefn(name, mods, tname, args, body)
   }
 
@@ -264,9 +269,13 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     ensure("for")
 
     ensure("(")
-    // TODO: first
-    val first = None
-    ensure(";")
+    val first =
+      if (!check(";"))
+        Some(parseStmnt())
+      else {
+        ensure(";")
+        None
+      }
 
     val cond = if (!check(";")) {
       Some(parseExpr())
@@ -325,6 +334,10 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case BoolLiteral(b) =>
         next()
         new ConstBoolExpr(b)
+
+      case Identifier(id) =>
+        foldMemberAccess(delimited(".".asToken)(unwrap(ensureIdentifier)))
+
 
       case _ => throw new Exception("Expected literal, got " + cur.toString)
     }
