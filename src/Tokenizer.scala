@@ -65,7 +65,11 @@ class Tokenizer(input: String) {
     } else if (cur.isDigit) {
       // Try to match a int literal first because they're easy
       val ipart = source.takeWhile(_.isDigit)
-      new Token.IntLiteral(ipart.toInt)
+      if (cur.isLetter || cur == '_') {
+        new Token.Invalid()
+      } else {
+        new Token.IntLiteral(ipart.toInt)
+      }
     } else if (cur == '\'') {
       CharDFA.matchChar(source)
     } else if (cur == '\"') {

@@ -144,7 +144,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseFor()
 
     result.first should be ===
-      Some(AST.VarStmnt("i", NONE, "int", Some(AST.ConstIntExpr(0))))
+      Some(AST.VarStmnt("i", NONE, Typename("int"), Some(AST.ConstIntExpr(0))))
     result.cond should be ===
       Some(AST.LThan(AST.Id("i"), AST.ConstIntExpr(5)))
     result.after should be === None
