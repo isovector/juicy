@@ -16,7 +16,6 @@ object Weeder {
       // An interface method cannot be static, final, or native.
       // An interface method cannot have a body.
       // Every class must contain at least one explicit constructor.
-      // No multidimensional array types or array creation expressions are allowed.
       // A method or constructor must not contain explicit this() or super() calls.
 
 

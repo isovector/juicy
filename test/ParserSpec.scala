@@ -253,4 +253,20 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
         AST.Index(AST.Id("a"), AST.Call(AST.Id("b"), Seq())),
         AST.Id("c"))
   }
+
+  it should "parse parenthesized expressions" in {
+    val parser = mkParser("((a))")
+    val result = parser.parseExpr()
+
+    result should be === AST.Id("a")
+  }
+
+  it should "parse casts" in {
+    val parser = mkParser("(int)(bool[])(a)")
+    val result = parser.parseExpr()
+
+    result should be ===
+      AST.Cast(new Typename("int"),
+        AST.Cast(new Typename("bool", true), AST.Id("a")))
+  }
 }

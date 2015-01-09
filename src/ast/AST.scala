@@ -169,6 +169,13 @@ object AST {
     def children = args :+ method
   }
 
+  case class Cast(
+    tname: Typename,
+    value: Expression
+  ) extends Expression {
+    def children = Seq(value)
+  }
+
   case class NewType(
     tname: Typename,
     args: Seq[Expression]

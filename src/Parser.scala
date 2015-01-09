@@ -362,9 +362,27 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
         new NewArray(new Typename(tname, true), size)
       } else throw Expected("constructor arguments or array length")
-    } else {
-      parsePostOp()
+    } else parseCast()
+  }
+
+  def parseCast(): Expression = withSource {
+    if (check("(")) {
+      tokens.setBacktrace()
+      try {
+        next()
+        val tname = qualifiedName()
+        ensure(")")
+        val value = parseCast()
+
+        val result = new Cast(tname, value)
+        tokens.unsetBacktrace()
+        return result
+      } catch {
+        case _: Exception => tokens.backtrack()
+      }
     }
+
+    parsePostOp()
   }
 
   def parsePostOp(): Expression = withSource {
@@ -407,6 +425,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case StringLiteral(s) =>
         next()
         new ConstStringExpr(s)
+
+      case LParen() =>
+        next()
+        val result = parseExpr()
+        ensure(")")
+        result
 
       // TODO: this and null
 
