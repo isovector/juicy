@@ -9,14 +9,23 @@ trait Node {
 
   def visit[T]
       (fold: (T, T) => T)
-      (before: => T)
-      (after: => T): T = {
+      (before: (Node, Seq[Node]) => T)
+      (after: (Node, Seq[Node]) => T): T = {
+    visit(this, Seq())(fold)(before)(after)
+  }
+
+  def visit[T]
+      (self: Node, context: Seq[Node])
+      (fold: (T, T) => T)
+      (before: (Node, Seq[Node]) => T)
+      (after: (Node, Seq[Node]) => T): T = {
+    val newContext = Seq(self) ++ context
     fold(
-      (before /:
-        children.map(
-          _.visit(fold)(before)(after)
+      (before(self, context) /:
+        children.map( child =>
+          child.visit(child, newContext)(fold)(before)(after)
         )
-      )(fold), after)
+      )(fold), after(self, context))
   }
 }
 
