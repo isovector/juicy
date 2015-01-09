@@ -29,6 +29,10 @@ class TokenStream(source: String) {
     bookmarks.push(0)
   }
 
+  def unsetBacktrace() = {
+    bookmarks.pop()
+  }
+
   def backtrack() = {
     val back = bookmarks.pop()
     (0 to (back - 1)).foreach(_ => rewind())
