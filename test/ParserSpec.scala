@@ -68,7 +68,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     five.name should be  === "five"
     five.mods should be  === (STATIC | FINAL)
     five.tname.toString should be === "int"
-    five.value should be === Some(AST.ConstIntExpr(5))
+    five.value should be === Some(AST.IntVal(5))
   }
 
 
@@ -112,11 +112,11 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
        """)
     val result = parser.parseIf()
 
-    result.cond should be === AST.ConstIntExpr(1)
+    result.cond should be === AST.IntVal(1)
     result.otherwise should be === None
 
     val inner = result.then.asInstanceOf[AST.IfStmnt]
-    inner.cond should be === AST.ConstIntExpr(2)
+    inner.cond should be === AST.IntVal(2)
     inner.then should be === AST.BlockStmnt(Seq())
     inner.otherwise should be === Some(AST.BlockStmnt(Seq()))
   }
@@ -125,7 +125,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("while (true);")
     val result = parser.parseWhile()
 
-    result.cond should be === AST.ConstBoolExpr(true)
+    result.cond should be === AST.BoolVal(true)
     result.body should be === AST.BlockStmnt(Seq())
   }
 
@@ -134,7 +134,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseFor()
 
     result.first should be === None
-    result.cond should be === Some(AST.ConstBoolExpr(false))
+    result.cond should be === Some(AST.BoolVal(false))
     result.after should be === None
     result.body should be === AST.BlockStmnt(Seq())
   }
@@ -144,11 +144,16 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseFor()
 
     result.first should be ===
-      Some(AST.VarStmnt("i", NONE, Typename("int"), Some(AST.ConstIntExpr(0))))
+      Some(AST.VarStmnt("i", NONE, Typename("int"), Some(AST.IntVal(0))))
     result.cond should be ===
-      Some(AST.LThan(AST.Id("i"), AST.ConstIntExpr(5)))
+      Some(AST.LThan(AST.Id("i"), AST.IntVal(5)))
     result.after should be === None
     result.body should be === AST.BlockStmnt(Seq())
+  }
+
+  it should "parse return statements" in {
+    val parser = mkParser("return 5;")
+    parser.parseStmnt() should be === AST.ReturnStmnt(AST.IntVal(5))
   }
 
   it should "parse binary expressions with precedence" in {
@@ -157,12 +162,12 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("1 + 2 * 5 = true")
     val result = coerce(parser.parseExpr())
 
-    result.rhs should be === AST.ConstBoolExpr(true)
-    coerce(result.lhs).lhs should be === AST.ConstIntExpr(1)
+    result.rhs should be === AST.BoolVal(true)
+    coerce(result.lhs).lhs should be === AST.IntVal(1)
 
     val mul = coerce(coerce(result.lhs).rhs)
-    mul.lhs should be === AST.ConstIntExpr(2)
-    mul.rhs should be === AST.ConstIntExpr(5)
+    mul.lhs should be === AST.IntVal(2)
+    mul.rhs should be === AST.IntVal(5)
   }
 
   it should "right-associate assignments" in {
@@ -171,7 +176,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result should be ===
       AST.Assignment(AST.Id("a"),
-        AST.Assignment(AST.Id("b"), AST.ConstIntExpr(5)))
+        AST.Assignment(AST.Id("b"), AST.IntVal(5)))
   }
 
 
@@ -188,7 +193,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     var2.name should be === "var2"
     var2.mods should be === NONE
     var2.tname.toString should be === "java.lang.Object"
-    var2.value should be === Some(AST.ConstIntExpr(5))
+    var2.value should be === Some(AST.IntVal(5))
   }
 
   it should "parse variable assignment statements" in {
@@ -198,7 +203,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val expr = parser.parseStmnt().asInstanceOf[AST.ExprStmnt].expr
     val assign = expr.asInstanceOf[AST.Assignment]
 
-    assign.rhs should be === AST.ConstIntExpr(1337)
+    assign.rhs should be === AST.IntVal(1337)
     coerce(assign.lhs).rhs should be === AST.Id("c")
     coerce(coerce(assign.lhs).lhs).rhs should be === AST.Id("b")
     coerce(coerce(assign.lhs).lhs).lhs should be === AST.Id("a")
@@ -213,6 +218,12 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     var1.value should be === None
   }
 
+  it should "have null, super and this literals" in {
+    val parser = mkParser("this + super / null")
+    parser.parseExpr() should be ===
+      AST.Add(AST.ThisVal(), AST.Div(AST.SuperVal(), AST.NullVal()))
+  }
+
   it should "allow method call statements" in {
     def coerce(expr: Expression) = expr.asInstanceOf[AST.Member]
 
@@ -222,9 +233,9 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     call.method should be === AST.Member(AST.Id("object"), AST.Id("method"))
     call.args should have length 3
-    call.args(0) should be === AST.ConstIntExpr(1)
-    call.args(1) should be === AST.ConstIntExpr(2)
-    call.args(2) should be === AST.ConstIntExpr(3)
+    call.args(0) should be === AST.IntVal(1)
+    call.args(1) should be === AST.IntVal(2)
+    call.args(2) should be === AST.IntVal(3)
   }
 
   it should "parse unary operators" in {
@@ -232,7 +243,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseExpr()
 
     result should be ===
-      AST.Sub(AST.ConstIntExpr(0), AST.Not(AST.Not(AST.Id("a"))))
+      AST.Sub(AST.IntVal(0), AST.Not(AST.Not(AST.Id("a"))))
   }
 
   it should "parse new arrays and types" in {

@@ -138,21 +138,42 @@ object AST {
     def children = body
   }
 
+  case class ReturnStmnt(
+    value: Expression
+  ) extends Statement {
+    def children = Seq(value)
+  }
+
   case class ExprStmnt(
     expr: Expression
   ) extends Statement {
     def children = Seq(expr)
   }
 
-  case class ConstIntExpr(
+  case class IntVal(
     value: Int
   ) extends Expression {
     def children = Seq()
   }
 
-  case class ConstBoolExpr(
+  case class BoolVal(
     value: Boolean
   ) extends Expression {
+    def children = Seq()
+  }
+
+  case class ThisVal()
+  extends Expression {
+    def children = Seq()
+  }
+
+  case class SuperVal()
+  extends Expression {
+    def children = Seq()
+  }
+
+  case class NullVal()
+  extends Expression {
     def children = Seq()
   }
 
@@ -190,13 +211,13 @@ object AST {
     def children = Seq(size)
   }
 
-  case class ConstCharExpr(
+  case class CharVal(
     value: Char
   ) extends Expression {
     def children = Seq()
   }
 
-  case class ConstStringExpr(
+  case class StringVal(
     value: String
   ) extends Expression {
     def children = Seq()

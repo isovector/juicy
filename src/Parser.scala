@@ -210,6 +210,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseStmnt(): Statement = withSource {
     if (check(";")) {
       new BlockStmnt(Seq())
+    } else if (check("return")) {
+      next();
+      val value = parseExpr()
+      ensure(";")
+
+      new ReturnStmnt(value)
     } else if (check("while")) {
       parseWhile()
     } else if (check("for")) {
@@ -342,7 +348,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseUnaryExpr(): Expression = withSource {
     if (check("-")) {
       next()
-      new Sub(new ConstIntExpr(0), parseUnaryExpr())
+      new Sub(new IntVal(0), parseUnaryExpr())
     } else if (check("!")) {
       next()
       new Not(parseUnaryExpr())
@@ -412,25 +418,37 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     cur match {
       case IntLiteral(i) =>
         next()
-        new ConstIntExpr(i)
+        new IntVal(i)
 
       case BoolLiteral(b) =>
         next()
-        new ConstBoolExpr(b)
+        new BoolVal(b)
 
       case CharLiteral(c) =>
         next()
-        new ConstCharExpr(c)
+        new CharVal(c)
 
       case StringLiteral(s) =>
         next()
-        new ConstStringExpr(s)
+        new StringVal(s)
 
       case LParen() =>
         next()
         val result = parseExpr()
         ensure(")")
         result
+
+      case ThisLiteral() =>
+        next()
+        new ThisVal()
+
+      case SuperLiteral() =>
+        next()
+        new SuperVal()
+
+      case NullLiteral() =>
+        next()
+        new NullVal()
 
       // TODO: this and null
 
