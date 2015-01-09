@@ -93,10 +93,10 @@ object AST {
     name: String,
     mods: Modifiers.Value,
     tname: Typename,
-    args: Seq[VarStmnt],
+    params: Seq[VarStmnt],
     body: Option[Statement]
   ) extends Definition {
-    def children = args ++ body.toList
+    def children = params ++ body.toList
   }
 
   case class VarStmnt(
@@ -169,9 +169,19 @@ object AST {
     def children = args :+ method
   }
 
+  case class NewType(
+    tname: Typename,
+    args: Seq[Expression]
+  ) extends Expression {
+    def children = args
+  }
 
-  case class Member(lhs: Expression, rhs: Expression)
-    extends BinaryOperator
+  case class NewArray(
+    tname: Typename,
+    size: Expression
+  ) extends Expression {
+    def children = Seq(size)
+  }
 
   case class ConstCharExpr(
     value: Char
@@ -234,6 +244,12 @@ object AST {
     extends BinaryOperator
 
   case class Mod(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Index(lhs: Expression, rhs: Expression)
+    extends BinaryOperator
+
+  case class Member(lhs: Expression, rhs: Expression)
     extends BinaryOperator
 
   case class Not(ghs: Expression) extends UnaryOperator

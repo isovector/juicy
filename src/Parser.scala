@@ -13,9 +13,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   def operators = Seq(
     Map(
-      "=" -> (Assignment.tupled _)
-    ),
-    Map(
       "||" -> (LogicOr.tupled _)
     ),
     Map(
@@ -168,6 +165,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     result
   }
 
+  def parseArgs(): Seq[Expression] = {
+    ensure("(")
+    val args = kleene(")".asToken) {
+      delimited(",".asToken)(parseExpr)
+    }.flatMap(xs => xs)
+    ensure(")")
+
+    args
+  }
+
   def parseMethod(
       name: String,
       mods: Modifiers.Value,
@@ -175,10 +182,11 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     ensure("(")
 
     // While we don't hit a `)`, parse args delimited by `,`
-    val args = kleene(")".asToken) {
+    val params = kleene(")".asToken) {
       delimited(",".asToken) {
         val arg_tname = qualifiedName()
         val arg_name = unwrap(ensureIdentifier())
+        // TODO: I don't think we are supposed to do this
         val value = parseInitializer()
         new VarStmnt(arg_name, Modifiers.NONE, arg_tname, value)
       }
@@ -194,7 +202,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         None
       }
 
-    new MethodDefn(name, mods, tname, args, body)
+    new MethodDefn(name, mods, tname, params, body)
   }
 
   // Parse `{ Statement[] }`
@@ -239,12 +247,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         new ExprStmnt(new Assignment(lhs, value))
       } else if (check("(")) {
         val method = foldMemberAccess(possible_tname)
-
-        ensure("(")
-        val args = kleene(")".asToken) {
-          delimited(",".asToken)(parseExpr)
-        }.flatMap(xs => xs)
-        ensure(")")
+        val args = parseArgs()
         ensure(";")
 
         new ExprStmnt(new Call(method, args))
@@ -310,7 +313,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   // Outermost expression parser
   def parseExpr(): Expression = withSource {
-    parseExprPrec(0)
+    parseExprAssign()
+  }
+
+  def parseExprAssign(): Expression = withSource {
+    val lhs = parseExprPrec(0)
+
+    if (check("=")) {
+      next()
+      new Assignment(lhs, parseExpr())
+    } else lhs
   }
 
   // Parse left-associative binary operators with precent `level`
@@ -341,14 +353,53 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else if (check("!")) {
       next()
       new Not(parseUnaryExpr())
+    } else if (check("new")) {
+      next()
+      val tname =
+        delimited(".".asToken)(unwrap(ensureIdentifier())).mkString(".")
+
+      if (check("(")) {
+        // new Type()
+        new NewType(new Typename(tname), parseArgs())
+      } else if (check("[")) {
+        // new Array[]
+        next()
+        val size = parseExpr()
+        ensure("]")
+
+        new NewArray(new Typename(tname, true), size)
+      } else {
+        throw new Exception()
+      }
     } else {
-      parseLiteral()
+      parsePostOp()
     }
   }
 
+  def parsePostOp(): Expression = withSource {
+    var lhs = parseTerminal()
+    while (check("(") || check("[") || check(".")) {
+      if (check("(")) {
+        lhs = new Call(lhs, parseArgs)
+      } else if (check("[")) {
+        next()
+        val index = parseExpr()
+        ensure("]")
+
+        lhs = new Index(lhs, index)
+      } else if (check(".")) {
+        next()
+        val member = new Id(unwrap(ensureIdentifier()))
+
+        lhs = new Member(lhs, member)
+      }
+    }
+
+    lhs
+  }
+
   // Innermost expression parser
-  def parseLiteral(): Expression = withSource {
-    // TODO: this only does integer literals =)
+  def parseTerminal(): Expression = withSource {
     cur match {
       case IntLiteral(i) =>
         next()
@@ -357,16 +408,19 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case BoolLiteral(b) =>
         next()
         new ConstBoolExpr(b)
+
       case CharLiteral(c) =>
         next()
         new ConstCharExpr(c)
+
       case StringLiteral(s) =>
         next()
         new ConstStringExpr(s)
 
-      case Identifier(id) =>
-        foldMemberAccess(delimited(".".asToken)(unwrap(ensureIdentifier)))
+      // TODO: this and null
 
+      case Identifier(id) =>
+        new Id(unwrap(ensureIdentifier))
 
       case _ => throw new Exception("Expected literal, got " + cur.toString)
     }

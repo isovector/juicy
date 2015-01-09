@@ -84,7 +84,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     simple.name should be  === "simple"
     simple.mods should be  === NONE
     simple.tname.toString should be === "void"
-    simple.args should be === Seq()
+    simple.params should be === Seq()
     simple.body should be === None
 
     val add = results(1)
@@ -93,12 +93,12 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     add.tname.toString should be === "int"
     add.body should be === Some(AST.BlockStmnt(Seq()))
 
-    val arg_a = add.args(0)
+    val arg_a = add.params(0)
     arg_a.name should be === "a"
     arg_a.tname.toString should be === "int"
     arg_a.value should be === None
 
-    val arg_b = add.args(1)
+    val arg_b = add.params(1)
     arg_b.name should be === "b"
     arg_b.tname.toString should be === "long"
     arg_b.value should be === Some(AST.ConstIntExpr(0))
@@ -165,6 +165,16 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     mul.rhs should be === AST.ConstIntExpr(5)
   }
 
+  it should "right-associate assignments" in {
+    val parser = mkParser("a = b = 5")
+    val result = parser.parseExpr()
+
+    result should be ===
+      AST.Assignment(AST.Id("a"),
+        AST.Assignment(AST.Id("b"), AST.ConstIntExpr(5)))
+  }
+
+
   it should "parse variable declarations" in {
     val parser = mkParser("a.b.c.d var1; java.lang.Object var2 = 5;")
     val var1 = parser.parseStmnt().asInstanceOf[AST.VarStmnt]
@@ -193,7 +203,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     coerce(coerce(assign.lhs).lhs).rhs should be === AST.Id("b")
     coerce(coerce(assign.lhs).lhs).lhs should be === AST.Id("a")
   }
-  
+
   it should "parse array declarations" in {
     val parser = mkParser("java.lang.String [] m;")
     val var1 = parser.parseStmnt().asInstanceOf[AST.VarStmnt]
@@ -215,5 +225,32 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     call.args(0) should be === AST.ConstIntExpr(1)
     call.args(1) should be === AST.ConstIntExpr(2)
     call.args(2) should be === AST.ConstIntExpr(3)
+  }
+
+  it should "parse unary operators" in {
+    val parser = mkParser("-!!a")
+    val result = parser.parseExpr()
+
+    result should be ===
+      AST.Sub(AST.ConstIntExpr(0), AST.Not(AST.Not(AST.Id("a"))))
+  }
+
+  it should "parse new arrays and types" in {
+    val parser = mkParser("new obj[new test(cool)]")
+    val result = parser.parseExpr()
+
+    result should be ===
+      AST.NewArray(new Typename("obj", true),
+        AST.NewType(new Typename("test"), Seq(AST.Id("cool"))))
+  }
+
+  it should "parse postfix operators" in {
+    val parser = mkParser("a[b()].c")
+    val result = parser.parseExpr()
+
+    result should be ===
+      AST.Member(
+        AST.Index(AST.Id("a"), AST.Call(AST.Id("b"), Seq())),
+        AST.Id("c"))
   }
 }
