@@ -38,15 +38,14 @@ trait ParserUtils {
       next()
       cur
     } else {
-        // TODO: do something smarter here
-      throw new Exception("Expected `" + source + "`, got: " + cur.toString)
+      throw Expected("`" + source + "`")
     }
   }
 
   // Ensure the next token is an identifier. Returns the matching token
   def ensureIdentifier(): Token = {
     if (!checkIdentifier()) {
-      throw new Exception("Expected identifier, got: " + cur.toString)
+      throw Expected("identifier")
     }
 
     val result = cur
@@ -61,7 +60,7 @@ trait ParserUtils {
       case Identifier(value) => value
       case Operator(value) => value
       case Modifier(value) => value
-      case _ => throw new Exception("FOOL OF A TOOK! DON'T UNWRAP THAT!")
+      case _ => throw Expected("keyword, identifier, operator or modifier")
     }
   }
 
@@ -92,5 +91,10 @@ trait ParserUtils {
     result.originalToken = source
     result
   }
+
+  def Expected(what: String) =
+    new Exception(
+      "Expected `" + what + "`, but got `" + cur.toString +
+      "` instead\n\tat: " + cur.from.toString())
 }
 

@@ -49,12 +49,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def consumeArray(): Boolean = {
       if (check("[")) {
           next()
-          if (!check("]")) {
-              throw new Exception("Invalid array")
-          } else {
-              next()
-              true
-          }
+          ensure("]")
+          true
       } else {
           false
       }
@@ -118,8 +114,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       member match {
         case (_: VarStmnt)   => true
         case (_: MethodDefn) => false
-        case _ =>
-          throw new Exception("Unexpected member in class: " + member.toString)
+        case _ => throw Expected("field or method")
       }
     }
     ensure("}")
@@ -368,9 +363,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         ensure("]")
 
         new NewArray(new Typename(tname, true), size)
-      } else {
-        throw new Exception()
-      }
+      } else throw Expected("constructor arguments or array length")
     } else {
       parsePostOp()
     }
@@ -422,7 +415,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case Identifier(id) =>
         new Id(unwrap(ensureIdentifier))
 
-      case _ => throw new Exception("Expected literal, got " + cur.toString)
+      case _ => throw Expected("terminal value")
     }
   }
 }
