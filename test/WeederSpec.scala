@@ -130,4 +130,17 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(parser.parseFile()) should be === false
     Weeder(parser.parseFile()) should be === true
   }
+
+  it should "not allow array implementations or extends" in {
+    val parser = mkParser("""
+      class fail extends object[] { }
+      class fail implements object[] { }
+      class pass extends object implements object {}
+      """)
+
+    // TODO: this will fail when we get a proper parseFile()
+    Weeder(parser.parseFile()) should be === false
+    Weeder(parser.parseFile()) should be === false
+    Weeder(parser.parseFile()) should be === true
+  }
 }

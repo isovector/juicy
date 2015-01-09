@@ -25,9 +25,13 @@ object Weeder {
     node.visit((a: Boolean, b: Boolean) => a && b)
     { (self, context) =>
       self match {
-        case ClassDefn(_, mods, _, _, _, _) =>
+        case ClassDefn(_, mods, extnds, impls, _, _) =>
           // A class cannot be both abstract and final.
-          (!check(mods, ABSTRACT) || !check(mods, FINAL))
+          ((!check(mods, ABSTRACT) || !check(mods, FINAL)) &&
+
+          // Extends and implements may not be arrays
+          (extnds.isEmpty || !extnds.get.isArray) &&
+          ((true /: impls)(_ && !_.isArray)))
 
 
         case MethodDefn(_, mods, _, _, body) =>
