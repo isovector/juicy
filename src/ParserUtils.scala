@@ -5,16 +5,20 @@ import juicy.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
 
-// Helper functions for building relatively terse grammars
-trait ParserUtils {
-  def cur: Token
-  def next(): Unit
-
+object ParserUtils {
   // Add asToken() to strings
   case class RichString(underlying: String) {
     def asToken(): Token = new Tokenizer(underlying).next()
   }
   implicit def strToToken(underlying: String) = new RichString(underlying)
+}
+
+// Helper functions for building relatively terse grammars
+trait ParserUtils {
+  def cur: Token
+  def next(): Unit
+
+  import ParserUtils._
 
   // Is the current token equivalent to the token described by source?
   def check(source: String) = cur == source.asToken

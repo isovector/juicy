@@ -6,6 +6,8 @@ import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
 
 class Parser(tokens: TokenStream) extends ParserUtils {
+  import ParserUtils._
+
   def cur: Token = tokens.cur
   def next() = tokens.next()
 
