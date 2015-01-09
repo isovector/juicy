@@ -86,20 +86,17 @@ class Tokenizer(input: String) {
         val word = source.takeWhile(c => c.isLetterOrDigit ||
                                       c == '_' || c == '$')
 
-        if (modifiers.contains(word)) {
-          new Token.Modifier(word)
-        } else if (keywords.contains(word)) {
-          new Token.Keyword(word)
-        } else if (word == "true" || word == "false") {
-          new Token.BoolLiteral(word.toBoolean)
-        } else if (word == "null") {
-          new Token.NullLiteral()
-        } else if (word == "this") {
-          new Token.ThisLiteral()
-        } else if (word == "instanceof") {
-          new Token.Operator("instanceof")
-        } else {
-          new Token.Identifier(word)
+        word match {
+          case ""                              => new Token.Invalid()
+          case "true" | "false"                => new Token.BoolLiteral(
+                                                    word.toBoolean)
+          case "instanceof"                    => new Token.Operator("instanceof")
+          case "super"                         => new Token.SuperLiteral()
+          case "null"                          => new Token.NullLiteral()
+          case "this"                          => new Token.ThisLiteral()
+          case _ if (modifiers.contains(word)) => new Token.Modifier(word)
+          case _ if (keywords.contains(word))  => new Token.Keyword(word)
+          case _                               => new Token.Identifier(word)
         }
       }
     }

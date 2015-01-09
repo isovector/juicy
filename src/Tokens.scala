@@ -19,6 +19,7 @@ object Token {
     case class StringLiteral(value: String) extends Token
     case class NullLiteral() extends Token
     case class ThisLiteral() extends Token
+    case class SuperLiteral() extends Token
     case class Modifier(value: String) extends Token
     case class Operator(value: String) extends Token
     case class Identifier(value: String) extends Token
