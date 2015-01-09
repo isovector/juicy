@@ -76,7 +76,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class Test {
         void simple();
-        protected int add(int a, long b = 0) { }
+        protected int add(int a, long b) { }
       } """)
     val results = parser.parseClass(NONE).methods
 
@@ -101,7 +101,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val arg_b = add.params(1)
     arg_b.name should be === "b"
     arg_b.tname.toString should be === "long"
-    arg_b.value should be === Some(AST.ConstIntExpr(0))
+    arg_b.value should be === None
   }
 
   it should "parse if with and without else" in {

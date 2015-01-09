@@ -181,9 +181,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       delimited(",".asToken) {
         val arg_tname = qualifiedName()
         val arg_name = unwrap(ensureIdentifier())
-        // TODO: I don't think we are supposed to do this
-        val value = parseInitializer()
-        new VarStmnt(arg_name, Modifiers.NONE, arg_tname, value)
+        new VarStmnt(arg_name, Modifiers.NONE, arg_tname, None)
       }
     }.flatMap(xs => xs) // flatten Seq(Seq()) to Seq()
 

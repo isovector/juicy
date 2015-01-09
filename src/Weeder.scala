@@ -11,7 +11,6 @@ object Weeder {
   def apply(node: Node): Boolean = {
     // TODO: still missing:
       // All characters in the input program must be in the range of 7-bit ASCII (0 to 127).
-      // A formal parameter of a method must not have an initializer.
       // A class/interface must be declared in a .java file with the same base name as the class/interface.
       // An interface cannot contain fields or constructors.
       // An interface method cannot be static, final, or native.
