@@ -31,8 +31,8 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result.name should be    === "Child"
     result.mods should be    === NONE
-    result.extnds should be  === Some("Parent")
-    result.impls should be   === Seq("IA", "pkg.IB")
+    result.extnds should be  === Some(new Typename("Parent"))
+    result.impls should be   === Seq("IA", "pkg.IB").map(Typename.tupled(_, false))
     result.fields should be  === Seq()
     result.methods should be === Seq()
   }
@@ -40,7 +40,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
   it should "parse fullied qualified names" in {
     val parser = mkParser("java.lang.Object")
-    parser.qualifiedName() should be === "java.lang.Object"
+    parser.qualifiedName().toString should be === "java.lang.Object"
   }
 
 
@@ -61,13 +61,13 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val uninit = results(0)
     uninit.name should be  === "uninit"
     uninit.mods should be  === PUBLIC
-    uninit.tname should be === "bool"
+    uninit.tname.toString should be === "bool"
     uninit.value should be === None
 
     val five = results(1)
     five.name should be  === "five"
     five.mods should be  === (STATIC | FINAL)
-    five.tname should be === "int"
+    five.tname.toString should be === "int"
     five.value should be === Some(AST.ConstIntExpr(5))
   }
 
@@ -83,24 +83,24 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val simple = results(0)
     simple.name should be  === "simple"
     simple.mods should be  === NONE
-    simple.tname should be === "void"
+    simple.tname.toString should be === "void"
     simple.args should be === Seq()
     simple.body should be === None
 
     val add = results(1)
     add.name should be  === "add"
     add.mods should be  === PROTECTED
-    add.tname should be === "int"
+    add.tname.toString should be === "int"
     add.body should be === Some(AST.BlockStmnt(Seq()))
 
     val arg_a = add.args(0)
     arg_a.name should be === "a"
-    arg_a.tname should be === "int"
+    arg_a.tname.toString should be === "int"
     arg_a.value should be === None
 
     val arg_b = add.args(1)
     arg_b.name should be === "b"
-    arg_b.tname should be === "long"
+    arg_b.tname.toString should be === "long"
     arg_b.value should be === Some(AST.ConstIntExpr(0))
   }
 
@@ -172,12 +172,12 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     var1.name should be === "var1"
     var1.mods should be === NONE
-    var1.tname should be === "a.b.c.d"
+    var1.tname should be === new Typename("a.b.c.d")
     var1.value should be === None
 
     var2.name should be === "var2"
     var2.mods should be === NONE
-    var2.tname should be === "java.lang.Object"
+    var2.tname.toString should be === "java.lang.Object"
     var2.value should be === Some(AST.ConstIntExpr(5))
   }
 
@@ -192,6 +192,15 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     coerce(assign.lhs).rhs should be === AST.Id("c")
     coerce(coerce(assign.lhs).lhs).rhs should be === AST.Id("b")
     coerce(coerce(assign.lhs).lhs).lhs should be === AST.Id("a")
+  }
+  
+  it should "parse array declarations" in {
+    val parser = mkParser("java.lang.String [] m;")
+    val var1 = parser.parseStmnt().asInstanceOf[AST.VarStmnt]
+    var1.name should be === "m"
+    var1.mods should be === NONE
+    var1.tname.toString should be === "java.lang.String []"
+    var1.value should be === None
   }
 
   it should "allow method call statements" in {

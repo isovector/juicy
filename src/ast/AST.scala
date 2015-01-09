@@ -58,8 +58,8 @@ trait BinaryOperator extends Expression {
 }
 
 case class Typename (name: String, isArray: Boolean=false) {
-    def brackets = if (isArray) "[]" else ""
-    override def toString() = s"$name $brackets"
+    def brackets = if (isArray) " []" else ""
+    override def toString() = s"$name$brackets"
 }
 
 object AST {
