@@ -333,8 +333,15 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def parseUnaryExpr(): Expression = withSource {
-    // TODO: unary expressions
-    parseLiteral()
+    if (check("-")) {
+      next()
+      new Sub(new ConstIntExpr(0), parseUnaryExpr())
+    } else if (check("!")) {
+      next()
+      new Not(parseUnaryExpr())
+    } else {
+      parseLiteral()
+    }
   }
 
   // Innermost expression parser

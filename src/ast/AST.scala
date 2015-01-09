@@ -66,6 +66,12 @@ trait BinaryOperator extends Expression {
   def children = Seq(lhs, rhs)
 }
 
+trait UnaryOperator extends Expression {
+  val ghs: Expression
+
+  def children = Seq(ghs)
+}
+
 case class Typename (name: String, isArray: Boolean=false) {
     def brackets = if (isArray) " []" else ""
     override def toString() = s"$name$brackets"
@@ -172,13 +178,13 @@ object AST {
   ) extends Expression {
     def children = Seq()
   }
-  
+
   case class ConstStringExpr(
     value: String
   ) extends Expression {
     def children = Seq()
   }
-  
+
   case class Assignment(lhs: Expression, rhs: Expression)
     extends BinaryOperator
 
@@ -229,6 +235,7 @@ object AST {
 
   case class Mod(lhs: Expression, rhs: Expression)
     extends BinaryOperator
-    
+
+  case class Not(ghs: Expression) extends UnaryOperator
 }
 
