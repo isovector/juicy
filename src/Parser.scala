@@ -267,37 +267,27 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else if (check("{")) {
       parseBlock()
     } else if (checkIdentifier()) {
-      // Potentially parse a vardecl
-      val possible_tname = delimited(".".asToken)(unwrap(ensureIdentifier()))
-
-      if (checkIdentifier()) {
-        // Variable definition
-        val tname = possible_tname.mkString(".")
-        val isArray = consumeArray()
+      tokens.setBacktrace()
+      try {
+        val tname = qualifiedName()
         val name = unwrap(ensureIdentifier())
         val value = parseInitializer()
         ensure(";")
 
-        new VarStmnt(name, Modifiers.NONE, new Typename(tname, isArray), value)
-      } else if (check("=")) {
-        // Variable assignment
-        val lhs = foldMemberAccess(possible_tname)
-        val value = parseInitializer().get
-        ensure(";")
-
-        new ExprStmnt(new Assignment(lhs, value))
-      } else if (check("(")) {
-        val method = foldMemberAccess(possible_tname)
-        val args = parseArgs()
-        ensure(";")
-
-        new ExprStmnt(new Call(method, args))
-      } else {
-        throw new Exception("PROGRAMMING IS HARD. STATEMENTS NOT IMPLEMENTED")
+        tokens.unsetBacktrace()
+        new VarStmnt(name, Modifiers.NONE, tname, value)
+      } catch {
+        case _: Exception =>
+          tokens.backtrack()
+          parseExprStmnt()
       }
-    } else {
-      throw new Exception("PROGRAMMING IS HARD. STATEMENTS NOT IMPLEMENTED")
-    }
+    } else parseExprStmnt()
+  }
+
+  def parseExprStmnt(): ExprStmnt = withSource {
+    val expr = parseExpr()
+    ensure(";")
+    new ExprStmnt(expr)
   }
 
   def parseImport(): ImportStmnt = withSource {
