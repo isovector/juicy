@@ -81,18 +81,57 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   // Outermost parser for a file
-  def parseFile(): Node = {
-    // TODO: packages
-    // TODO: imports
+  def parseFile(): FileNode = withSource {
+    // TODO: this probably shouldn't be so rigid
+    val pkg =
+      if (check("package")) {
+        next()
+        val tname = qualifiedName()
+        if (tname.isArray) {
+          tokens.rewind()
+          throw Expected("valid package name")
+        }
 
-    val mods = parseModifiers()
-    parseClass(mods)
+        ensure(";")
+        tname.name
+      } else ""
+
+    val children = kleene(new Token.EOF()) {
+      if (check("import")) {
+        parseImport()
+      } else if (checkModifier() || check("class") || check("interface")) {
+        val mods = parseModifiers()
+        parseClass(mods)
+
+      } else throw Expected("file-level declaration")
+    }
+
+    val (imports, classes) = children.partition { child =>
+      child match {
+        case (_: ImportStmnt) => true
+        case (_: Definition)  => false
+        case _ => throw Expected("file-level declarations")
+      }
+    }
+
+    new FileNode(
+      pkg,
+      imports.map(_.asInstanceOf[ImportStmnt]),
+      classes.map(_.asInstanceOf[ClassDefn])
+    )
   }
 
   def parseClass(mods: Modifiers.Value): ClassDefn = withSource {
-    ensure("class")
+    val isInterface =
+      if (check("interface")) {
+        next()
+        true
+      } else {
+        ensure("class")
+        false
+      }
 
-    val name = unwrap(cur) // UNSURE: should this be a qualifiedName?
+    val name = unwrap(cur)
     next()
 
     val extnds =
@@ -125,7 +164,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       extnds,
       impls,
       fields.map(_.asInstanceOf[VarStmnt]),
-      methods.map(_.asInstanceOf[MethodDefn]))
+      methods.map(_.asInstanceOf[MethodDefn]),
+      isInterface)
   }
 
   // Parse modifiers, types and names, and then delegate parsing to methods
@@ -216,6 +256,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       ensure(";")
 
       new ReturnStmnt(value)
+    } else if (check("import")) {
+      parseImport()
     } else if (check("while")) {
       parseWhile()
     } else if (check("for")) {
@@ -256,6 +298,23 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else {
       throw new Exception("PROGRAMMING IS HARD. STATEMENTS NOT IMPLEMENTED")
     }
+  }
+
+  def parseImport(): ImportStmnt = withSource {
+    ensure("import")
+    val what = delimited(".".asToken) {
+      val result = unwrap(cur)
+      next()
+      result
+    }
+
+    val result = what(what.size - 1) match {
+      case "*" => new ImportPkg(what.takeWhile(_ != "*").mkString("."))
+      case _   => new ImportClass(new Typename(what.mkString(".")))
+    }
+
+    ensure(";")
+    result
   }
 
   def parseWhile(): WhileStmnt = withSource {
@@ -449,8 +508,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case NullLiteral() =>
         next()
         new NullVal()
-
-      // TODO: this and null
 
       case Identifier(id) =>
         new Id(unwrap(ensureIdentifier))

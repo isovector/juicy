@@ -4,13 +4,14 @@ import juicy.source.SourceLocation
 
 object Tokenizer {
   val singleChars: Map[Char, Unit => Token] = Map(
-    ';' -> (Unit => new Token.Terminator()),
-    '(' -> (Unit => new Token.LParen()),
-    ')' -> (Unit => new Token.RParen()),
-    '{' -> (Unit => new Token.LBrace()),
-    '}' -> (Unit => new Token.RBrace()),
-    ',' -> (Unit => new Token.Comma()),
-    '.' -> (Unit => new Token.Dot())
+    '\0' -> (Unit => new Token.EOF()),
+    ';'  -> (Unit => new Token.Terminator()),
+    '('  -> (Unit => new Token.LParen()),
+    ')'  -> (Unit => new Token.RParen()),
+    '{'  -> (Unit => new Token.LBrace()),
+    '}'  -> (Unit => new Token.RBrace()),
+    ','  -> (Unit => new Token.Comma()),
+    '.'  -> (Unit => new Token.Dot())
   )
 }
 

@@ -58,6 +58,7 @@ object Modifiers {
 trait Expression extends Node
 trait Statement extends Node
 trait Definition extends Node
+trait ImportStmnt extends Statement
 
 trait BinaryOperator extends Expression {
   val lhs: Expression
@@ -78,15 +79,36 @@ case class Typename (name: String, isArray: Boolean=false) {
 }
 
 object AST {
+  case class FileNode(
+    pkg: String,
+    imports: Seq[ImportStmnt],
+    classes: Seq[ClassDefn]
+  ) extends Node {
+    def children = imports ++ classes
+  }
+
   case class ClassDefn(
     name: String,
     mods: Modifiers.Value,
     extnds: Option[Typename],
     impls: Seq[Typename],
     fields: Seq[VarStmnt],
-    methods: Seq[MethodDefn]
+    methods: Seq[MethodDefn],
+    isInterface: Boolean = false
   ) extends Definition {
     def children = fields ++ methods
+  }
+
+  case class ImportClass(
+    tname: Typename
+  ) extends ImportStmnt {
+    def children = Seq()
+  }
+
+  case class ImportPkg(
+    pkg: String
+  ) extends ImportStmnt {
+    def children = Seq()
   }
 
   case class MethodDefn(

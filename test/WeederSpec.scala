@@ -16,10 +16,11 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       abstract class Pass { }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === true
+    Weeder(classes(2)) should be === true
   }
 
   it should "fail abstract method bodies" in {
@@ -33,9 +34,10 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === true
   }
 
   it should "fail static final abstract methods" in {
@@ -53,10 +55,11 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === false
+    Weeder(classes(2)) should be === true
   }
 
   it should "fail static final methods" in {
@@ -71,9 +74,10 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === true
   }
 
   it should "ensure native methods be static" in {
@@ -87,9 +91,10 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === true
   }
 
   it should "only allow void as a method type" in {
@@ -109,10 +114,11 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === false
+    Weeder(classes(2)) should be === true
   }
 
   it should "not allow final fields" in {
@@ -126,9 +132,10 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === true
   }
 
   it should "not allow array implementations or extends" in {
@@ -138,9 +145,10 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       class pass extends object implements object {}
       """)
 
-    // TODO: this will fail when we get a proper parseFile()
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === false
-    Weeder(parser.parseFile()) should be === true
+    val classes = parser.parseFile().classes
+
+    Weeder(classes(0)) should be === false
+    Weeder(classes(1)) should be === false
+    Weeder(classes(2)) should be === true
   }
 }

@@ -31,5 +31,6 @@ object Token {
     case class Dot() extends Token
     case class Terminator() extends Token
     case class Invalid() extends Token
+    case class EOF() extends Token
 }
 

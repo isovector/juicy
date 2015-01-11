@@ -280,4 +280,66 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
       AST.Cast(new Typename("int"),
         AST.Cast(new Typename("bool", true), AST.Id("a")))
   }
+
+  it should "parse files" in {
+    val parser = mkParser("""
+      package look.mom;
+      import a;
+      import b.*;
+
+      class Hello { }
+      public interface Jello { }
+      """)
+    val result = parser.parseFile()
+
+    result should be ===
+      AST.FileNode(
+        "look.mom",
+        Seq(
+          new AST.ImportClass(new Typename("a")),
+          new AST.ImportPkg("b")),
+        Seq(
+          new AST.ClassDefn("Hello", NONE, None, Seq(), Seq(), Seq()),
+          new AST.ClassDefn("Jello", PUBLIC, None, Seq(), Seq(), Seq(), true)))
+  }
+
+  it should "not fail on easy java programs" in {
+    val parser = mkParser("""
+      class BubbleSort {
+        public static void main(String []args) {
+          // int n, c, d, swap;
+          int n;
+          Scanner in = new Scanner(System.in);
+
+          System.out.println("Input number of integers to sort");
+          n = in.nextInt();
+
+          int[] array = new int[n];
+
+          System.out.println("Enter " + n + " integers");
+
+          for (c = 0; c < n; c = c + 1)
+            array[c] = in.nextInt();
+
+            for (c = 0; c < ( n - 1 ); c = c + 1) {
+              for (d = 0; d < n - c - 1; d = d + 1) {
+                if (array[d] > array[d+1]) /* For descending order use < */
+                {
+                  swap       = array[d];
+                  array[d]   = array[d+1];
+                  array[d+1] = swap;
+                }
+              }
+            }
+
+            System.out.println("Sorted list of numbers");
+
+            for (c = 0; c < n; c = c + 1)
+              System.out.println(array[c]);
+        }
+      }
+      """)
+
+    parser.parseFile()
+  }
 }

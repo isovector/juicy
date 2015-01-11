@@ -30,6 +30,12 @@ trait ParserUtils {
       case _             => false
     }
 
+  def checkModifier() =
+    cur match {
+      case Modifier(_) => true
+      case _             => false
+    }
+
   // Ensure the next token is equivalent to source and advance the stream
   // Returns the matching token
   def ensure(source: String): Token = {
