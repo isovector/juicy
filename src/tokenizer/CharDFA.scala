@@ -57,7 +57,7 @@ object CharDFA {
     stream.next()
     if (ch.isEmpty) {
         new Token.Invalid(Some("Invalid escape in character Literal"))
-    } else if (stream.cur != '\'') {
+    } else if (end != '\'') {
         new Token.Invalid(Some("Character Literal consists of multiple characters"))
     } else {
         new Token.CharLiteral(ch.get)
