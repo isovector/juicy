@@ -55,8 +55,10 @@ object CharDFA {
     val ch = matchSingleChar(stream, Some('\''))
     val end = stream.cur
     stream.next()
-    if (ch.isEmpty || end != '\'') {
-        new Token.Invalid()
+    if (ch.isEmpty) {
+        new Token.Invalid(Some("Invalid escape in character Literal"))
+    } else if (stream.cur != '\'') {
+        new Token.Invalid(Some("Character Literal consists of multiple characters"))
     } else {
         new Token.CharLiteral(ch.get)
     }
@@ -76,7 +78,7 @@ object CharDFA {
     }
     stream.next()
     if (failed) {
-      new Token.Invalid()
+      new Token.Invalid(Some("Invalid escape in string literal"))
     } else {
       new Token.StringLiteral(chs)
     }

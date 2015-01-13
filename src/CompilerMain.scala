@@ -6,10 +6,11 @@ import juicy.source.tokenizer._
 
 object CompilerMain {
   def main(args: Array[String]): Unit = {
-    args.foreach(fname => {
+    args.map (fname => { 
         val file = Source.fromFile(fname).mkString
         val tokens = new TokenStream(file)
         val parser = new Parser(tokens)
+        val root = parser.parseFile
     })
   }
 }
