@@ -275,7 +275,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         tokens.unsetBacktrace()
         new VarStmnt(name, Modifiers.NONE, tname, value)
       } catch {
-        case _: Exception =>
+        case UnexpectedException(_) =>
           tokens.backtrack()
           parseExprStmnt()
       }
@@ -431,7 +431,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         tokens.unsetBacktrace()
         return result
       } catch {
-        case _: Exception => tokens.backtrack()
+        case UnexpectedException(_) => tokens.backtrack()
       }
     }
 

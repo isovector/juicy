@@ -13,6 +13,8 @@ object ParserUtils {
   implicit def strToToken(underlying: String) = new RichString(underlying)
 }
 
+case class UnexpectedException(msg: String) extends Throwable
+
 // Helper functions for building relatively terse grammars
 trait ParserUtils {
   def cur: Token
@@ -99,7 +101,7 @@ trait ParserUtils {
   }
 
   def Expected(what: String) =
-    new Exception(
+    new UnexpectedException(
       "Expected `" + what + "`, but got `" + cur.toString +
       "` instead\n\tat: " + cur.from.toString())
 }
