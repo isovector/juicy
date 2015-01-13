@@ -1,7 +1,5 @@
 package juicy.source.tokenizer
 
-import juicy.source.SourceLocation
-
 object Tokenizer {
   val singleChars: Map[Char, Unit => Token] = Map(
     '\0' -> (Unit => new Token.EOF()),

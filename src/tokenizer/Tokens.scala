@@ -1,7 +1,5 @@
 package juicy.source.tokenizer
 
-import juicy.source.SourceLocation
-
 trait Token {
   var from = new SourceLocation("<unknown>", 0, 0)
 
@@ -33,4 +31,3 @@ object Token {
     case class Invalid() extends Token
     case class EOF() extends Token
 }
-

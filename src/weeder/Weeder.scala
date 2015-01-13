@@ -1,4 +1,4 @@
-package juicy.source
+package juicy.source.weeder
 
 import juicy.ast._
 import juicy.ast.AST._
