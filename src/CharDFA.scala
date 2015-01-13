@@ -1,6 +1,13 @@
 package juicy.source.tokenizer
 
 object CharDFA {
+    
+  case class RichChar(underlying: Char) {
+    def isOctalDigit() = underlying.isDigit && underlying < '8'
+    def toDigit() = underlying - '0'
+  }
+  implicit def charToRich(underlying: Char) = new RichChar(underlying)
+  
   private val charCodes = Map[Char,Char](
       'b' -> '\b',
       'f' -> '\f',
@@ -21,9 +28,14 @@ object CharDFA {
             stream.next()
             Some(charCodes(x))
         }
-        case x if x.isDigit => {
-           val is = stream.takeWhile(_.isDigit)
-           Some(is.toInt.toChar)
+        case x if x.isOctalDigit => {
+           var esc = x.asDigit
+           stream.next()
+           while(esc < 128 && stream.cur.isOctalDigit) {
+             esc = esc * 8 + stream.cur.asDigit
+             stream.next()
+           }
+           Some(esc.toChar)
         }
         case _ => {
           println("Invalid escape:" + stream.cur.toInt)

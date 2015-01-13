@@ -105,7 +105,7 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
       new Tokenizer("'a' '\\n' '\\124' '\\\\'"),
         new CharLiteral('a'),
         new CharLiteral('\n'),
-        new CharLiteral(124.toChar),
+        new CharLiteral(0124.toChar),
         new CharLiteral('\\')
     )
   }
