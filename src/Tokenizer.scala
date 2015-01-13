@@ -58,7 +58,9 @@ class Tokenizer(input: String) {
   }
 
   private def nextImpl(): Token = {
-    if (Tokenizer.singleChars.contains(cur)) {
+    if (cur >= 128) {
+       new Token.Invalid()  
+    } else if (Tokenizer.singleChars.contains(cur)) {
       // Match single character tokens
       val result = Tokenizer.singleChars(cur)()
       source.next()
