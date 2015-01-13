@@ -1,7 +1,8 @@
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 
-import juicy.source._
+import juicy.source.weeder._
+import juicy.source.parser._
 import juicy.source.tokenizer._
 
 class WeederSpec extends FlatSpec with ShouldMatchers {

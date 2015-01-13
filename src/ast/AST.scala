@@ -1,4 +1,4 @@
-package juicy.ast
+package juicy.source.ast
 
 
 trait Node {

@@ -131,7 +131,7 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
   }
 
   "TokenStream" should "be rewindable" in {
-    import juicy.source.ParserUtils.strToToken
+    import juicy.source.parser.ParserUtils.strToToken
 
     val tokens = new TokenStream("1 2 3 4 5")
     tokens.cur should be === "1".asToken; tokens.next()

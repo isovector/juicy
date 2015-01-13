@@ -1,7 +1,7 @@
 package juicy.source.parser
 
-import juicy.ast._
-import juicy.ast.AST._
+import juicy.source.ast._
+import juicy.source.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
 

@@ -1,9 +1,9 @@
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 
-import juicy.ast._
-import juicy.ast.Modifiers._
-import juicy.source._
+import juicy.source.ast._
+import juicy.source.ast.Modifiers._
+import juicy.source.parser._
 import juicy.source.tokenizer._
 
 class ParserSpec extends FlatSpec with ShouldMatchers {

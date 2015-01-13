@@ -1,8 +1,8 @@
 package juicy.source.weeder
 
-import juicy.ast._
-import juicy.ast.AST._
-import juicy.ast.Modifiers._
+import juicy.source.ast._
+import juicy.source.ast.AST._
+import juicy.source.ast.Modifiers._
 
 object Weeder {
   def check(which: Modifiers.Value, flag: Modifiers.Value) =
