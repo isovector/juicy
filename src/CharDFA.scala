@@ -3,8 +3,8 @@ package juicy.source.tokenizer
 object CharDFA {
     
   case class RichChar(underlying: Char) {
-    def isOctalDigit() = underlying.isDigit && underlying < '8'
-    def toDigit() = underlying - '0'
+    def isOctalDigit() = underlying >= '0' && underlying < '8'
+    def toDigit() : Int = underlying - '0'
   }
   implicit def charToRich(underlying: Char) = new RichChar(underlying)
   
