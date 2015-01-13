@@ -256,8 +256,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       ensure(";")
 
       new ReturnStmnt(value)
-    } else if (check("import")) {
-      parseImport()
     } else if (check("while")) {
       parseWhile()
     } else if (check("for")) {
