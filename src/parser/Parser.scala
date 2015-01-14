@@ -59,7 +59,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def qualifiedName(): Typename = {
     new Typename(delimited(".".asToken) {
       unwrap(ensureIdentifier())
-    }.mkString("."), consumeArray())
+    }.reverse, consumeArray())
   }
 
   // Transform a list of identifiers into a left-assoc tree of member
@@ -93,8 +93,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         }
 
         ensure(";")
-        tname.name
-      } else ""
+        tname.name.split("\\.").reverse.toSeq
+      } else Seq()
 
     val children = kleene(new Token.EOF()) {
       if (check("import")) {
@@ -213,7 +213,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def parseConstructor(className: String, mods: Modifiers.Value) = {
-    parseMethod(className, mods, new Typename(className))
+    parseMethod(className, mods, new Typename(Seq(className)))
   }
 
   // Parse  `= Expr` or ``
@@ -316,11 +316,11 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       val result = unwrap(cur)
       next()
       result
-    }
+    }.reverse
 
-    val result = what(what.size - 1) match {
-      case "*" => new ImportPkg(what.takeWhile(_ != "*").mkString("."))
-      case _   => new ImportClass(new Typename(what.mkString(".")))
+    val result = what.head match {
+      case "*" => new ImportPkg(what.tail)
+      case _   => new ImportClass(new Typename(what))
     }
 
     ensure(";")
@@ -424,7 +424,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else if (check("new")) {
       next()
       val tname =
-        delimited(".".asToken)(unwrap(ensureIdentifier())).mkString(".")
+        delimited(".".asToken)(unwrap(ensureIdentifier())).reverse
 
       if (check("(")) {
         // new Type()

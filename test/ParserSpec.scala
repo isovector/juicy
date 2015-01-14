@@ -10,6 +10,8 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
   import juicy.source.tokenizer.Token._
 
   def mkParser(source: String) = new Parser(new TokenStream(source))
+  def typename(name: String, isArray: Boolean = false) =
+    new Typename(name.split("\\.").reverse, isArray)
 
   "Parser" should "parse empty classes" in {
     val parser = mkParser("class Basic { }")
@@ -30,8 +32,8 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result.name should be    === "Child"
     result.mods should be    === NONE
-    result.extnds should be  === Some(new Typename("Parent"))
-    result.impls should be   === Seq("IA", "pkg.IB").map(Typename.tupled(_, false))
+    result.extnds should be  === Some(typename("Parent"))
+    result.impls should be   === Seq(Seq("IA"), Seq("IB", "pkg")).map(Typename.tupled(_, false))
     result.fields should be  === Seq()
     result.methods should be === Seq()
   }
@@ -139,7 +141,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseFor()
 
     result.first should be ===
-      Some(AST.VarStmnt("i", NONE, Typename("int"), Some(AST.IntVal(0))))
+      Some(AST.VarStmnt("i", NONE, Typename(Seq("int")), Some(AST.IntVal(0))))
     result.cond should be ===
       Some(AST.LThan(AST.Id("i"), AST.IntVal(5)))
     result.after should be === None
@@ -182,7 +184,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     var1.name should be === "var1"
     var1.mods should be === NONE
-    var1.tname should be === new Typename("a.b.c.d")
+    var1.tname should be === typename("a.b.c.d")
     var1.value should be === None
 
     var2.name should be === "var2"
@@ -246,8 +248,8 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseExpr()
 
     result should be ===
-      AST.NewArray(new Typename("obj", true),
-        AST.NewType(new Typename("test"), Seq(AST.Id("cool"))))
+      AST.NewArray(typename("obj", true),
+        AST.NewType(typename("test"), Seq(AST.Id("cool"))))
   }
 
   it should "parse postfix operators" in {
@@ -272,8 +274,8 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseExpr()
 
     result should be ===
-      AST.Cast(new Typename("int"),
-        AST.Cast(new Typename("bool", true), AST.Id("a")))
+      AST.Cast(typename("int"),
+        AST.Cast(typename("bool", true), AST.Id("a")))
   }
 
   it should "parse constructors" in {
@@ -283,13 +285,13 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val classes = result.classes
     classes(0).constructors should be ===
       Seq(
-        new AST.MethodDefn("A", PUBLIC, new Typename("A"), Seq(), None),
+        new AST.MethodDefn("A", PUBLIC, typename("A"), Seq(), None),
         new AST.MethodDefn(
           "A",
           STATIC,
-          new Typename("A"),
+          typename("A"),
           Seq(
-            new AST.VarStmnt("B", NONE, new Typename("int"), None)),
+            new AST.VarStmnt("B", NONE, typename("int"), None)),
           None))
   }
 
@@ -306,10 +308,10 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result should be ===
       AST.FileNode(
-        "look.mom",
+        Seq("mom", "look"),
         Seq(
-          new AST.ImportClass(new Typename("a")),
-          new AST.ImportPkg("b")),
+          new AST.ImportClass(typename("a")),
+          new AST.ImportPkg(Seq("b"))),
         Seq(
           new AST.ClassDefn("Hello", NONE, None, Seq(), Seq(), Seq(), Seq()),
           new AST.ClassDefn(

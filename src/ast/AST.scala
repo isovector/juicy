@@ -73,14 +73,15 @@ trait UnaryOperator extends Expression {
   def children = Seq(ghs)
 }
 
-case class Typename (name: String, isArray: Boolean=false) {
-    def brackets = if (isArray) " []" else ""
+case class Typename (qualifications: Seq[String], isArray: Boolean=false) {
+    val name = qualifications.reverse.mkString(".")
+    val brackets = if (isArray) " []" else ""
     override def toString() = s"$name$brackets"
 }
 
 object AST {
   case class FileNode(
-    pkg: String,
+    pkg: Seq[String],
     imports: Seq[ImportStmnt],
     classes: Seq[ClassDefn]
   ) extends Node {
@@ -107,7 +108,7 @@ object AST {
   }
 
   case class ImportPkg(
-    pkg: String
+    pkg: Seq[String]
   ) extends ImportStmnt {
     def children = Seq()
   }
