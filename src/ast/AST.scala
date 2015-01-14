@@ -93,10 +93,11 @@ object AST {
     extnds: Option[Typename],
     impls: Seq[Typename],
     fields: Seq[VarStmnt],
+    constructors: Seq[MethodDefn],
     methods: Seq[MethodDefn],
     isInterface: Boolean = false
   ) extends Definition {
-    def children = fields ++ methods
+    def children = fields ++ constructors ++ methods
   }
 
   case class ImportClass(
@@ -118,6 +119,8 @@ object AST {
     params: Seq[VarStmnt],
     body: Option[Statement]
   ) extends Definition {
+    val isConstructor = name == tname.toString
+
     def children = params ++ body.toList
   }
 

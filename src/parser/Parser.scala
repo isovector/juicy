@@ -146,14 +146,23 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else Seq()
 
     ensure("{")
-    val members = kleene("}".asToken)(parseClassMember)
+    val members = kleene("}".asToken)(parseClassMember(name))
 
     // Separate members into fields and methods
-    val (fields, methods) = members.partition { member =>
+    val (fields, rawFunctionMembers) = members.partition { member =>
       member match {
         case (_: VarStmnt)   => true
         case (_: MethodDefn) => false
         case _ => throw Expected("field or method")
+      }
+    }
+
+    val functionMembers = rawFunctionMembers.map(_.asInstanceOf[MethodDefn])
+
+    val (constructors, methods) = functionMembers.partition { member =>
+      member match {
+        case method: MethodDefn if method.isConstructor => true
+        case _                                          => false
       }
     }
     ensure("}")
@@ -164,22 +173,47 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       extnds,
       impls,
       fields.map(_.asInstanceOf[VarStmnt]),
-      methods.map(_.asInstanceOf[MethodDefn]),
+      constructors,
+      methods,
       isInterface)
   }
 
   // Parse modifiers, types and names, and then delegate parsing to methods
   // or fields.
-  def parseClassMember(): Node = withSource {
+  def parseClassMember(className: String)(): Node = withSource {
     val mods = parseModifiers()
     val tname = qualifiedName()
-    val name = unwrap(ensureIdentifier())
 
-    if (check("(")) {
-      parseMethod(name, mods, tname)
+    if (tname.toString == className && check("(")) {
+      parseConstructor(className, mods)
     } else {
-      parseField(name, mods, tname)
+      val name = unwrap(ensureIdentifier())
+
+      if (check("(")) {
+        parseMethod(name, mods, tname)
+      } else {
+        parseField(name, mods, tname)
+      }
     }
+  }
+
+  def parseParams(): Seq[VarStmnt] = {
+    ensure("(")
+    // While we don't hit a `)`, parse args delimited by `,`
+    val params = kleene(")".asToken) {
+      delimited(",".asToken) {
+        val arg_tname = qualifiedName()
+        val arg_name = unwrap(ensureIdentifier())
+        new VarStmnt(arg_name, Modifiers.NONE, arg_tname, None)
+      }
+    }.flatMap(xs => xs) // flatten Seq(Seq()) to Seq()
+    ensure(")")
+
+    params
+  }
+
+  def parseConstructor(className: String, mods: Modifiers.Value) = {
+    parseMethod(className, mods, new Typename(className))
   }
 
   // Parse  `= Expr` or ``
@@ -214,19 +248,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       name: String,
       mods: Modifiers.Value,
       tname: Typename): MethodDefn = withSource {
-    ensure("(")
-
-    // While we don't hit a `)`, parse args delimited by `,`
-    val params = kleene(")".asToken) {
-      delimited(",".asToken) {
-        val arg_tname = qualifiedName()
-        val arg_name = unwrap(ensureIdentifier())
-        new VarStmnt(arg_name, Modifiers.NONE, arg_tname, None)
-      }
-    }.flatMap(xs => xs) // flatten Seq(Seq()) to Seq()
-
-    ensure(")")
-
+    val params = parseParams()
     val body =
       if (!check(";"))
         Some(parseBlock())

@@ -23,7 +23,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     result.methods should be === Seq()
   }
 
-
   it should "parse extends and implements" in {
     val parser = mkParser(
       "class Child extends Parent implements IA, pkg.IB { }")
@@ -37,18 +36,15 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     result.methods should be === Seq()
   }
 
-
   it should "parse fullied qualified names" in {
     val parser = mkParser("java.lang.Object")
     parser.qualifiedName().toString should be === "java.lang.Object"
   }
 
-
   it should "parse modifiers" in {
     val parser = mkParser("public static final abstract")
     parser.parseModifiers() should be === (PUBLIC | STATIC | FINAL | ABSTRACT)
   }
-
 
   it should "parse class fields" in {
     val parser = mkParser("""
@@ -70,7 +66,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     five.tname.toString should be === "int"
     five.value should be === Some(AST.IntVal(5))
   }
-
 
   it should "parse class methods" in {
     val parser = mkParser("""
@@ -281,6 +276,23 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
         AST.Cast(new Typename("bool", true), AST.Id("a")))
   }
 
+  it should "parse constructors" in {
+    val parser = mkParser("class A { public A(); static A(int B); }")
+    val result = parser.parseFile()
+
+    val classes = result.classes
+    classes(0).constructors should be ===
+      Seq(
+        new AST.MethodDefn("A", PUBLIC, new Typename("A"), Seq(), None),
+        new AST.MethodDefn(
+          "A",
+          STATIC,
+          new Typename("A"),
+          Seq(
+            new AST.VarStmnt("B", NONE, new Typename("int"), None)),
+          None))
+  }
+
   it should "parse files" in {
     val parser = mkParser("""
       package look.mom;
@@ -299,8 +311,9 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           new AST.ImportClass(new Typename("a")),
           new AST.ImportPkg("b")),
         Seq(
-          new AST.ClassDefn("Hello", NONE, None, Seq(), Seq(), Seq()),
-          new AST.ClassDefn("Jello", PUBLIC, None, Seq(), Seq(), Seq(), true)))
+          new AST.ClassDefn("Hello", NONE, None, Seq(), Seq(), Seq(), Seq()),
+          new AST.ClassDefn(
+            "Jello", PUBLIC, None, Seq(), Seq(), Seq(), Seq(), true)))
   }
 
   it should "not fail on easy java programs" in {

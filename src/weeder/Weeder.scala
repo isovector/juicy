@@ -23,7 +23,7 @@ object Weeder {
     node.visit((a: Boolean, b: Boolean) => a && b)
     { (self, context) =>
       self match {
-        case ClassDefn(_, mods, extnds, impls, _, _, _) =>
+        case ClassDefn(_, mods, extnds, impls, _, _, _, _) =>
           // A class cannot be both abstract and final.
           ((!check(mods, ABSTRACT) || !check(mods, FINAL)) &&
 
