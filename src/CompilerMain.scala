@@ -2,6 +2,8 @@ package juicy.source
 
 import juicy.source.parser._
 import juicy.source.tokenizer._
+import juicy.utils.CompilerError
+import juicy.utils.visitor.VisitError
 import scala.io.Source
 
 object CompilerMain {
@@ -13,8 +15,14 @@ object CompilerMain {
       try {
         val ast = new Parser(tokens).parseFile()
       } catch {
-        case UnexpectedException(msg) =>
-          System.err.println(msg)
+        case e: CompilerError =>
+          System.err.println(e)
+          System.exit(42)
+
+        case e: VisitError =>
+          e.errors.map { error =>
+            System.err.println(error)
+          }
           System.exit(42)
       }
     }

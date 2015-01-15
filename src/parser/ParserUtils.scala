@@ -3,6 +3,7 @@ package juicy.source.parser
 import juicy.source.ast._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
+import juicy.utils.CompilerError
 import juicy.utils.visitor._
 
 object ParserUtils {
@@ -13,7 +14,7 @@ object ParserUtils {
   implicit def strToToken(underlying: String) = new RichString(underlying)
 }
 
-case class UnexpectedException(msg: String) extends Throwable
+case class UnexpectedError(msg: String, from: SourceLocation) extends CompilerError
 
 // Helper functions for building relatively terse grammars
 trait ParserUtils {
@@ -119,8 +120,8 @@ trait ParserUtils {
   }
 
   def Expected(what: String) =
-    new UnexpectedException(
-      "Expected `" + what + "`, but got `" + cur.toString +
-      "` instead\n\tat " + cur.from.toString())
+    new UnexpectedError(
+      "Expected `" + what + "`, but got `" + cur.toString + "` instead",
+      cur.from)
 }
 

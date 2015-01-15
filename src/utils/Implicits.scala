@@ -1,5 +1,14 @@
 package juicy.utils
 
+import juicy.source.tokenizer.SourceLocation
+
+trait CompilerError extends Throwable {
+  val msg: String
+  val from: SourceLocation
+
+  override def toString() = s"$msg\n\tat $from"
+}
+
 object Implicits {
   type QName = Seq[String]
 

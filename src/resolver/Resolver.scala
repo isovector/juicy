@@ -1,12 +1,21 @@
 package juicy.source.resolver
 
 import juicy.source.ast._
+import juicy.source.tokenizer.SourceLocation
+import juicy.utils.CompilerError
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
 object Resolver {
-  case class UnresolvedTypeException(qname: QName) extends Throwable
-  case class UnknownPackageException(pkg: QName) extends Throwable
+  case class UnresolvedTypeError(qname: QName, from: SourceLocation)
+      extends CompilerError {
+    val msg = "unresolved type `" + qname.mkString(".") +  "`"
+  }
+
+  case class UnknownPackageError(pkg: QName, from: SourceLocation)
+      extends CompilerError {
+    val msg = "unknown package `" + pkg.mkString(".") +  "`"
+  }
 
   def qualify(name: String, context: Seq[Visitable]): QName = {
     context.reverse.flatMap { element =>
@@ -18,7 +27,7 @@ object Resolver {
     } :+ name
   }
 
-  def apply(nodes: Seq[FileNode]) = {
+  def apply(nodes: Seq[FileNode]): Seq[ClassDefn] = {
     val types = new collection.mutable.HashMap[QName, ClassDefn]
     val packages =
       new collection.mutable.HashMap[QName,
@@ -49,9 +58,9 @@ object Resolver {
       val importTypes =
         new collection.mutable.HashMap[QName, QName]
 
-      def importPkg(pkg: QName) = {
+      def importPkg(pkg: QName, from: SourceLocation) = {
         if (!packages.contains(pkg))
-          throw new UnknownPackageException(pkg)
+          throw new UnknownPackageError(pkg, from)
 
         packages(pkg).map { classInPkg =>
           importTypes += Seq(classInPkg.last) -> classInPkg
@@ -59,17 +68,17 @@ object Resolver {
       }
 
       if (node.pkg != Seq())
-        importPkg(node.pkg)
+        importPkg(node.pkg, node.from)
 
       node.imports.map {
         case ImportClass(tname) =>
           importTypes += Seq(tname.qname.last) -> tname.qname
-        case ImportPkg(pkg)     => importPkg(pkg)
+        case imp@ImportPkg(pkg) => importPkg(pkg, imp.from)
         case _                  =>
       }
 
       // Change a tname's resolved var to the class it describes
-      def resolve(tname: Typename): Unit = {
+      def resolve(tname: Typename, from: SourceLocation): Unit = {
         if (tname.resolved.isDefined) return;
         val qname = tname.qname
 
@@ -78,7 +87,7 @@ object Resolver {
             Some(types(qname))
           else if (importTypes.contains(qname))
             Some(types(importTypes(qname)))
-          else throw new UnresolvedTypeException(qname)
+          else throw new UnresolvedTypeError(qname, from)
       }
 
       node.visit((_: Unit, _: Unit) => {})
@@ -87,21 +96,26 @@ object Resolver {
           case Before(n) =>
             n match {
               case ClassDefn(_, _, extnds, impls, _, _, _, _) =>
-                extnds.map(resolve)
-                impls.map(resolve)
+                extnds.map(e => resolve(e, n.from))
+                impls.map(i  => resolve(i, n.from))
 
-              case MethodDefn(_, _, tname, _, _) => resolve(tname)
-              case VarStmnt(_, _, tname, _)      => resolve(tname)
-              case Cast(tname, _)                => resolve(tname)
-              case NewType(tname, _)             => resolve(tname)
-              case NewArray(tname, _)            => resolve(tname)
+              case MethodDefn(_, _, tname, _, _) => resolve(tname, n.from)
+              case VarStmnt(_, _, tname, _)      => resolve(tname, n.from)
+              case Cast(tname, _)                => resolve(tname, n.from)
+              case NewType(tname, _)             => resolve(tname, n.from)
+              case NewArray(tname, _)            => resolve(tname, n.from)
               case _                             =>
             }
 
           case _ =>
         }
-      }
+      }.fold(
+        l => throw VisitError(l),
+        r => r
+      )
     }
+
+    types.toSeq.map(_._2)
   }
 }
 

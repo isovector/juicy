@@ -81,7 +81,9 @@ object Weeder {
 
         case _ => true
       }
-    }
+    }.fold(
+      l => false,
+      r => r)
   }
 }
 

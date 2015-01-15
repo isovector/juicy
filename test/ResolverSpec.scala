@@ -5,6 +5,7 @@ import juicy.source.ast._
 import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.tokenizer._
+import juicy.utils.visitor.VisitError
 
 class ResolverSpec extends FlatSpec with ShouldMatchers {
   def parse(sources: String*) = {
@@ -105,7 +106,7 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "fail to resolve unknown types" in {
-    intercept[Resolver.UnresolvedTypeException] {
+    intercept[VisitError] {
       parse("""
         class A {
           Unknown a;
@@ -115,7 +116,7 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "fail to find unknown package" in {
-    intercept[Resolver.UnknownPackageException] {
+    intercept[Resolver.UnknownPackageError] {
       parse("""
         import unknown.*;
         class A { }
