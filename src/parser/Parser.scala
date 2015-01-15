@@ -58,9 +58,14 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def qualifiedName(): Typename = {
-    new Typename(delimited(".".asToken) {
-      unwrap(ensureIdentifier())
-    }, consumeArray())
+    new Typename(
+      if (checkPrimitive()) {
+        Seq(unwrap(ensurePrimitive()))
+      } else {
+        delimited(".".asToken) {
+          unwrap(ensureIdentifier())
+        }
+      }, consumeArray())
   }
 
   // Transform a list of identifiers into a left-assoc tree of member
@@ -287,7 +292,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       parseIf()
     } else if (check("{")) {
       parseBlock()
-    } else if (checkIdentifier()) {
+    } else if (checkIdentifier() || checkPrimitive()) {
       tokens.setBacktrace()
       try {
         val tname = qualifiedName()
@@ -425,7 +430,9 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else if (check("new")) {
       next()
       val tname =
-        delimited(".".asToken)(unwrap(ensureIdentifier()))
+        if (checkPrimitive()) {
+          Seq(unwrap(ensurePrimitive()))
+        } else delimited(".".asToken)(unwrap(ensureIdentifier()))
 
       if (check("(")) {
         // new Type()

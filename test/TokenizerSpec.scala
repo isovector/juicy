@@ -81,10 +81,10 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
     check(
       new Tokenizer("public boolean m(boolean x) { return (x && true) || x; }"),
         new Modifier("public"),
-        new Identifier("boolean"),
+        new Primitive("boolean"),
         new Identifier("m"),
         new LParen(),
-          new Identifier("boolean"),
+          new Primitive("boolean"),
           new Identifier("x"),
         new RParen(),
         new LBrace(),
@@ -128,6 +128,17 @@ class TokenizerSpec extends FlatSpec with ShouldMatchers {
       new Tokenizer("a /* b \n c */ d"),
         new Identifier("a"),
         new Identifier("d"))
+  }
+
+  it should "identify all primtives" in {
+    check(
+      new Tokenizer("void int boolean char short byte"),
+        new Primitive("void"),
+        new Primitive("int"),
+        new Primitive("boolean"),
+        new Primitive("char"),
+        new Primitive("short"),
+        new Primitive("byte"))
   }
 
   "TokenStream" should "be rewindable" in {

@@ -323,8 +323,10 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class BubbleSort {
         public static void main(String []args) {
-          // int n, c, d, swap;
           int n;
+          int c;
+          int d;
+          int swap;
           Scanner in = new Scanner(System.in);
 
           System.out.println("Input number of integers to sort");

@@ -21,11 +21,12 @@ class Tokenizer(input: String, fname: String = "<string>") {
 
   // These should be listed from longest to shortest, to ensure that we don't
   // do subtring matching
-  val operators = List("==", ">=", "<=", ">", "<", "!=", "&&", "||", "%",
+  val primitives = List("void", "int", "char", "boolean", "short", "byte")
+  val operators  = List("==", ">=", "<=", ">", "<", "!=", "&&", "||", "%",
                         "+", "-", "*", "/", "&", "|", "!", "[", "]", "=")
-  val modifiers = List("public", "protected", "static", "extern", "final",
+  val modifiers  = List("public", "protected", "static", "extern", "final",
                         "abstract", "native")
-  val keywords  = List("if", "for", "while", "class", "override", "new",
+  val keywords   = List("if", "for", "while", "class", "override", "new",
                         "return", "import", "package", "interface", "extends",
                         "implements")
 
@@ -88,16 +89,18 @@ class Tokenizer(input: String, fname: String = "<string>") {
                                       c == '_' || c == '$')
 
         word match {
-          case ""                              => new Token.Invalid()
-          case "true" | "false"                => new Token.BoolLiteral(
+          case ""                               => new Token.Invalid()
+          case "true" | "false"                 => new Token.BoolLiteral(
                                                     word.toBoolean)
-          case "instanceof"                    => new Token.Operator("instanceof")
-          case "super"                         => new Token.SuperLiteral()
-          case "null"                          => new Token.NullLiteral()
-          case "this"                          => new Token.ThisLiteral()
-          case _ if (modifiers.contains(word)) => new Token.Modifier(word)
-          case _ if (keywords.contains(word))  => new Token.Keyword(word)
-          case _                               => new Token.Identifier(word)
+          case "instanceof"                     => new Token.Operator(
+                                                    "instanceof")
+          case "super"                          => new Token.SuperLiteral()
+          case "null"                           => new Token.NullLiteral()
+          case "this"                           => new Token.ThisLiteral()
+          case _ if (modifiers.contains(word))  => new Token.Modifier(word)
+          case _ if (keywords.contains(word))   => new Token.Keyword(word)
+          case _ if (primitives.contains(word)) => new Token.Primitive(word)
+          case _                                => new Token.Identifier(word)
         }
       }
     }

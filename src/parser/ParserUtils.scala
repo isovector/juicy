@@ -35,7 +35,13 @@ trait ParserUtils {
   def checkModifier() =
     cur match {
       case Modifier(_) => true
-      case _             => false
+      case _           => false
+    }
+
+  def checkPrimitive() =
+    cur match {
+      case Primitive(_) => true
+      case _            => false
     }
 
   // Ensure the next token is equivalent to source and advance the stream
@@ -61,14 +67,26 @@ trait ParserUtils {
     result
   }
 
+  // Ensure the next token is an identifier. Returns the matching token
+  def ensurePrimitive(): Token = {
+    if (!checkPrimitive()) {
+      throw Expected("primitive")
+    }
+
+    val result = cur
+    next()
+    result
+  }
+
   // Get the string value wrapped by a simple token
   def unwrap(token: Token): String = {
     token match {
-      case Keyword(value) => value
+      case Keyword(value)    => value
+      case Primitive(value)  => value
       case Identifier(value) => value
-      case Operator(value) => value
-      case Modifier(value) => value
-      case _ => throw Expected("keyword, identifier, operator or modifier")
+      case Operator(value)   => value
+      case Modifier(value)   => value
+      case _                 => throw Expected("keyword, identifier, operator or modifier")
     }
   }
 
