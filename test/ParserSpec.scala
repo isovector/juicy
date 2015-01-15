@@ -11,7 +11,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
   def mkParser(source: String) = new Parser(new TokenStream(source))
   def typename(name: String, isArray: Boolean = false) =
-    new Typename(name.split("\\.").reverse, isArray)
+    new Typename(name.split("\\."), isArray)
 
   "Parser" should "parse empty classes" in {
     val parser = mkParser("class Basic { }")
@@ -33,7 +33,8 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     result.name should be    === "Child"
     result.mods should be    === NONE
     result.extnds should be  === Some(typename("Parent"))
-    result.impls should be   === Seq(Seq("IA"), Seq("IB", "pkg")).map(Typename.tupled(_, false))
+    result.impls should be   ===
+      Seq(Seq("IA"), Seq("pkg", "IB")).map(Typename.tupled(_, false))
     result.fields should be  === Seq()
     result.methods should be === Seq()
   }
@@ -308,7 +309,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result should be ===
       AST.FileNode(
-        Seq("mom", "look"),
+        Seq("look", "mom"),
         Seq(
           new AST.ImportClass(typename("a")),
           new AST.ImportPkg(Seq("b"))),
