@@ -1,5 +1,6 @@
 package juicy.source.ast
 
+import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
 object Modifiers {
@@ -46,7 +47,7 @@ trait UnaryOperator extends Expression {
   def children = Seq(ghs)
 }
 
-case class Typename (qname: Seq[String], isArray: Boolean=false) {
+case class Typename (qname: QName, isArray: Boolean=false) {
   var resolved: Option[ClassDefn] = None
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
@@ -54,7 +55,7 @@ case class Typename (qname: Seq[String], isArray: Boolean=false) {
 }
 
 case class FileNode(
-  pkg: Seq[String],
+  pkg: QName,
   imports: Seq[ImportStmnt],
   classes: Seq[ClassDefn]
 ) extends Visitable {
@@ -81,7 +82,7 @@ case class ImportClass(
 }
 
 case class ImportPkg(
-  pkg: Seq[String]
+  pkg: QName
 ) extends ImportStmnt {
   def children = Seq()
 }

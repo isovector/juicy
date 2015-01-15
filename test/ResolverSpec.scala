@@ -94,14 +94,33 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
 
       class A { }
       """, """
-      import big.long.*;
+      import big.long.path.name.*;
       class B {
-        path.name.A a;
+        A a;
       }
       """)
 
     ast(1).classes(0).fields(0).tname.resolved should be ===
       Some(ast(0).classes(0))
+  }
+
+  it should "fail to resolve unknown types" in {
+    intercept[Resolver.UnresolvedTypeException] {
+      parse("""
+        class A {
+          Unknown a;
+        }
+        """)
+    }
+  }
+
+  it should "fail to find unknown package" in {
+    intercept[Resolver.UnknownPackageException] {
+      parse("""
+        import unknown.*;
+        class A { }
+        """)
+    }
   }
 }
 

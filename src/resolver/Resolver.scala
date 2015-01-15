@@ -5,7 +5,10 @@ import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
 object Resolver {
-  def qualify(name: String, context: Seq[Visitable]): Seq[String] = {
+  case class UnresolvedTypeException(qname: QName) extends Throwable
+  case class UnknownPackageException(pkg: QName) extends Throwable
+
+  def qualify(name: String, context: Seq[Visitable]): QName = {
     context.reverse.flatMap { element =>
       element match {
         case ClassDefn(name, _, _, _, _, _, _, _) => Seq(name)
@@ -16,16 +19,25 @@ object Resolver {
   }
 
   def apply(nodes: Seq[FileNode]) = {
-    val types = new scala.collection.mutable.HashMap[Seq[String], ClassDefn]
+    val types = new collection.mutable.HashMap[QName, ClassDefn]
+    val packages =
+      new collection.mutable.HashMap[QName,
+        collection.mutable.MutableList[QName]]
 
     // Add all new fully qualified types to a big dictionary
     nodes.map { node =>
+      val pkg = node.pkg
+
+      if (!packages.contains(pkg))
+        packages += pkg -> new collection.mutable.MutableList[QName]()
+
       node.visit((_: Unit, _: Unit) => {})
       { (self, context) =>
         self match {
           case Before(classDef@ClassDefn(name, _, _, _, _, _, _, _)) =>
             val qname = qualify(name, context)
             types += qname -> classDef.asInstanceOf[ClassDefn]
+            packages(pkg) += qname
           case _ =>
         }
       }
@@ -34,17 +46,25 @@ object Resolver {
     // Resolve typenames to the classes above
     nodes.map { node =>
       // Build the import list
-      val importPaths = new scala.collection.mutable.MutableList[Seq[String]]
       val importTypes =
-        new scala.collection.mutable.HashMap[Seq[String], Seq[String]]
+        new collection.mutable.HashMap[QName, QName]
+
+      def importPkg(pkg: QName) = {
+        if (!packages.contains(pkg))
+          throw new UnknownPackageException(pkg)
+
+        packages(pkg).map { classInPkg =>
+          importTypes += Seq(classInPkg.last) -> classInPkg
+        }
+      }
 
       if (node.pkg != Seq())
-        importPaths += node.pkg
+        importPkg(node.pkg)
 
       node.imports.map {
         case ImportClass(tname) =>
           importTypes += Seq(tname.qname.last) -> tname.qname
-        case ImportPkg(qname)   => importPaths += qname
+        case ImportPkg(pkg)     => importPkg(pkg)
         case _                  =>
       }
 
@@ -58,10 +78,7 @@ object Resolver {
             Some(types(qname))
           else if (importTypes.contains(qname))
             Some(types(importTypes(qname)))
-          else
-            importPaths.map { path =>
-              types.get(path ++ qname)
-            }.find(_.isDefined).getOrElse(None)
+          else throw new UnresolvedTypeException(qname)
       }
 
       node.visit((_: Unit, _: Unit) => {})
