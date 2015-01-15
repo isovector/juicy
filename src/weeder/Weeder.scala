@@ -1,7 +1,6 @@
 package juicy.source.weeder
 
 import juicy.source.ast._
-import juicy.source.ast.AST._
 import juicy.source.ast.Modifiers._
 import juicy.utils.visitor._
 

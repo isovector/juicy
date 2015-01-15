@@ -1,7 +1,6 @@
 package juicy.source.parser
 
 import juicy.source.ast._
-import juicy.source.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
 import juicy.utils.visitor._

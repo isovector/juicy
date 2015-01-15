@@ -1,7 +1,6 @@
 package juicy.source.resolver
 
 import juicy.source.ast._
-import juicy.source.ast.AST._
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
