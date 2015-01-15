@@ -1,8 +1,8 @@
 package juicy.source.tokenizer
 
 // Mimic the semantics of CharStream
-class TokenStream(source: String) {
-  val tokenizer = new Tokenizer(source)
+class TokenStream(source: String, fname: String = "<string>") {
+  val tokenizer = new Tokenizer(source, fname)
   val previous = new scala.collection.mutable.Stack[Token]()
   val ahead = new scala.collection.mutable.Stack[Token]()
   val bookmarks = new scala.collection.mutable.Stack[Int]()

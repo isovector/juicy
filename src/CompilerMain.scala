@@ -8,13 +8,13 @@ object CompilerMain {
   def main(args: Array[String]): Unit = {
     args.map (fname => {
         val file = Source.fromFile(fname).mkString
-        val tokens = new TokenStream(file)
+        val tokens = new TokenStream(file, fname)
 
         try {
           val ast = new Parser(tokens).parseFile()
         } catch {
           case UnexpectedException(msg) =>
-            println(msg)
+            System.err.println(msg)
             System.exit(42)
         }
     })

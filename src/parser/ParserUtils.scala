@@ -103,6 +103,6 @@ trait ParserUtils {
   def Expected(what: String) =
     new UnexpectedException(
       "Expected `" + what + "`, but got `" + cur.toString +
-      "` instead\n\tat: " + cur.from.toString())
+      "` instead\n\tat " + cur.from.toString())
 }
 

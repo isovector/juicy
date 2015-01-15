@@ -13,11 +13,11 @@ object Tokenizer {
   )
 }
 
-class Tokenizer(input: String) {
+class Tokenizer(input: String, fname: String = "<string>") {
   val source = new CharStream(input)
 
   def cur: Char = source.cur
-  def curLocation = new SourceLocation("<source>", source.line, source.col)
+  def curLocation = new SourceLocation(fname, source.line, source.col)
 
   // These should be listed from longest to shortest, to ensure that we don't
   // do subtring matching
@@ -57,7 +57,7 @@ class Tokenizer(input: String) {
 
   private def nextImpl(): Token = {
     if (cur >= 128) {
-       new Token.Invalid()  
+       new Token.Invalid()
     } else if (Tokenizer.singleChars.contains(cur)) {
       // Match single character tokens
       val result = Tokenizer.singleChars(cur)()
