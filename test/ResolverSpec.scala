@@ -1,7 +1,7 @@
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 
-import juicy.source.ast.AST._
+import juicy.source.ast._
 import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.tokenizer._

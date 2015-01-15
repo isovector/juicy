@@ -1,10 +1,10 @@
 package juicy.source.parser
 
 import juicy.source.ast._
-import juicy.source.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
 import juicy.utils.Implicits._
+import juicy.utils.visitor._
 
 class Parser(tokens: TokenStream) extends ParserUtils {
   import ParserUtils._
@@ -181,7 +181,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   // Parse modifiers, types and names, and then delegate parsing to methods
   // or fields.
-  def parseClassMember(className: String)(): Node = withSource {
+  def parseClassMember(className: String)(): Visitable = withSource {
     val mods = parseModifiers()
     val tname = qualifiedName()
 
