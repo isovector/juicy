@@ -9,7 +9,7 @@ object Implicits {
     new RichSeq(underlying)
     
   case class RichBool(underlying: Boolean) {
-    def -->(other: RichBool) = !other.underlying || underlying
+    def -->(other: RichBool) = other.underlying || !underlying
     def <->(other: RichBool) = !(other.underlying ^ underlying) 
   }
   
