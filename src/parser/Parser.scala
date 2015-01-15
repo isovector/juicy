@@ -4,6 +4,7 @@ import juicy.source.ast._
 import juicy.source.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
+import juicy.utils.Implicits._
 
 class Parser(tokens: TokenStream) extends ParserUtils {
   import ParserUtils._
@@ -59,7 +60,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def qualifiedName(): Typename = {
     new Typename(delimited(".".asToken) {
       unwrap(ensureIdentifier())
-    }.reverse, consumeArray())
+    }, consumeArray())
   }
 
   // Transform a list of identifiers into a left-assoc tree of member
@@ -77,7 +78,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         case _              => false
     }
 
-    (0 /: mods)((agg, token) => agg | Modifiers.parse(unwrap(token)) )
+    (0 /: mods)((agg, token) => agg | Modifiers.parse(unwrap(token)))
   }
 
   // Outermost parser for a file
@@ -93,7 +94,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         }
 
         ensure(";")
-        tname.name.split("\\.").reverse.toSeq
+        tname.qname
       } else Seq()
 
     val children = kleene(new Token.EOF()) {
@@ -316,10 +317,10 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       val result = unwrap(cur)
       next()
       result
-    }.reverse
+    }
 
-    val result = what.head match {
-      case "*" => new ImportPkg(what.tail)
+    val result = what.last match {
+      case "*" => new ImportPkg(what.slice(0, what.length - 1))
       case _   => new ImportClass(new Typename(what))
     }
 
@@ -424,7 +425,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else if (check("new")) {
       next()
       val tname =
-        delimited(".".asToken)(unwrap(ensureIdentifier())).reverse
+        delimited(".".asToken)(unwrap(ensureIdentifier()))
 
       if (check("(")) {
         // new Type()

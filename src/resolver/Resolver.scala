@@ -2,16 +2,17 @@ package juicy.source.resolver
 
 import juicy.source.ast._
 import juicy.source.ast.AST._
+import juicy.utils.Implicits._
 
 object Resolver {
   def qualify(name: String, context: Seq[Node]): Seq[String] = {
-    Seq(name) ++ context.flatMap { element =>
+    context.reverse.flatMap { element =>
       element match {
         case ClassDefn(name, _, _, _, _, _, _, _) => Seq(name)
         case FileNode(pkg, _, _)                  => pkg
         case _                                    => Seq()
       }
-    }
+    } :+ name
   }
 
   def apply(nodes: Seq[FileNode]) = {
@@ -42,7 +43,7 @@ object Resolver {
 
       node.imports.map {
         case ImportClass(tname) =>
-          importTypes += Seq(tname.qname.head) -> tname.qname
+          importTypes += Seq(tname.qname.last) -> tname.qname
         case ImportPkg(qname)   => importPaths += qname
         case _                  =>
       }
@@ -59,7 +60,7 @@ object Resolver {
             Some(types(importTypes(qname)))
           else
             importPaths.map { path =>
-              types.get(qname ++ path)
+              types.get(path ++ qname)
             }.find(_.isDefined).getOrElse(None)
       }
 

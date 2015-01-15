@@ -75,7 +75,7 @@ trait UnaryOperator extends Expression {
 
 case class Typename (qname: Seq[String], isArray: Boolean=false) {
     var resolved: Option[AST.ClassDefn] = None
-    val name = qname.reverse.mkString(".")
+    val name = qname.mkString(".")
     val brackets = if (isArray) " []" else ""
     override def toString() = s"$name$brackets"
 }
