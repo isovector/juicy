@@ -23,7 +23,7 @@ object Weeder {
     node.visit((a: Boolean, b: Boolean) => a && b)
     { (self, context) =>
       self match {
-        case ClassDefn(_, mods, extnds, impls, _, _, _, _) =>
+        case Before(ClassDefn(_, mods, extnds, impls, _, _, _, _)) =>
           // A class cannot be both abstract and final.
           ((!check(mods, ABSTRACT) || !check(mods, FINAL)) &&
 
@@ -32,7 +32,7 @@ object Weeder {
           ((true /: impls)(_ && !_.isArray)))
 
 
-        case MethodDefn(_, mods, _, _, body) =>
+        case Before(MethodDefn(_, mods, _, _, body)) =>
           // has a body if and only if it is neither abstract nor native.
           ((body.isEmpty || !(check(mods, ABSTRACT) || check(mods, NATIVE))) &&
 
@@ -47,7 +47,7 @@ object Weeder {
           (!check(mods, NATIVE) || check(mods, STATIC)))
 
 
-        case VarStmnt(_, mods, tname, _) =>
+        case Before(VarStmnt(_, mods, tname, _)) =>
           // The type void may only be used as the return type of a method.
           ((tname.toString != "void") &&
 
@@ -60,7 +60,7 @@ object Weeder {
 
         case _ => true
       }
-    } ((_, _) => true)
+    }
   }
 }
 

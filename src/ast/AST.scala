@@ -1,6 +1,10 @@
 package juicy.source.ast
 
 
+trait VisitOrder
+case class Before(n: Node) extends VisitOrder
+case class After(n: Node) extends VisitOrder
+
 trait Node {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
@@ -9,23 +13,21 @@ trait Node {
 
   def visit[T]
       (fold: (T, T) => T)
-      (before: (Node, Seq[Node]) => T)
-      (after: (Node, Seq[Node]) => T): T = {
-    visit(this, Seq())(fold)(before)(after)
+      (func: (VisitOrder, Seq[Node]) => T): T = {
+    visit(this, Seq())(fold)(func)
   }
 
   def visit[T]
       (self: Node, context: Seq[Node])
       (fold: (T, T) => T)
-      (before: (Node, Seq[Node]) => T)
-      (after: (Node, Seq[Node]) => T): T = {
+      (func: (VisitOrder, Seq[Node]) => T): T = {
     val newContext = Seq(self) ++ context
     fold(
-      (before(self, context) /:
+      (func(Before(self), context) /:
         children.map( child =>
-          child.visit(child, newContext)(fold)(before)(after)
+          child.visit(child, newContext)(fold)(func)
         )
-      )(fold), after(self, context))
+      )(fold), func(After(self), context))
   }
 }
 
