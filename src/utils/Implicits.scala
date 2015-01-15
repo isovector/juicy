@@ -7,5 +7,12 @@ object Implicits {
 
   implicit def seq2RichSeq[T](underlying: Seq[T]): RichSeq[T] =
     new RichSeq(underlying)
+    
+  case class RichBool(underlying: Boolean) {
+    def -->(other: RichBool) = !other.underlying || underlying
+    def <->(other: RichBool) = !(other.underlying ^ underlying) 
+  }
+  
+  implicit def boolToRich(underlying: Boolean) = new RichBool(underlying)
 }
 

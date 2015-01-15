@@ -11,10 +11,6 @@ object Weeder {
   def apply(node: Visitable): Boolean = {
     // TODO: still missing:
       // A class/interface must be declared in a .java file with the same base name as the class/interface.
-      // An interface cannot contain fields or constructors.
-      // An interface method cannot be static, final, or native.
-      // An interface method cannot have a body.
-      // Every class must contain at least one explicit constructor.
       // A method or constructor must not contain explicit this() or super() calls.
 
 
@@ -22,13 +18,28 @@ object Weeder {
     node.visit((a: Boolean, b: Boolean) => a && b)
     { (self, context) =>
       self match {
-        case Before(ClassDefn(_, mods, extnds, impls, _, _, _, _)) =>
+        case Before(ClassDefn(_, mods, extnds, impls, fields, cxrs, methods, isInterface)) =>
           // A class cannot be both abstract and final.
           ((!check(mods, ABSTRACT) || !check(mods, FINAL)) &&
 
           // Extends and implements may not be arrays
           (extnds.isEmpty || !extnds.get.isArray) &&
-          ((true /: impls)(_ && !_.isArray)))
+          ((true /: impls)(_ && !_.isArray)) && 
+          
+          (if (isInterface) {
+            // An interface cannot contain fields or constructors.
+            fields.isEmpty && cxrs.isEmpty &&
+            // An interface method cannot be static, final, or native.
+            ((true /: methods)({(prev, m) =>
+                prev && !check(m.mods, STATIC) && !check(m.mods, FINAL) && !check(m.mods, NATIVE) &&
+                // An interface method cannot have a body.
+                m.body.isEmpty
+            }))
+          } else {
+              // Every class must contain at least one explicit constructor.
+              !cxrs.isEmpty
+          }))
+          
 
 
         case Before(MethodDefn(_, mods, _, _, body)) =>
