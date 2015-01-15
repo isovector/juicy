@@ -11,7 +11,6 @@ object Weeder {
   def apply(node: Visitable): Boolean = {
     // TODO: still missing:
       // A class/interface must be declared in a .java file with the same base name as the class/interface.
-      // A method or constructor must not contain explicit this() or super() calls.
 
 
     // Check modifiers for sanity
@@ -66,7 +65,10 @@ object Weeder {
             case _: ClassDefn => !check(mods, FINAL)
             case _            => true
           }))
-
+        
+        // A method or constructor must not contain explicit this() or super() calls.
+        case Before(Call(ThisVal(), _)) => false
+        case Before(Call(SuperVal(), _)) => false
 
         case _ => true
       }
