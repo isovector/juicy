@@ -3,9 +3,10 @@ package juicy.source.resolver
 import juicy.source.ast._
 import juicy.source.ast.AST._
 import juicy.utils.Implicits._
+import juicy.utils.visitor._
 
 object Resolver {
-  def qualify(name: String, context: Seq[Node]): Seq[String] = {
+  def qualify(name: String, context: Seq[Visitable]): Seq[String] = {
     context.reverse.flatMap { element =>
       element match {
         case ClassDefn(name, _, _, _, _, _, _, _) => Seq(name)

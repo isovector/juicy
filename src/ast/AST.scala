@@ -1,35 +1,6 @@
 package juicy.source.ast
 
-
-trait VisitOrder
-case class Before(n: Node) extends VisitOrder
-case class After(n: Node) extends VisitOrder
-
-trait Node {
-  import juicy.source.tokenizer._
-  var originalToken: Token = new Token.Invalid()
-
-  def children: Seq[Node]
-
-  def visit[T]
-      (fold: (T, T) => T)
-      (func: (VisitOrder, Seq[Node]) => T): T = {
-    visit(this, Seq())(fold)(func)
-  }
-
-  def visit[T]
-      (self: Node, context: Seq[Node])
-      (fold: (T, T) => T)
-      (func: (VisitOrder, Seq[Node]) => T): T = {
-    val newContext = Seq(self) ++ context
-    fold(
-      (func(Before(self), context) /:
-        children.map( child =>
-          child.visit(child, newContext)(fold)(func)
-        )
-      )(fold), func(After(self), context))
-  }
-}
+import juicy.utils.visitor._
 
 object Modifiers {
   type Value = Int
@@ -57,9 +28,9 @@ object Modifiers {
   }
 }
 
-trait Expression extends Node
-trait Statement extends Node
-trait Definition extends Node
+trait Expression extends Visitable
+trait Statement extends Visitable
+trait Definition extends Visitable
 trait ImportStmnt extends Statement
 
 trait BinaryOperator extends Expression {
@@ -87,7 +58,7 @@ object AST {
     pkg: Seq[String],
     imports: Seq[ImportStmnt],
     classes: Seq[ClassDefn]
-  ) extends Node {
+  ) extends Visitable {
     def children = imports ++ classes
   }
 

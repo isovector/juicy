@@ -4,6 +4,7 @@ import juicy.source.ast._
 import juicy.source.ast.AST._
 import juicy.source.tokenizer._
 import juicy.source.tokenizer.Token._
+import juicy.utils.visitor._
 
 object ParserUtils {
   // Add asToken() to strings
@@ -93,7 +94,7 @@ trait ParserUtils {
   }
 
   // Macro to add the original source token to a parser pattern
-  def withSource[T <: Node](parser: => T): T = {
+  def withSource[T <: Visitable](parser: => T): T = {
     val source = cur
     val result = parser
     result.originalToken = source

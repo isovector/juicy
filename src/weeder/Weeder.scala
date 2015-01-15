@@ -3,12 +3,13 @@ package juicy.source.weeder
 import juicy.source.ast._
 import juicy.source.ast.AST._
 import juicy.source.ast.Modifiers._
+import juicy.utils.visitor._
 
 object Weeder {
   def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
-  def apply(node: Node): Boolean = {
+  def apply(node: Visitable): Boolean = {
     // TODO: still missing:
       // All characters in the input program must be in the range of 7-bit ASCII (0 to 127).
       // A class/interface must be declared in a .java file with the same base name as the class/interface.
