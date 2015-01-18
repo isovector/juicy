@@ -129,8 +129,8 @@ case class VarStmnt(
 
 case class IfStmnt(
   cond: Expression,
-  then: Statement,
-  otherwise: Option[Statement]
+  then: BlockStmnt,
+  otherwise: Option[BlockStmnt]
 ) extends Statement {
   val children = Seq(cond, then) ++ otherwise.toList
 }
@@ -148,7 +148,7 @@ case class ForStmnt(
   after: Option[Expression],
   body: Statement
 ) extends Statement {
-  val children = Seq(body) ++ first.toList ++ cond.toList ++ after.toList
+  val children = first.toList ++ cond.toList ++ after.toList ++ Seq(body)
 }
 
 case class BlockStmnt(

@@ -367,13 +367,22 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     val cond = parseExpr()
     ensure(")")
     val then = parseStmnt()
+    val thenBlock = (then match {
+        case BlockStmnt(_) => then.asInstanceOf[BlockStmnt]
+        case s:Statement => new BlockStmnt(Seq(s))
+    }).asInstanceOf[BlockStmnt]
 
-    val otherwise = if (check("else")) {
+    val otherwise : Option[BlockStmnt] = if (check("else")) {
       ensure("else")
-      Some(parseStmnt())
+      val stmnt = parseStmnt() 
+      val block: BlockStmnt = stmnt match {
+        case BlockStmnt(_) => stmnt.asInstanceOf[BlockStmnt]
+        case s: Statement => new BlockStmnt(Seq(s))
+      }
+      Some(block.asInstanceOf[BlockStmnt])
     } else None
 
-    new IfStmnt(cond, then, otherwise)
+    new IfStmnt(cond, thenBlock, otherwise)
   }
 
   def parseFor(): ForStmnt = withSource {
