@@ -427,24 +427,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     } else if (check("!")) {
       next()
       new Not(parseUnaryExpr())
-    } else if (check("new")) {
-      next()
-      val tname =
-        if (checkPrimitive()) {
-          Seq(unwrap(ensurePrimitive()))
-        } else delimited(".".asToken)(unwrap(ensureIdentifier()))
-
-      if (check("(")) {
-        // new Type()
-        new NewType(new Typename(tname), parseArgs())
-      } else if (check("[")) {
-        // new Array[]
-        next()
-        val size = parseExpr()
-        ensure("]")
-
-        new NewArray(new Typename(tname, true), size)
-      } else throw Expected("constructor arguments or array length")
     } else parseCast()
   }
 
@@ -455,7 +437,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         next()
         val tname = qualifiedName()
         ensure(")")
-        val value = parseCast()
+        val value = parseUnaryExpr()
 
         val result = new Cast(tname, value)
         tokens.unsetBacktrace()
@@ -526,6 +508,25 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       case NullLiteral() =>
         next()
         new NullVal()
+
+      case Keyword("new") =>
+        next()
+        val tname =
+          if (checkPrimitive()) {
+            Seq(unwrap(ensurePrimitive()))
+          } else delimited(".".asToken)(unwrap(ensureIdentifier()))
+
+        if (check("(")) {
+          // new Type()
+          new NewType(new Typename(tname), parseArgs())
+        } else if (check("[")) {
+          // new Array[]
+          next()
+          val size = parseExpr()
+          ensure("]")
+
+          new NewArray(new Typename(tname, true), size)
+        } else throw Expected("constructor arguments or array length")
 
       case Identifier(id) =>
         new Id(unwrap(ensureIdentifier))
