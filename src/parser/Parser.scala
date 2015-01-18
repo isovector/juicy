@@ -279,6 +279,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   def parseStmnt(): Statement = withSource {
     if (check(";")) {
+      next()
       new BlockStmnt(Seq())
     } else if (check("return")) {
       next();
