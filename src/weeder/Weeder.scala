@@ -20,18 +20,11 @@ object Weeder {
   private def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
-  private def inInterface(context: Seq[Visitable]) = {
-    (false /: context) { (last, node) =>
-      last || (node match {
-        case ClassDefn(_, _, _, _, _, _, _, isInterface) => isInterface
-        case _                                           => false
-      })
-    }
-  }
-
   def apply(node: Visitable): Boolean = {
     node.visit((a: Unit, b: Unit) => {})
     { (self, context) =>
+      implicit val implContext = context
+
       self match {
         case Before(me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface)) =>
           val basename = {
@@ -115,7 +108,7 @@ object Weeder {
 
 
         case Before(me@MethodDefn(name, mods, _, _, body)) =>
-          if (inInterface(context)) {
+          if (isIn[ClassDefn](_.isInterface)) {
             // An interface method cannot have a body.
             if (!body.isEmpty) {
               throw new WeederError(
@@ -169,13 +162,15 @@ object Weeder {
           }
 
         // A method or constructor must not contain explicit this() or super() calls.
-        case Before(me@Call(ThisVal(), _)) =>
-          throw new WeederError(
-            s"Can't explicitly call this()", me)
+        case Before(me@ThisVal()) =>
+          if (isIn[Call]())
+            throw new WeederError(
+              s"Can't explicitly call methods on this()", me)
 
-        case Before(me@Call(SuperVal(), _)) =>
-          throw new WeederError(
-            s"Can't explicitly call super()", me)
+        case Before(me@SuperVal()) =>
+          if (isIn[Call]())
+            throw new WeederError(
+              s"Can't explicitly call methods on super()", me)
 
         case Before(me@Assignment(Cast(_, _), _)) =>
           throw new WeederError(
@@ -185,6 +180,11 @@ object Weeder {
           if (tname.isPrimitive)
             throw new WeederError(
               s"Cannont instantiate primitive type `$tname`", me)
+
+        case Before(me@InstanceOf(_, tname)) =>
+          if (tname.isPrimitive)
+            throw new WeederError(
+              s"Instanceof a primitive `$tname` will always fail", me)
 
         case Before(me: Typename) =>
           if (me.qname == Seq("void"))

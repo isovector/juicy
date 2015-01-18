@@ -1,12 +1,29 @@
-package juicy.utils.visitor
+package juicy.utils
 
 import juicy.utils.CompilerError
+import scala.reflect.ClassTag
+
+package object visitor {
 
 trait VisitOrder
 case class Before(n: Visitable) extends VisitOrder
 case class After(n: Visitable) extends VisitOrder
 
 case class VisitError(errors: Seq[CompilerError]) extends Throwable
+
+// Check the context to see if the current node is inside of a T
+def isIn[T : ClassTag]
+(whenFound: T => Boolean = { _: T => true })
+(implicit context: Seq[Visitable]): Boolean = {
+  // The JVM deletes our type-info, so this gets it back
+  val clazz = implicitly[ClassTag[T]].runtimeClass
+  (false /: context) { (last, node) =>
+    last || (node match {
+      case found if clazz.isInstance(found) => whenFound(found.asInstanceOf[T])
+      case _                                => false
+    })
+  }
+}
 
 trait Visitable {
   import juicy.source.tokenizer._
@@ -71,3 +88,4 @@ trait Visitable {
   }
 }
 
+}

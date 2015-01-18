@@ -263,4 +263,28 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(parser.parseStmnt()) should be === false
     Weeder(parser.parseStmnt()) should be === true
   }
+
+  it should "not allow instanceof primitive types" in {
+    val parser = mkParser("""
+      test instanceof boolean;
+      5 instanceof int[];
+      5 instanceof Boolean;
+      """)
+
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === true
+  }
+
+  it should "not allow super or this calls" in {
+    val parser = mkParser("""
+      this.hello();
+      super.up.the.chain(true);
+      works.great();
+      """)
+
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === true
+  }
 }
