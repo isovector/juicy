@@ -241,7 +241,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseExpr()
 
     result should be ===
-      Sub(IntVal(0), Not(Not(Id("a"))))
+      Neg(Not(Not(Id("a"))))
   }
 
   it should "parse new arrays and types" in {

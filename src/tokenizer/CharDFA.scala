@@ -31,7 +31,7 @@ object CharDFA {
         case x if x.isOctalDigit => {
            var esc = x.asDigit
            stream.next()
-           while(esc < 128 && stream.cur.isOctalDigit) {
+           while(stream.cur.isOctalDigit && esc * 8 + stream.cur.asDigit < 128) {
              esc = esc * 8 + stream.cur.asDigit
              stream.next()
            }
