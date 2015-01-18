@@ -431,7 +431,17 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseUnaryExpr(): Expression = withSource {
     if (check("-")) {
       next()
-      new Sub(new IntVal(0), parseUnaryExpr())
+      cur match {
+          case IntLiteral(l) => {
+            if ((-l).isValidInt) {
+              next();
+              new IntVal((-l).toInt)
+            } else {
+              throw new UnexpectedError("Invalid integer literal " + (-l), cur.from)
+            }
+          }
+          case _ => new Neg(parseUnaryExpr())
+      }
     } else if (check("!")) {
       next()
       new Not(parseUnaryExpr())
@@ -483,10 +493,13 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   // Innermost expression parser
   def parseTerminal(): Expression = withSource {
     cur match {
-      case IntLiteral(i) =>
+      case IntLiteral(l) =>
         next()
-        new IntVal(i)
-
+        if (l.isValidInt) {
+          new IntVal(l.toInt)
+        } else {
+          throw new UnexpectedError("Invalid integer literal " + l, cur.from)
+        }
       case BoolLiteral(b) =>
         next()
         new BoolVal(b)

@@ -29,7 +29,7 @@ object Weeder {
         case Before(me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface)) =>
           val basename = {
             val fname = node.originalToken.from.file.split('/').last
-            fname.takeWhile(x => x != '.')
+            if (fname endsWith ".java") fname.slice(0, fname.length - ".java".length) else ""
           }
 
           // A class/interface must be declared in a .java file with the same
