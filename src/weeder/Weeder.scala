@@ -201,6 +201,9 @@ object Weeder {
                 case Some(VarStmnt(_, _, _, _)) => true
                 case Some(ExprStmnt(expr)) => expr match {
                     case Assignment(_,_) => true
+                    case Call(_,_) => true
+                    case NewArray(_,_) => true
+                    case NewType(_,_) => true
                     case _ => false
                 }
                 case _ => false
@@ -208,12 +211,15 @@ object Weeder {
             val lastIsAssign = me.after match {
                 case None => true
                 case Some(Assignment(_,_)) => true
+                case Some(Call(_,_)) => true
+                case Some(NewType(_,_)) => true
+                case Some(NewArray(_,_)) => true
                 case _ => false
             }
             if (startIsAssign && lastIsAssign) {
                 true
             } else {
-              throw new WeederError(s"Init and Update in a for-statement must be assignments or declarations", me)
+              throw new WeederError(s"Init and Update in a for-statement must not be primary expressions", me)
             }
         }
         case _ => true
