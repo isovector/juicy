@@ -70,9 +70,16 @@ class Tokenizer(input: String, fname: String = "<string>") {
       val ipart = source.takeWhile(_.isDigit)
       if (cur.isLetter || cur == '_') {
         new Token.Invalid()
+      } else if (ipart.startsWith("0") && ipart.length > 1) {
+        new Token.Invalid(Some("Octal Literals not supported"))
       } else {
-        new Token.IntLiteral(ipart.toInt)
-      }
+        try {
+          new Token.IntLiteral(ipart.toLong)
+        } catch {
+          case _: Throwable => new Token.Invalid(Some("Invalid integer literal " + ipart))
+        }  
+            
+    }
     } else if (cur == '\'') {
       CharDFA.matchChar(source)
     } else if (cur == '\"') {

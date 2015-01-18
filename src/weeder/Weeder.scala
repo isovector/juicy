@@ -29,7 +29,7 @@ object Weeder {
         case Before(me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface)) =>
           val basename = {
             val fname = node.originalToken.from.file.split('/').last
-            fname.takeWhile(x => x != '.')
+            if (fname endsWith ".java") fname.slice(0, fname.length - ".java".length) else ""
           }
 
           // A class/interface must be declared in a .java file with the same
@@ -186,7 +186,7 @@ object Weeder {
             throw new WeederError(
               s"Instanceof a primitive `$tname` will always fail", me)
 
-        case Before(me: Typename) =>
+        case Before(me: Typename) => {
           if (me.qname == Seq("void"))
             context.head match {
               case _: MethodDefn => // do nothing
@@ -194,7 +194,34 @@ object Weeder {
                 throw new WeederError(
                   s"Type `void` may only be used as a function return type", me)
             }
-
+        }
+        case Before(me: ForStmnt) => {
+            val startIsAssign = me.first match {
+                case None => true
+                case Some(VarStmnt(_, _, _, _)) => true
+                case Some(ExprStmnt(expr)) => expr match {
+                    case Assignment(_,_) => true
+                    case Call(_,_) => true
+                    case NewArray(_,_) => true
+                    case NewType(_,_) => true
+                    case _ => false
+                }
+                case _ => false
+            }
+            val lastIsAssign = me.after match {
+                case None => true
+                case Some(Assignment(_,_)) => true
+                case Some(Call(_,_)) => true
+                case Some(NewType(_,_)) => true
+                case Some(NewArray(_,_)) => true
+                case _ => false
+            }
+            if (startIsAssign && lastIsAssign) {
+                true
+            } else {
+              throw new WeederError(s"Init and Update in a for-statement must not be primary expressions", me)
+            }
+        }
         case _ => true
       }
     }.fold(

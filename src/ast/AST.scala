@@ -290,3 +290,4 @@ extends BinaryOperator
 
 case class Not(ghs: Expression) extends UnaryOperator
 
+case class Neg(ghs: Expression) extends UnaryOperator

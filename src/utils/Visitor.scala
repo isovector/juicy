@@ -1,6 +1,5 @@
 package juicy.utils
 
-import juicy.utils.CompilerError
 import scala.reflect.ClassTag
 
 package object visitor {

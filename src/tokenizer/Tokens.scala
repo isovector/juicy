@@ -13,7 +13,7 @@ object Token {
   case class Primitive(value: String) extends Token
   case class Keyword(value: String) extends Token
   case class BoolLiteral(value: Boolean) extends Token
-  case class IntLiteral(value: Int) extends Token
+  case class IntLiteral(value: Long) extends Token
   case class CharLiteral(value: Char) extends Token
   case class StringLiteral(value: String) extends Token
   case class NullLiteral() extends Token
