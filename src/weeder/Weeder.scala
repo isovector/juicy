@@ -187,7 +187,7 @@ object Weeder {
               s"Cannont instantiate primitive type `$tname`", me)
 
         case Before(me: Typename) =>
-          if (me.toString == "void")
+          if (me.qname == Seq("void"))
             context.head match {
               case _: MethodDefn => // do nothing
               case _             =>
