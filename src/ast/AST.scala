@@ -47,13 +47,15 @@ trait UnaryOperator extends Expression {
   def children = Seq(ghs)
 }
 
-case class Typename (qname: QName, isArray: Boolean=false) {
+case class Typename (qname: QName, isArray: Boolean=false) extends Visitable {
   var resolved: Option[ClassDefn] = None
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
   val isPrimitive =
     Seq("void", "boolean", "int", "short", "byte", "char").contains(name)
   override def toString() = s"$name$brackets"
+
+  def children = Seq()
 }
 
 case class FileNode(
@@ -70,17 +72,17 @@ case class ClassDefn(
   extnds: Option[Typename],
   impls: Seq[Typename],
   fields: Seq[VarStmnt],
-  constructors: Seq[MethodDefn],
+  cxrs: Seq[MethodDefn],
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
-  def children = fields ++ constructors ++ methods
+  def children = extnds.toList ++ impls ++ fields ++ cxrs ++ methods
 }
 
 case class ImportClass(
   tname: Typename
 ) extends ImportStmnt {
-  def children = Seq()
+  def children = Seq(tname)
 }
 
 case class ImportPkg(
@@ -98,7 +100,7 @@ case class MethodDefn(
 ) extends Definition {
   val isConstructor = name == tname.toString
 
-  def children = params ++ body.toList
+  def children = Seq(tname) ++ params ++ body.toList
 }
 
 case class VarStmnt(
@@ -107,7 +109,7 @@ case class VarStmnt(
   tname: Typename,
   value: Option[Expression]
 ) extends Statement {
-  def children = value.toList
+  def children = tname +: value.toList
 }
 
 case class IfStmnt(
@@ -196,21 +198,21 @@ case class Cast(
   tname: Typename,
   value: Expression
 ) extends Expression {
-  def children = Seq(value)
+  def children = Seq(tname, value)
 }
 
 case class NewType(
   tname: Typename,
   args: Seq[Expression]
 ) extends Expression {
-  def children = args
+  def children = tname +: args
 }
 
 case class NewArray(
   tname: Typename,
   size: Expression
 ) extends Expression {
-  def children = Seq(size)
+  def children = Seq(tname, size)
 }
 
 case class CharVal(

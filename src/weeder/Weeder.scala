@@ -12,8 +12,8 @@ case class WeederError(msg: String, in: Visitable)
 }
 
 object Weeder {
-  // HACK HACK HACK HACK HACK
   object debug {
+    // HACK HACK HACK HACK HACK
     var checkFileName = true
   }
 
@@ -30,7 +30,6 @@ object Weeder {
   }
 
   def apply(node: Visitable): Boolean = {
-    // Check modifiers for sanity
     node.visit((a: Unit, b: Unit) => {})
     { (self, context) =>
       self match {
@@ -45,6 +44,11 @@ object Weeder {
           if (debug.checkFileName !--> (basename == name)) {
             throw new WeederError(
               s"Found class `$name` in file `$basename.joos`", me)
+          }
+
+          if (check(mods, PUBLIC) <-> check(mods, PROTECTED)) {
+            throw new WeederError(
+              s"Class `$name` must be declared either public or protected", me)
           }
 
           // A class cannot be both abstract and final.
@@ -155,13 +159,6 @@ object Weeder {
 
 
         case Before(me@VarStmnt(name, mods, tname, _)) =>
-          // The type void may only be used as the return type of a method.
-          if (tname.toString == "void") {
-            throw new WeederError(
-              "Type `void` may only be used for the return type of a method",
-              me)
-          }
-
           // No field can be final.
           if (context.head match {
             case _: ClassDefn => check(mods, FINAL)
@@ -189,6 +186,14 @@ object Weeder {
             throw new WeederError(
               s"Cannont instantiate primitive type `$tname`", me)
 
+        case Before(me: Typename) =>
+          if (me.toString == "void")
+            context.head match {
+              case _: MethodDefn => // do nothing
+              case _             =>
+                throw new WeederError(
+                  s"Type `void` may only be used as a function return type", me)
+            }
 
         case _ => true
       }

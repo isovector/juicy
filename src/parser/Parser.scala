@@ -525,6 +525,9 @@ class Parser(tokens: TokenStream) extends ParserUtils {
           val size = parseExpr()
           ensure("]")
 
+          if (check("["))
+            throw Expected("non-multi array creation")
+
           new NewArray(new Typename(tname, true), size)
         } else throw Expected("constructor arguments or array length")
 

@@ -284,7 +284,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseFile()
 
     val classes = result.classes
-    classes(0).constructors should be ===
+    classes(0).cxrs should be ===
       Seq(
         new MethodDefn("A", PUBLIC, typename("A"), Seq(), None),
         new MethodDefn(
@@ -294,6 +294,14 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           Seq(
             new VarStmnt("B", NONE, typename("int"), None)),
           None))
+  }
+
+  it should "fail to parse multi-array creation" in {
+    val parser = mkParser("new int[5][6]")
+
+    intercept[UnexpectedError] {
+      parser.parseExpr()
+    }
   }
 
   it should "parse files" in {

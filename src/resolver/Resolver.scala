@@ -93,19 +93,9 @@ object Resolver {
       node.visit((_: Unit, _: Unit) => {})
       { (self, context) =>
         self match {
-          case Before(n) =>
-            n match {
-              case ClassDefn(_, _, extnds, impls, _, _, _, _) =>
-                extnds.map(e => resolve(e, n.from))
-                impls.map(i  => resolve(i, n.from))
-
-              case MethodDefn(_, _, tname, _, _) => resolve(tname, n.from)
-              case VarStmnt(_, _, tname, _)      => resolve(tname, n.from)
-              case Cast(tname, _)                => resolve(tname, n.from)
-              case NewType(tname, _)             => resolve(tname, n.from)
-              case NewArray(tname, _)            => resolve(tname, n.from)
-              case _                             =>
-            }
+          case Before(me: Typename) =>
+            // TODO: do typenames have a from? probably not
+            resolve(me, me.from)
 
           case _ =>
         }
