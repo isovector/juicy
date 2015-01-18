@@ -33,8 +33,10 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       "<=" -> (LEq.tupled _),
       ">=" -> (GEq.tupled _),
       "<" -> (LThan.tupled _),
-      ">" -> (GThan.tupled _)
-      // TODO: instanceof
+      ">" -> (GThan.tupled _),
+      // HACK: stupid things are happening here. go look at
+      // parseExprPrec
+      "instanceof" -> (LEq.tupled _)
     ),
     Map(
       "+" -> (Add.tupled _),
@@ -412,8 +414,14 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     operators(level).foreach { case (sym, constructor) =>
       while (check(sym)) {
         next()
-        val rhs = parseNextPrec()
-        lhs = constructor()((lhs, rhs))
+        // HACK: big ugly programming is here, but it's too much work to do
+        // properly now
+        if (sym == "instanceof") {
+          lhs = new InstanceOf(lhs, qualifiedName())
+        } else {
+          val rhs = parseNextPrec()
+          lhs = constructor()((lhs, rhs))
+        }
       }
     }
 

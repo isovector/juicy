@@ -263,6 +263,26 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
         Id("c"))
   }
 
+  it should "parse instances of" in {
+    val parser = mkParser("""
+      5 instanceof boolean
+      "test" instanceof void
+      a instanceof java.Reference[]
+      true instanceof boolean instanceof boolean
+      """)
+
+    parser.parseExpr() should be ===
+      InstanceOf(IntVal(5), typename("boolean"))
+    parser.parseExpr() should be ===
+      InstanceOf(StringVal("test"), typename("void"))
+    parser.parseExpr() should be ===
+      InstanceOf(Id("a"), typename("java.Reference", true))
+    parser.parseExpr() should be ===
+      InstanceOf(
+        InstanceOf(BoolVal(true), typename("boolean")),
+        typename("boolean"))
+  }
+
   it should "parse parenthesized expressions" in {
     val parser = mkParser("((a))")
     val result = parser.parseExpr()

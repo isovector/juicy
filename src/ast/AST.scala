@@ -227,6 +227,13 @@ case class StringVal(
   def children = Seq()
 }
 
+case class InstanceOf(
+  lhs: Expression,
+  tname: Typename
+) extends Expression {
+  def children = Seq(lhs, tname)
+}
+
 case class Assignment(lhs: Expression, rhs: Expression)
 extends BinaryOperator
 
@@ -258,9 +265,6 @@ case class LThan(lhs: Expression, rhs: Expression)
 extends BinaryOperator
 
 case class GThan(lhs: Expression, rhs: Expression)
-extends BinaryOperator
-
-case class InstanceOf(lhs: Expression, rhs: Expression)
 extends BinaryOperator
 
 case class Add(lhs: Expression, rhs: Expression)
