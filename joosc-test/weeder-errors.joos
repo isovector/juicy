@@ -1,0 +1,9 @@
+abstract class A {
+    A() {
+        this();
+    }
+
+    void test() {
+        void hello = 5;
+    }
+}

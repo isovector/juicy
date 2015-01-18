@@ -1,4 +1,6 @@
 class BubbleSort {
+    BubbleSort() { }
+
     public static void main(String []args) {
         int n;
         int c;

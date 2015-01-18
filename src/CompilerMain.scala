@@ -2,6 +2,7 @@ package juicy.source
 
 import juicy.source.parser._
 import juicy.source.tokenizer._
+import juicy.source.weeder._
 import juicy.utils.CompilerError
 import juicy.utils.visitor.VisitError
 import scala.io.Source
@@ -14,6 +15,7 @@ object CompilerMain {
 
       try {
         val ast = new Parser(tokens).parseFile()
+        Weeder(ast)
       } catch {
         case e: CompilerError =>
           System.err.println(e)

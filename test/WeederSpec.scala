@@ -1,16 +1,16 @@
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 
-import juicy.source.weeder._
 import juicy.source.parser._
 import juicy.source.tokenizer._
+import juicy.source.weeder._
 
 class WeederSpec extends FlatSpec with ShouldMatchers {
   import juicy.source.tokenizer.Token._
-  
+
   // We don't have files. Don't check files
-  Weeder.checkFileName = false
-  
+  Weeder.debug.checkFileName = false
+
   def mkParser(source: String) = new Parser(new TokenStream(source))
 
   "Weeder" should "fail abstract and final classes" in {
@@ -79,9 +79,9 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       }
 
       class Class {
-        public Class (Class other) {}
-        static bool pass();
-        final bool pass();
+        public Class() {}
+        static bool pass() {}
+        final bool pass() {}
       }
       """)
 
@@ -200,7 +200,7 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(classes(4)) should be === true
   }
   it should "not allow interfaces with constructors, method bodies or fields" in {
-     val parser = mkParser(""" 
+     val parser = mkParser("""
        interface Fail {
            public Fail();
        }

@@ -10,16 +10,9 @@ trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
   def from = originalToken.from
-
   def children: Seq[Visitable]
 
   type Visited[T] = Either[Seq[Throwable], T]
-
-  def visit[T]
-      (fold: (T, T) => T)
-      (func: (VisitOrder, Seq[Visitable]) => T): Visited[T] = {
-    visit(this, Seq())(fold)(func)
-  }
 
   private def unwrapLeft[T](wrapped: Visited[T]): Seq[Throwable] = {
     wrapped match {
@@ -36,16 +29,23 @@ trait Visitable {
   }
 
   def visit[T]
-      (self: Visitable, context: Seq[Visitable])
       (fold: (T, T) => T)
       (func: (VisitOrder, Seq[Visitable]) => T): Visited[T] = {
-    val newContext = Seq(self) ++ context
 
     def lifted(a: Visited[T], b: Visited[T]): Visited[T] =
       if (a.isLeft || b.isLeft)
         Left(unwrapLeft(a) ++ unwrapLeft(b))
       else
         Right(fold(unwrapRight(a), unwrapRight(b)))
+
+    visit(this, Seq())(lifted)(func)
+  }
+
+  def visit[T]
+      (self: Visitable, context: Seq[Visitable])
+      (lifted: (Visited[T], Visited[T]) => Visited[T])
+      (func: (VisitOrder, Seq[Visitable]) => T): Visited[T] = {
+    val newContext = Seq(self) ++ context
 
     val before: Visited[T] =
       try {
@@ -55,7 +55,7 @@ trait Visitable {
       }
 
     val childResults = children.map { child =>
-      child.visit(child, newContext)(fold)(func)
+      child.visit(child, newContext)(lifted)(func)
     }
 
     val after: Visited[T] =
