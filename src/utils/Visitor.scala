@@ -1,6 +1,5 @@
 package juicy.utils
 
-import juicy.utils.CompilerError
 import scala.reflect.ClassTag
 
 package object visitor {
@@ -13,8 +12,8 @@ case class VisitError(errors: Seq[CompilerError]) extends Throwable
 
 // Check the context to see if the current node is inside of a T
 def isIn[T : ClassTag]
-(whenFound: T => Boolean = { _: T => true })
-(implicit context: Seq[Visitable]): Boolean = {
+    (whenFound: T => Boolean = { _: T => true })
+    (implicit context: Seq[Visitable]): Boolean = {
   // The JVM deletes our type-info, so this gets it back
   val clazz = implicitly[ClassTag[T]].runtimeClass
   (false /: context) { (last, node) =>
