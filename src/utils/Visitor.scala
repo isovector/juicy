@@ -1,10 +1,12 @@
 package juicy.utils.visitor
 
+import juicy.utils.CompilerError
+
 trait VisitOrder
 case class Before(n: Visitable) extends VisitOrder
 case class After(n: Visitable) extends VisitOrder
 
-case class VisitError(errors: Seq[Throwable]) extends Throwable
+case class VisitError(errors: Seq[CompilerError]) extends Throwable
 
 trait Visitable {
   import juicy.source.tokenizer._
@@ -12,9 +14,9 @@ trait Visitable {
   def from = originalToken.from
   def children: Seq[Visitable]
 
-  type Visited[T] = Either[Seq[Throwable], T]
+  type Visited[T] = Either[Seq[CompilerError], T]
 
-  private def unwrapLeft[T](wrapped: Visited[T]): Seq[Throwable] = {
+  private def unwrapLeft[T](wrapped: Visited[T]): Seq[CompilerError] = {
     wrapped match {
       case Left(unwrapped) => unwrapped
       case _               => Seq()
@@ -51,7 +53,7 @@ trait Visitable {
       try {
         Right(func(Before(self), context))
       } catch {
-        case e: Throwable => Left(Seq(e))
+        case e: CompilerError => Left(Seq(e))
       }
 
     val childResults = children.map { child =>
@@ -62,7 +64,7 @@ trait Visitable {
       try {
         Right(func(After(self), context))
       } catch {
-        case e: Throwable => Left(Seq(e))
+        case e: CompilerError => Left(Seq(e))
       }
 
     lifted((before /: childResults)(lifted), after)

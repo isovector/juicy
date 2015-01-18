@@ -91,11 +91,11 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
 
   it should "resolve import paths" in {
     val ast = parse("""
-      package big.long.path.name;
+      package big.path.name;
 
       class A { }
       """, """
-      import big.long.path.name.*;
+      import big.path.name.*;
       class B {
         A a;
       }

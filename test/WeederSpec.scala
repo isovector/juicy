@@ -31,12 +31,12 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class Class {
         public Class (int i) {}
-        abstract bool fail() { }
+        abstract public bool fail() { }
       }
 
       class Class {
         public Class (int i) {}
-        abstract bool pass();
+        abstract public bool pass();
       }
       """)
 
@@ -49,18 +49,18 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
   it should "fail static final abstract methods" in {
     val parser = mkParser("""
       class Class {
-        Class (String s) {}
-        abstract static bool fail();
+        public Class (String s) {}
+        abstract public static bool fail();
       }
 
       class Class {
-        Class (String s) {}
-        abstract final bool fail();
+        public Class (String s) {}
+        abstract public final bool fail();
       }
 
       class Class {
-        Class(String s) {}
-        abstract bool pass();
+        public Class(String s) {}
+        abstract public bool pass();
       }
       """)
 
@@ -75,13 +75,13 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class Class {
         public Class (Class other) {}
-        static final bool fail();
+        static public final bool fail();
       }
 
       class Class {
         public Class() {}
-        static bool pass() {}
-        final bool pass() {}
+        static public bool pass() {}
+        final public bool pass() {}
       }
       """)
 
@@ -95,12 +95,12 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class Class {
         public Class() {}
-        native bool fail();
+        native public bool fail();
       }
 
       class Class {
         public Class() {}
-        static native bool pass();
+        static native public bool pass();
       }
       """)
 
@@ -114,19 +114,19 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class Class {
         public Class() {}
-        bool fail(void a);
+        public bool fail(void a);
       }
 
       class Class {
         public Class() {}
-        bool fail() {
+        public bool fail() {
           void a;
         }
       }
 
       class Class {
         public Class() {}
-        void pass() { }
+        public void pass() { }
       }
       """)
 
@@ -141,12 +141,12 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class Class {
         public Class() {}
-        final bool fail;
+        public final bool fail;
       }
 
       class Class {
         public Class() {}
-        bool pass;
+        public bool pass;
       }
       """)
 
@@ -169,11 +169,12 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(classes(1)) should be === false
     Weeder(classes(2)) should be === true
   }
+
   it should "not allow classes without at least one explicit constructor" in {
     val parser = mkParser("""
     class Fail {}
     class Fail {
-        void doSomething() {}
+        public void doSomething() {}
     }
     class Pass {
         public Pass() {}
@@ -199,22 +200,23 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(classes(3)) should be === true
     Weeder(classes(4)) should be === true
   }
+
   it should "not allow interfaces with constructors, method bodies or fields" in {
      val parser = mkParser("""
        interface Fail {
            public Fail();
        }
        interface Succeed {
-           boolean succeed();
+           public boolean succeed();
        }
        interface Fail {
-           boolean fail() {
+           public boolean fail() {
               System.out.println("whoops");
            }
        }
        interface Fail {
-           boolean succeed();
-           int utterFailure;
+           public boolean succeed();
+           public int utterFailure;
        }
      """)
     val classes =  parser.parseFile().classes
@@ -222,5 +224,25 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(classes(1)) should be === true
     Weeder(classes(2)) should be === false
     Weeder(classes(3)) should be === false
+  }
+
+  it should "not allow lvalue casts" in {
+    val parser = mkParser("""
+      (int)a = 5;
+      a = 5;
+      """)
+
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === true
+  }
+
+  it should "not allow instantiation of primitive types" in {
+    val parser = mkParser("""
+      new int();
+      new B();
+      """)
+
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === true
   }
 }

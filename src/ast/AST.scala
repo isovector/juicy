@@ -51,6 +51,8 @@ case class Typename (qname: QName, isArray: Boolean=false) {
   var resolved: Option[ClassDefn] = None
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
+  val isPrimitive =
+    Seq("void", "boolean", "int", "short", "byte", "char").contains(name)
   override def toString() = s"$name$brackets"
 }
 

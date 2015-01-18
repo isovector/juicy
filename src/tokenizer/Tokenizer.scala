@@ -22,13 +22,14 @@ class Tokenizer(input: String, fname: String = "<string>") {
   // These should be listed from longest to shortest, to ensure that we don't
   // do subtring matching
   val primitives = List("void", "int", "char", "boolean", "short", "byte")
-  val operators  = List("==", ">=", "<=", ">", "<", "!=", "&&", "||", "%",
+  val operators  = List("==", ">=", "<=", ">", "<", "!=", "&&", "||", "--", "%",
                         "+", "-", "*", "/", "&", "|", "!", "[", "]", "=")
   val modifiers  = List("public", "protected", "static", "extern", "final",
                         "abstract", "native")
   val keywords   = List("if", "for", "while", "class", "override", "new",
                         "return", "import", "package", "interface", "extends",
-                        "implements")
+                        "implements", "goto", "private", "float", "double",
+                        "long", "break", "continue")
 
   def eatComments() = {
     while (source.matchExact("//") || source.matchExact("/*")) {

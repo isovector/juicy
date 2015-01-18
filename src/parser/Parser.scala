@@ -33,8 +33,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       "<=" -> (LEq.tupled _),
       ">=" -> (GEq.tupled _),
       "<" -> (LThan.tupled _),
-      ">" -> (GThan.tupled _),
-      "instanceof" -> (InstanceOf.tupled _)
+      ">" -> (GThan.tupled _)
+      // TODO: instanceof
     ),
     Map(
       "+" -> (Add.tupled _),

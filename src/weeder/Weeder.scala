@@ -58,9 +58,19 @@ object Weeder {
             throw new WeederError(s"Class `$name` extends an array", me)
           }
 
+          // Extends may not be primitive
+          if (!extnds.isEmpty !--> !extnds.get.isPrimitive) {
+            throw new WeederError(s"Class `$name` extends a primitive", me)
+          }
+
           // Implements may not be an array
           if (!(true /: impls)(_ && !_.isArray)) {
             throw new WeederError(s"Class `$name` implements an array", me)
+          }
+
+          // Implements may not be a primitive
+          if (!(true /: impls)(_ && !_.isPrimitive)) {
+            throw new WeederError(s"Class `$name` implements a primitive", me)
           }
 
           if (isInterface) {
@@ -75,6 +85,28 @@ object Weeder {
           if (!isInterface !--> !cxrs.isEmpty) {
             throw new WeederError(
               s"Class `$name` must contain an explicit constructor", me)
+          }
+
+          cxrs.map { cxr =>
+            val cmods = cxr.mods
+            if (check(cmods, FINAL) ||
+                check(cmods, NATIVE) ||
+                check(cmods, STATIC) || check(cmods, ABSTRACT))
+              throw new WeederError(
+                s"Constructor must only be marked public or private", me)
+          }
+
+          (fields ++ methods ++ cxrs).map { me =>
+            val member = me.asInstanceOf[{
+              val name: String
+              val mods: Modifiers.Value }]
+            val mname = member.name
+            val mmods = member.mods
+
+            if (check(mmods, PUBLIC) <-> check(mmods, PROTECTED)) {
+              throw new WeederError(
+                s"Member `$mname` must be marked either public or private", me)
+            }
           }
 
 
@@ -141,12 +173,22 @@ object Weeder {
 
         // A method or constructor must not contain explicit this() or super() calls.
         case Before(me@Call(ThisVal(), _)) =>
-            throw new WeederError(
-              s"Can't explicitly call this()", me)
+          throw new WeederError(
+            s"Can't explicitly call this()", me)
 
         case Before(me@Call(SuperVal(), _)) =>
+          throw new WeederError(
+            s"Can't explicitly call super()", me)
+
+        case Before(me@Assignment(Cast(_, _), _)) =>
+          throw new WeederError(
+            s"Can't cast lhs of assignment operator", me)
+
+        case Before(me@NewType(tname, _)) =>
+          if (tname.isPrimitive)
             throw new WeederError(
-              s"Can't explicitly call super()", me)
+              s"Cannont instantiate primitive type `$tname`", me)
+
 
         case _ => true
       }
