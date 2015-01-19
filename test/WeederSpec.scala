@@ -279,12 +279,16 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
   it should "not allow super or this calls" in {
     val parser = mkParser("""
       this.hello();
+      this();
       super.up.the.chain(true);
+      test(this.sup);
       works.great();
       """)
 
+    Weeder(parser.parseStmnt()) should be === true
     Weeder(parser.parseStmnt()) should be === false
     Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === true
     Weeder(parser.parseStmnt()) should be === true
   }
 }

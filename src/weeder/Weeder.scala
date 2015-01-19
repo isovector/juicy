@@ -162,13 +162,12 @@ object Weeder {
           }
 
         // A method or constructor must not contain explicit this() or super() calls.
-        case Before(me@ThisVal()) =>
-          if (isIn[Call]())
+        case Before(me@Call(ThisVal(), _)) =>
             throw new WeederError(
-              s"Can't explicitly call methods on this()", me)
+              s"Can't explicitly call this()", me)
 
         case Before(me@SuperVal()) =>
-          if (isIn[Call]())
+          if (isIn[Call](call => context.contains(call.method)))
             throw new WeederError(
               s"Can't explicitly call methods on super()", me)
 
@@ -195,6 +194,7 @@ object Weeder {
                   s"Type `void` may only be used as a function return type", me)
             }
         }
+
         case Before(me: ForStmnt) => {
             val startIsAssign = me.first match {
                 case None => true
