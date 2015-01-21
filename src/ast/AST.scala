@@ -76,6 +76,7 @@ case class ClassDefn(
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
+  val isClass = !isInterface
   def children = extnds.toList ++ impls ++ fields ++ cxrs ++ methods
 }
 
