@@ -135,20 +135,48 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
 
   // ---------- BEGIN KNOWER TESTS -------------
 
-  "Knower" should "not allow non-abstract classes with abstract methods" in {
-    intercept[VisitError] {
-      know("""
-        class A {
-          abstract A test();
-        }
-        """)
-    }
+  // Compile a bit of code with a '%s' marker twice, once with it pass subbed,
+  // and once with fail
+  def knowAB(pass: String, fail: String, f: String) = {
+    intercept[VisitError](know(f.format(fail)))
+    know(f.format(pass))
+  }
 
-    know("""
+  "Knower" should "not allow non-abstract classes with abstract methods" in {
+    knowAB("", "abstract", """
+      class A { %s A test(); }
+      """)
+  }
+
+  it should "not allow hiding of final methods" in {
+    knowAB("", "final", """
+      class A { %s A test(); }
+      class B extends A { final A test(); }
+      """)
+  }
+
+  it should "not allow rewriting return types" in {
+    knowAB("A", "B", """
+      class A { A test(); }
+      class B extends A { %s test(); }
+      """)
+  }
+
+  it should "not allow non-unique signatures" in {
+    knowAB("A", "Same", """
+      class Same { }
       class A {
-        A test();
+        A test(Same name);
+        A test(%s name);
       }
       """)
   }
-}
 
+  it should "not allow implementing classes" in {
+    knowAB("ISame", "Same", """
+      class Same { }
+      interface ISame { }
+      class A implements %s {}
+      """)
+  }
+}
