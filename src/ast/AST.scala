@@ -91,6 +91,7 @@ case class ImportPkg(
   def children = Seq()
 }
 
+case class Signature(name: String, params: Seq[Typename])
 case class MethodDefn(
   name: String,
   mods: Modifiers.Value,
@@ -99,6 +100,7 @@ case class MethodDefn(
   body: Option[Statement]
 ) extends Definition {
   val isConstructor = name == tname.toString
+  val signature = Signature(name, params.map(_.tname))
 
   def children = Seq(tname) ++ params ++ body.toList
 }

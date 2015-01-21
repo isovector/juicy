@@ -1,6 +1,7 @@
 package juicy.utils
 
 import juicy.source.tokenizer.SourceLocation
+import juicy.utils.visitor._
 
 trait CompilerError extends Throwable {
   val msg: String
@@ -12,11 +13,27 @@ trait CompilerError extends Throwable {
 object Implicits {
   type QName = Seq[String]
 
-  case class RichSeq[T](underlying: Seq[T]) {
-    def last: T = underlying(underlying.length - 1)
+  case class RichSeq[A](underlying: Seq[A]) {
+    def collectMap[B](f: (A) => B): Visited[Seq[B]] = {
+      val (errors, result) = underlying.map { a =>
+        try {
+          Right(f(a))
+        } catch {
+          case e: CompilerError => Left(Seq(e))
+        }
+        }.partition {
+          case Left(_) => true
+          case _       => false
+        }
+
+        if (errors.length != 0)
+          Left(errors.flatMap(l => Visited.unwrapLeft(l)))
+        else
+          Right(result.map(r => Visited.unwrapRight(r)))
+    }
   }
 
-  implicit def seq2RichSeq[T](underlying: Seq[T]): RichSeq[T] =
+  implicit def seq2RichSeq[A](underlying: Seq[A]): RichSeq[A] =
     new RichSeq(underlying)
 
   case class RichBool(underlying: Boolean) {

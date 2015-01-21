@@ -59,7 +59,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       }
   }
 
-  def qualifiedName(): Typename = {
+  def qualifiedName(): Typename = withSource {
     new Typename(
       if (checkPrimitive()) {
         Seq(unwrap(ensurePrimitive()))

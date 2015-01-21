@@ -280,12 +280,16 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       this.hello();
       this();
+      super();
+      super(5);
       super.up.the.chain(true);
       test(this.sup);
       works.great();
       """)
 
     Weeder(parser.parseStmnt()) should be === true
+    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === false
     Weeder(parser.parseStmnt()) should be === false
     Weeder(parser.parseStmnt()) should be === false
     Weeder(parser.parseStmnt()) should be === true

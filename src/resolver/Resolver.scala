@@ -28,6 +28,13 @@ object Resolver {
   }
 
   def apply(nodes: Seq[FileNode]): Seq[ClassDefn] = {
+    /*No single-type-import declaration clashes with the class or interface declared in the same file.*/
+   //No two single-type-import declarations clash with each other.
+   //When a fully qualified name resolves to a type, no strict prefix of the fully qualified name can resolve to a type in the same environment.
+   //No package names or prefixes of package names of declared packages, single-type-import declarations or import-on-demand declarations that are used may resolve to types, except for types in the default package.
+   //Every import-on-demand declaration must refer to a package declared in some file listed on the Joos command line. That is, the import-on-demand declaration must refer to a package whose name appears as the package declaration in some source file, or whose name is a prefix of the name appearing in some package declaration.
+
+    // TODO: resolve primitives
     val types = new collection.mutable.HashMap[QName, ClassDefn]
     val packages =
       new collection.mutable.HashMap[QName,
@@ -43,6 +50,7 @@ object Resolver {
       node.visit((_: Unit, _: Unit) => {})
       { (self, context) =>
         self match {
+          // TODO: check for conflicts
           case Before(classDef@ClassDefn(name, _, _, _, _, _, _, _)) =>
             val qname = qualify(name, context)
             types += qname -> classDef.asInstanceOf[ClassDefn]
@@ -90,11 +98,11 @@ object Resolver {
           else throw new UnresolvedTypeError(qname, from)
       }
 
+      // Resolve all typenames in the AST
       node.visit((_: Unit, _: Unit) => {})
       { (self, context) =>
         self match {
           case Before(me: Typename) =>
-            // TODO: do typenames have a from? probably not
             resolve(me, me.from)
 
           case _ =>

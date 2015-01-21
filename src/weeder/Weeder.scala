@@ -25,8 +25,8 @@ object Weeder {
     { (self, context) =>
       implicit val implContext = context
 
-      self match {
-        case Before(me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface)) =>
+      before(self) match {
+        case me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface) =>
           val basename = {
             val fname = node.originalToken.from.file.split('/').last
             if (fname endsWith ".java") fname.slice(0, fname.length - ".java".length) else ""
@@ -107,7 +107,7 @@ object Weeder {
           }
 
 
-        case Before(me@MethodDefn(name, mods, _, _, body)) =>
+        case me@MethodDefn(name, mods, _, _, body) =>
           if (isIn[ClassDefn](_.isInterface)) {
             // An interface method cannot have a body.
             if (!body.isEmpty) {
@@ -151,7 +151,7 @@ object Weeder {
           }
 
 
-        case Before(me@VarStmnt(name, mods, tname, _)) =>
+        case me@VarStmnt(name, mods, tname, _) =>
           // No field can be final.
           if (context.head match {
             case _: ClassDefn => check(mods, FINAL)
@@ -162,30 +162,31 @@ object Weeder {
           }
 
         // A method or constructor must not contain explicit this() or super() calls.
-        case Before(me@Call(ThisVal(), _)) =>
+        case me@Call(ThisVal(), _) =>
             throw new WeederError(
               s"Can't explicitly call this()", me)
 
-        case Before(me@SuperVal()) =>
-          if (isIn[Call](call => context.contains(call.method)))
+        case me@SuperVal() =>
+          if (isIn[Call](call =>
+              context.contains(call.method) || me == call.method))
             throw new WeederError(
               s"Can't explicitly call methods on super()", me)
 
-        case Before(me@Assignment(Cast(_, _), _)) =>
+        case me@Assignment(Cast(_, _), _) =>
           throw new WeederError(
             s"Can't cast lhs of assignment operator", me)
 
-        case Before(me@NewType(tname, _)) =>
+        case me@NewType(tname, _) =>
           if (tname.isPrimitive)
             throw new WeederError(
               s"Cannont instantiate primitive type `$tname`", me)
 
-        case Before(me@InstanceOf(_, tname)) =>
+        case me@InstanceOf(_, tname) =>
           if (tname.isPrimitive)
             throw new WeederError(
               s"Instanceof a primitive `$tname` will always fail", me)
 
-        case Before(me: Typename) => {
+        case me: Typename => {
           if (me.qname == Seq("void"))
             context.head match {
               case _: MethodDefn => // do nothing
@@ -195,7 +196,7 @@ object Weeder {
             }
         }
 
-        case Before(me: ForStmnt) => {
+        case me: ForStmnt => {
             val startIsAssign = me.first match {
                 case None => true
                 case Some(VarStmnt(_, _, _, _)) => true
@@ -216,13 +217,14 @@ object Weeder {
                 case Some(NewArray(_,_)) => true
                 case _ => false
             }
-            if (startIsAssign && lastIsAssign) {
-                true
-            } else {
-              throw new WeederError(s"Init and Update in a for-statement must not be primary expressions", me)
+
+            if (!(startIsAssign && lastIsAssign)) {
+              throw new WeederError(
+                s"Init and Update in a for-statement must not be primary expressions",
+                me)
             }
         }
-        case _ => true
+        case _ =>
       }
     }.fold(
       l =>
