@@ -76,8 +76,20 @@ case class ClassDefn(
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
-  val isClass = !isInterface
   def children = extnds.toList ++ impls ++ fields ++ cxrs ++ methods
+
+  val isClass = !isInterface
+
+  lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
+    val parentMethods =
+      extnds.map(_.resolved.get.allMethods).getOrElse(Seq())
+    val sigs = methods.map(_.signature)
+    val (hides, keeps) = parentMethods.partition { parMeth =>
+      sigs.contains(parMeth.signature)
+    }
+
+    (methods ++ keeps, hides)
+  }
 }
 
 case class ImportClass(

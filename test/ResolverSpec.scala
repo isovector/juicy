@@ -17,6 +17,15 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
     files
   }
 
+  def know(sources: String*) = {
+    val files = sources.toList.map { source =>
+      new Parser(new TokenStream(source)).parseFile()
+    }
+
+    HardlyKnower(Resolver(files))
+    files
+  }
+
 
   "Resolver" should "resolve self-referential types" in {
     val ast = parse("""
@@ -122,6 +131,24 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
         class A { }
         """)
     }
+  }
+
+  // ---------- BEGIN KNOWER TESTS -------------
+
+  "Knower" should "not allow non-abstract classes with abstract methods" in {
+    intercept[VisitError] {
+      know("""
+        class A {
+          abstract A test();
+        }
+        """)
+    }
+
+    know("""
+      class A {
+        A test();
+      }
+      """)
   }
 }
 

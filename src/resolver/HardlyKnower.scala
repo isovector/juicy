@@ -15,17 +15,11 @@ case class KnowerError(msg: String, in: Visitable)
 object HardlyKnower {
 //An interface must not be repeated in an implements clause, or in an extends clause of an interface. (JLS 8.1.4, dOvs simple constraint 3)
 //The hierarchy must be acyclic. (JLS 8.1.3, 9.1.2, dOvs well-formedness constraint 1)
-//A class or interface must not contain (declare or inherit) two methods with the same signature but different return types (JLS 8.1.1.1, 8.4, 8.4.2, 8.4.6.3, 8.4.6.4, 9.2, 9.4.1, dOvs well-formedness constraint 3)
-//A class that contains (declares or inherits) any abstract methods must be abstract. (JLS 8.1.1.1, well-formedness constraint 4)
-//A nonstatic method must not replace a static method (JLS 8.4.6.1, dOvs well-formedness constraint 5)
-//A method must not replace a method with a different return type. (JLS 8.1.1.1, 8.4, 8.4.2, 8.4.6.3, 8.4.6.4, 9.2, 9.4.1, dOvs well-formedness constraint 6)
-//A protected method must not replace a public method. (JLS 8.4.6.3, dOvs well-formedness constraint 7)
-/*A method must not replace a final method. (JLS 8.4.3.3, dOvs well-formedness constraint 9)*/
   private def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
-  def apply(types: Seq[ClassDefn]) = {
-    val result = types.collectMap { t =>
+  def apply(types: Seq[ClassDefn]): Boolean = {
+    types.collectMap { t =>
       implicit val implType = t
       val name = t.name
 
@@ -51,7 +45,43 @@ object HardlyKnower {
         val methods = (t.methods ++ t.cxrs).map(_.signature)
         methods != methods.distinct
       }
-    }
+
+      t.hidesMethods.foreach { hidden =>
+        val name = hidden.name
+        val hider = t.allMethods.find(_.name == name).get
+
+        val hideMods = hider.mods
+        val hiddenMods = hidden.mods
+
+        throwIf(s"Non-static method `$name` hides a static method") {
+          !check(hideMods, STATIC) && check(hiddenMods, STATIC)
+        }
+
+        throwIf(s"Protected method `$name` hides a public method") {
+          check(hideMods, PROTECTED) && check(hiddenMods, PUBLIC)
+        }
+
+        throwIf(s"Method `$name` hides a final method") {
+          check(hiddenMods, FINAL)
+        }
+
+        throwIf(s"Method `$name` hides a method with a different return type") {
+          hider.tname != hidden.tname
+        }
+      }
+
+      if (!check(t.mods, ABSTRACT)) {
+        // Ensure no methods are abstract
+        t.allMethods.foreach { method =>
+          throwIf(s"Non-abstract class `$name` contains abstract methods") {
+            check(method.mods, ABSTRACT)
+          }
+        }
+      }
+    }.fold(
+      l => throw VisitError(l),
+      r => true
+    )
   }
 
   def resolved(t: Typename)(predicate: ClassDefn => Boolean): Boolean =
