@@ -179,4 +179,13 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
       class A implements %s {}
       """)
   }
+
+  it should "explode on cyclic classes" in {
+    intercept[KnowerError] {
+      know("""
+        class A extends B {}
+        class B extends A {}
+        """)
+    }
+  }
 }
