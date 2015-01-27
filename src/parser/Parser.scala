@@ -84,7 +84,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         case Modifier(name) => true
         case _              => false
     }
-
+    mods.groupBy(l => l).map(t => (t._1, t._2.length)).foreach({ case (m, cnt) =>
+      if (cnt > 1) {
+          throw UnexpectedError("Duplicate modifier " + unwrap(m), m.from)
+      }
+    })
+    
     (0 /: mods)((agg, token) => agg | Modifiers.parse(unwrap(token)))
   }
 
