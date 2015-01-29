@@ -38,13 +38,13 @@ trait BinaryOperator extends Expression {
   val lhs: Expression
   val rhs: Expression
 
-  def children = Seq(lhs, rhs)
+  val children = Seq(lhs, rhs)
 }
 
 trait UnaryOperator extends Expression {
   val ghs: Expression
 
-  def children = Seq(ghs)
+  val children = Seq(ghs)
 }
 
 case class Typename (qname: QName, isArray: Boolean=false) extends Visitable {
@@ -55,7 +55,7 @@ case class Typename (qname: QName, isArray: Boolean=false) extends Visitable {
     Seq("void", "boolean", "int", "short", "byte", "char").contains(name)
   override def toString() = s"$name$brackets"
 
-  def children = Seq()
+  val children = Seq()
 }
 
 case class FileNode(
@@ -63,7 +63,7 @@ case class FileNode(
   imports: Seq[ImportStmnt],
   classes: Seq[ClassDefn]
 ) extends Visitable {
-  def children = imports ++ classes
+  val children = imports ++ classes
 }
 
 case class ClassDefn(
@@ -76,7 +76,7 @@ case class ClassDefn(
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
-  def children = extnds.toList ++ impls ++ fields ++ cxrs ++ methods
+  val children = extnds.toList ++ impls ++ fields ++ cxrs ++ methods
 
   val isClass = !isInterface
 
@@ -95,13 +95,13 @@ case class ClassDefn(
 case class ImportClass(
   tname: Typename
 ) extends ImportStmnt {
-  def children = Seq(tname)
+  val children = Seq(tname)
 }
 
 case class ImportPkg(
   pkg: QName
 ) extends ImportStmnt {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class Signature(name: String, params: Seq[Typename])
@@ -115,7 +115,7 @@ case class MethodDefn(
   val isConstructor = name == tname.toString
   val signature = Signature(name, params.map(_.tname))
 
-  def children = Seq(tname) ++ params ++ body.toList
+  val children = Seq(tname) ++ params ++ body.toList
 }
 
 case class VarStmnt(
@@ -124,7 +124,7 @@ case class VarStmnt(
   tname: Typename,
   value: Option[Expression]
 ) extends Statement {
-  def children = tname +: value.toList
+  val children = tname +: value.toList
 }
 
 case class IfStmnt(
@@ -132,14 +132,14 @@ case class IfStmnt(
   then: Statement,
   otherwise: Option[Statement]
 ) extends Statement {
-  def children = Seq(cond, then) ++ otherwise.toList
+  val children = Seq(cond, then) ++ otherwise.toList
 }
 
 case class WhileStmnt(
   cond: Expression,
   body: Statement
 ) extends Statement {
-  def children = Seq(cond, body)
+  val children = Seq(cond, body)
 }
 
 case class ForStmnt(
@@ -148,105 +148,105 @@ case class ForStmnt(
   after: Option[Expression],
   body: Statement
 ) extends Statement {
-  def children = Seq(body) ++ first.toList ++ cond.toList ++ after.toList
+  val children = Seq(body) ++ first.toList ++ cond.toList ++ after.toList
 }
 
 case class BlockStmnt(
   body: Seq[Statement]
 ) extends Statement {
-  def children = body
+  val children = body
 }
 
 case class ReturnStmnt(
   value: Expression
 ) extends Statement {
-  def children = Seq(value)
+  val children = Seq(value)
 }
 
 case class ExprStmnt(
   expr: Expression
 ) extends Statement {
-  def children = Seq(expr)
+  val children = Seq(expr)
 }
 
 case class IntVal(
   value: Int
 ) extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class BoolVal(
   value: Boolean
 ) extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class ThisVal()
 extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class SuperVal()
 extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class NullVal()
 extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class Id(
   name: String
 ) extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class Call(
   method: Expression,
   args: Seq[Expression]
 ) extends Expression {
-  def children = args :+ method
+  val children = args :+ method
 }
 
 case class Cast(
   tname: Typename,
   value: Expression
 ) extends Expression {
-  def children = Seq(tname, value)
+  val children = Seq(tname, value)
 }
 
 case class NewType(
   tname: Typename,
   args: Seq[Expression]
 ) extends Expression {
-  def children = tname +: args
+  val children = tname +: args
 }
 
 case class NewArray(
   tname: Typename,
   size: Expression
 ) extends Expression {
-  def children = Seq(tname, size)
+  val children = Seq(tname, size)
 }
 
 case class CharVal(
   value: Char
 ) extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class StringVal(
   value: String
 ) extends Expression {
-  def children = Seq()
+  val children = Seq()
 }
 
 case class InstanceOf(
   lhs: Expression,
   tname: Typename
 ) extends Expression {
-  def children = Seq(lhs, tname)
+  val children = Seq(lhs, tname)
 }
 
 case class Assignment(lhs: Expression, rhs: Expression)

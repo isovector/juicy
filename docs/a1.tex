@@ -1,9 +1,14 @@
 \documentclass{article}
+\usepackage{todonotes}
 
 \title{CS 444 - A1}
 \author{Jacob Abrahams - 20370104\\ Alexander Maguire - 20396195}
 
 \begin{document}
+
+\newcommand\type[1]{\texttt{#1}}
+\renewcommand\value[1]{\texttt{#1}}
+\newcommand\source[2]{See: \texttt{#1.scala}::\type{#2} \\}
 
 \maketitle
 
@@ -14,12 +19,63 @@
 
 
 \subsection{Tokenizing}
+\source{tokenizer/Tokenizer}{Tokenizer\#apply}
+\todo{mention having source locations}
+
+
 
 
 \subsection{Parsing}
 
+\subsubsection{Overview}
+\subsubsection{Compilation Unit}
+\source{parser/Parser}{Parser\#parseFile}
+
+\subsubsection{Statements}
+\source{parser/Parser}{Parser\#parseStmnt}
+
+\subsubsection{Expressions}
+\source{parser/Parser}{Parser\#parseExpr}
+
+
+\subsection{Abstract Syntax Tree}
+
+\subsubsection{Overview}
+
+\subsubsection{Visiting}
+\source{utils/Visitor}{Visitable}
+
+Our compiler takes a relatively novel approach to visiting the AST; all syntax nodes are derived from \type{Visitable}
+-- an abstract trait whose \value{children} member acts as a manifest for which nodes are visitable from this node. To
+visit over the AST, \type{Visitor} is given a \textit{visit function} and \textit{folding function}. The \textit{visit
+function} is given either a \value{Before(Node)} or an \value{After(Node)}, as well as all of the \value{Node}'s
+ancestors in the tree to allow for context-sensitivity. The \textit{visit function} returns a generic type \type{T},
+and it is the responsibility of the \textit{folding function} to transform \type{List<T>} into a single \type{T}. For
+example, the \textit{visit function} might return whether or not a node is valid, and the \textit{folding function}
+would return the logical AND of all the booleans. The result of this visit would then be whether or not the entire AST
+is valid.
+
+Additionally, the \value{Visitor} lifts its function arguments to provide automatic error-handling; any exceptions
+deriving from \type{CompilerError} thrown in the \textit{visit function} are caught and bundled together, allowing for
+natural error handling while visiting, without sacrificing encapsulation.
+
+
+
+
+
+\subsubsection{Operators}
+\source{ast/AST}{BinaryOperator}
+
+\subsubsection{Literals}
+\source{ast/AST}{\todo{}}
+
+
+
+
+
 
 \subsection{Weeding}
+\source{weeder/Weeder}{Weeder\#apply}
 
 
 

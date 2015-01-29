@@ -10,7 +10,7 @@ trait VisitOrder
 case class Before(n: Visitable) extends VisitOrder
 case class After(n: Visitable) extends VisitOrder
 case class EmptyNode() extends Visitable {
-  def children = Seq()
+  val children = Seq()
 }
 
 def before(order: VisitOrder): Visitable =
@@ -63,7 +63,7 @@ trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
   def from = originalToken.from
-  def children: Seq[Visitable]
+  val children: Seq[Visitable]
 
   def visit[T]
       (fold: (T, T) => T)
