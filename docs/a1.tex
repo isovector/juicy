@@ -1,0 +1,51 @@
+\documentclass{article}
+
+\title{CS 444 - A1}
+\author{Jacob Abrahams - 20370104\\ Alexander Maguire - 20396195}
+
+\begin{document}
+
+\maketitle
+
+\section{Design}
+
+
+\subsection{Overview}
+
+
+\subsection{Tokenizing}
+
+
+\subsection{Parsing}
+
+
+\subsection{Weeding}
+
+
+
+
+\section{Challenges}
+
+\begin{itemize}
+    \item no grammar
+    \item forgot to parse constructors
+    \item negative ints
+    \item duplicate modifiers
+    \item rewinding to parse
+    \item visitor would reduce to a single value -- hard to return errors
+    \item automatic binary expression precedence; made instanceof hacky
+\end{itemize}
+
+
+
+
+\section{Testing}
+
+\begin{itemize}
+    \item scala test. lots of unit tests. tons! like 70
+    \item most of them are built from the bottom up, so we can just test individual expressions, for example
+    \item scala lets us write high-level testing infrastructure, like AB testing with keywords for the weeder
+\end{itemize}
+
+\end{document}
+
