@@ -327,10 +327,20 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseImport(): ImportStmnt = withSource {
     ensure("import")
     val what = delimited(".".asToken) {
+      if (!(checkIdentifier() || check("*")))
+        throw Expected("Expected identifier or * in import")
+
       val result = unwrap(cur)
       next()
       result
     }
+
+    val starCount = what.count(_ == "*")
+    if (starCount > 1)
+      throw Expected("Only one wildcard in import pkg")
+
+    if (starCount == 1 && what.last != "*")
+      throw Expected("Wildcard must be at end of import pkg")
 
     val result = what.last match {
       case "*" => new ImportPkg(what.slice(0, what.length - 1))

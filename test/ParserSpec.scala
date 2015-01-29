@@ -347,6 +347,16 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
             "Jello", PUBLIC, None, Seq(), Seq(), Seq(), Seq(), true)))
   }
 
+  it should "not parse multiple stars in imports" in {
+    val parser = mkParser("""
+      import b.*.*.*;
+      """)
+
+    intercept[UnexpectedError] {
+      parser.parseFile()
+    }
+  }
+
   it should "not fail on easy java programs" in {
     val parser = mkParser("""
       class BubbleSort {
