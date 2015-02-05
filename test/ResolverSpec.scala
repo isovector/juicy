@@ -133,6 +133,27 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+  it should "resolve primitives" in {
+    val ast = parse("""
+      class A {
+        int I = 5;
+        byte B = 1;
+        boolean BB = true;
+        char C = 'c';
+        short S = 3;
+      }
+      """)(0)
+
+    def resolvedType(which: Int) =
+      ast.classes(0).fields(which).tname.resolved.get
+
+    resolvedType(0).name should be === "int"
+    resolvedType(1).name should be === "byte"
+    resolvedType(2).name should be === "boolean"
+    resolvedType(3).name should be === "char"
+    resolvedType(4).name should be === "short"
+  }
+
   // ---------- BEGIN KNOWER TESTS -------------
 
   // Compile a bit of code with a '%s' marker twice, once with it pass subbed,

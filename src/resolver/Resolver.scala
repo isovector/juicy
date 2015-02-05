@@ -34,11 +34,21 @@ object Resolver {
    //No package names or prefixes of package names of declared packages, single-type-import declarations or import-on-demand declarations that are used may resolve to types, except for types in the default package.
    //Every import-on-demand declaration must refer to a package declared in some file listed on the Joos command line. That is, the import-on-demand declaration must refer to a package whose name appears as the package declaration in some source file, or whose name is a prefix of the name appearing in some package declaration.
 
-    // TODO: resolve primitives
     val types = new collection.mutable.HashMap[QName, ClassDefn]
     val packages =
       new collection.mutable.HashMap[QName,
         collection.mutable.MutableList[QName]]
+
+    def addPrimitive(name: String) =
+      types += Seq(name) -> ClassDefn(
+        name, Modifiers.PUBLIC, None, Seq(), Seq(), Seq(), Seq())
+
+    addPrimitive("int")
+    addPrimitive("char")
+    addPrimitive("boolean")
+    addPrimitive("short")
+    addPrimitive("byte")
+    addPrimitive("void")
 
     // Add all new fully qualified types to a big dictionary
     nodes.map { node =>
