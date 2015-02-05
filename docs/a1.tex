@@ -1,6 +1,8 @@
 \documentclass{article}
 \usepackage{todonotes}
 \usepackage{listings}
+\usepackage[margin=0.5in]{geometry}
+
 
 \title{CS 444 - A1}
 \author{Jacob Abrahams - 20370104\\ Alexander Maguire - 20396195}
@@ -52,7 +54,8 @@
 \newcommand\type[1]{\texttt{#1}}
 \newcommand\func[1]{\texttt{#1}}
 \renewcommand\value[1]{\texttt{#1}}
-\newcommand\source[2]{See: \texttt{#1.scala}::\type{#2} \\}
+\newcommand\source[2]{See: \texttt{src/#1.scala}::\type{#2} \\}
+\newcommand\testsrc[1]{See: \texttt{test/#1.scala} \\}
 
 \maketitle
 
@@ -180,14 +183,11 @@ ast.visit(_ && _) { (self, context) =>
     case Before(MethodDefn(name, _, _, _, _)) =>
       println("Entering method " + name)
       true
-
     case After(MethodDefn(name, _, _, _, _)) =>
       println("Leaving method " + name)
       true
-
     case Before(BoolVal(_)) =>
       throw CompilerException("no booleans allowed")
-
     case _ =>
       false
   }
@@ -242,7 +242,7 @@ case me@SuperVal() =>
 
 Every step in the weeding process either returns {\tt true}, indicating success,
 or throws a {\tt WeederError}, which is caught in the enclosing {\tt Visitor}. If any
-errors have been caught, they will be grouped together and re-thrown in a single 
+errors have been caught, they will be grouped together and re-thrown in a single
 {\tt CompilerError}, which is passed to the caller. This allows the weeder to express
 as many semantic errors as possible to the user, to improve fixing whatever is invalid
 with the code. All errors retain the {\tt SourceLocation} of the most relevant token of the
@@ -264,11 +264,27 @@ node in the AST, to help the user find the exact location of the error.
 
 \section{Testing}
 
-\begin{itemize}
-    \item scala test. lots of unit tests. tons! like 70
-    \item most of them are built from the bottom up, so we can just test individual expressions, for example
-    \item scala lets us write high-level testing infrastructure, like AB testing with keywords for the weeder
-\end{itemize}
+We've heavily depended on a strong testing infrastructure during the development of our code; at time of writing we have
+a little over 70 unit tests. Because Scala has strong support for domain specific languages, scalatest is absolutely
+lovely to use. Furthermore, the testing infrastructure is a first-class citizen, and so some of our later-stage tests
+are capable of succinctly running A/B tests on code -- ensuring that text substitution changes the results from pass to
+failure.
+
+Our tests have been written from the bottom-up, marking very small units to be tested. Our philosophy has been
+test-driven development, and on quite a few occasions this policy has prevented us from creating regression bugs.
+
+An example of one of our parser tests looks like this:
+
+\begin{lstlisting}[language=Scala]
+"Parser" should "right-associate assignments" in {
+  mkParser("a = b = 5").parseExpr() should be ===
+    Assignment(
+      Id("a"),
+      Assignment(Id("b"), IntVal(5)))
+}
+\end{lstlisting}
+
+\testsrc{*}
 
 \end{document}
 
