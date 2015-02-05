@@ -152,6 +152,8 @@ precedence), but we include a hack for the ``instanceof'' case by short-circuiti
 \subsubsection{Overview}
 
 \subsubsection{Visiting}
+\label{sec:visiting}
+\source{utils/Visitor}{Visitable}
 
 Our compiler takes a relatively novel approach to visiting the AST; all syntax nodes are derived from \type{Visitable}
 -- an abstract trait whose \value{children} member acts as a manifest for which nodes are visitable from this node. To
@@ -207,16 +209,50 @@ ast.visit(_ && _) { (self, context) =>
 
 \subsection{Weeding}
 \source{weeder/Weeder}{Weeder\#apply}
+The weeder in our compiler uses the {\tt Visitor} trait mentioned in Section \ref{sec:visiting} to match
+characteristics of nodes in the AST as necessitated by the Joos specification. This is done using pattern matching
+on the case classes representing different types of tree node, applying rules to different kinds of expressions and
+statements as appropriate. For instance, to verify the rule, ``A class/interface must be declared in a
+.java file with the same base name as the class/interface,'' we do the following:
 
+\begin{lstlisting}[language=Scala]
+case me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface) =>
+  val basename = {
+    val fname = node.originalToken.from.file.split('/').last
+    if (fname endsWith ".java") fname.slice(0, fname.length - ".java".length) else ""
+  }
 
+  if (debug.checkFileName !--> (basename == name)) {
+    throw new WeederError(
+      s"Found class `$name` in file `$basename.java`", me)
+  }
+\end{lstlisting}
+The Weeder maintains a list representing the current context, in essence the path from
+the root file node to the current expression being parsed. This allows us to query the syntactic
+location of a given {\tt Visitable}, to determine if it is contextually appropriate. For instance,
+we check for explicit calls to methods in a parent class as such:
 
+\begin{lstlisting}[language=Scala]
+case me@SuperVal() =>
+  if (isIn[Call](call =>
+      context.contains(call.method) || me == call.method))
+    throw new WeederError(
+      s"Can't explicitly call methods on super()", me)
+\end{lstlisting}
 
+Every step in the weeding process either returns {\tt true}, indicating success,
+or throws a {\tt WeederError}, which is caught in the enclosing {\tt Visitor}. If any
+errors have been caught, they will be grouped together and re-thrown in a single 
+{\tt CompilerError}, which is passed to the caller. This allows the weeder to express
+as many semantic errors as possible to the user, to improve fixing whatever is invalid
+with the code. All errors retain the {\tt SourceLocation} of the most relevant token of the
+node in the AST, to help the user find the exact location of the error.
 \section{Challenges}
 
 \begin{itemize}
     \item no grammar
     \item forgot to parse constructors
-    \item negative ints
+    \item Corner case of $-2^{31}$
     \item duplicate modifiers
     \item rewinding to parse
     \item visitor would reduce to a single value -- hard to return errors
