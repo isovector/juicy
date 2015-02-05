@@ -12,7 +12,7 @@
     new,null,object,override,package,%
     private,protected,requires,return,sealed,%
     super,this,throw,trait,true,try,%
-    type,val,var,while,with,yield},
+    type,val,var,while,with,yield,Some,None,Option},
   otherkeywords={=>,<-,<\%,<:,>:,\#,@},
   sensitive=true,
   morecomment=[l]{//},
@@ -50,6 +50,7 @@
 \begin{document}
 
 \newcommand\type[1]{\texttt{#1}}
+\newcommand\func[1]{\texttt{#1}}
 \renewcommand\value[1]{\texttt{#1}}
 \newcommand\source[2]{See: \texttt{#1.scala}::\type{#2} \\}
 
@@ -82,9 +83,28 @@ The lexer/tokenizer we implemented uses a variant of maximal munch, trying to ma
 Notably, our integer literals are stored as long integers internally during the lexing step. This is due to the fact that negative signs are parsed as their own token, so range checks can't be done until parsing. Token literals, once produced, are assigned a {\tt SourceLocation} with their originating file, line, and column, to facilitate debugging and helpful error message production. Tokens are then appended to a {\tt TokenStream}, which is a representation of a tokenized file. This is similar to the {\tt CharStream} used to read in the files, but can be rewound to pre-set bookmark locations to facilitate backtracking in the parser as needed. The tokenizer runs until the end of a file, or the first {\tt Invalid} token produced.
 
 \subsection{Parsing}
+We decided to implement our parser with recursive-descent because we felt it would lead to a clearer, more
+comprehensible code base in the final project. Additionally, we forgo building a parse tree, deciding to build the AST
+directly. The parser is made up of dozens of functions, \func{parseX}, which are typed as strongly as possible,
+allowing for robust testing at the unit level of every feature. In addition to the parser, we also created a set of
+``parser utilities'', which perform everything that isn't directly related to building of our AST. The most important
+utils which bespeckle our code are:
 
-\subsubsection{Overview}
+\begin{itemize}
+    \item \func{check}: determine whether the current token is something.
+    \item \func{ensure}: like \func{check}, but throws an expected error if the predicate isn't matched.
+    \item \func{next}: increment the current token pointer.
+    \item \func{withSource}: a macro which injects the token's \type{SourceLocation} into the generated AST node.
+    \item \func{delimited}: a macro which matches one-or-more parse blocks, with a mandatory delimiter between each.
+\end{itemize}
+\source{parser/ParserUtils}{ParserUtils}
 
+Additionally, many functions which should logically accept tokens will also accept a string, which internally is
+tokenized and used as a token. This approach gives us type safety with our tokens, but also means we don't need to work
+with them directly for many simple cases where they would provide additional readability overhead.
+
+The following code snippit is a straight-forward example of our parser, it parses the \emph{if statement}. By greedily
+matching \emph{else}s, we avoid the dangling else problem.
 
 \begin{lstlisting}[language=Scala]
 def parseIf(): IfStmnt = withSource {
@@ -103,19 +123,8 @@ def parseIf(): IfStmnt = withSource {
   new IfStmnt(cond, then, otherwise)
 }
 \end{lstlisting}
+\source{parser/Parser}{Parser\#parseIf}
 
-
-
-
-
-\subsubsection{Compilation Unit}
-\source{parser/Parser}{Parser\#parseFile}
-
-\subsubsection{Statements}
-\source{parser/Parser}{Parser\#parseStmnt}
-
-\subsubsection{Expressions}
-\source{parser/Parser}{Parser\#parseExpr}
 
 
 \subsection{Abstract Syntax Tree}
