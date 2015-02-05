@@ -61,10 +61,6 @@
 
 \section{Design}
 
-
-\subsection{Overview}
-
-
 \subsection{Tokenizing}
 The lexer/tokenizer we implemented uses a variant of maximal munch, trying to match each pattern of valid tokens while
 consuming as much of the input as possible per token. We treat the file's contents as a stream of data, often consuming
@@ -100,7 +96,7 @@ the first {\tt Invalid} token produced.
 
 \subsection{Parsing}
 
-\subsection{Overview}
+\subsubsection{Overview}
 
 We decided to implement our parser with recursive-descent because we felt it would lead to a clearer, more
 comprehensible code base in the final project. Additionally, we forgo building a parse tree, deciding to build the AST
@@ -146,7 +142,7 @@ def parseIf(): IfStmnt = withSource {
 
 
 
-\subsection{Operators}
+\subsubsection{Operators}
 
 While most of the parser is straight-forward, our approach to parsing binary operators could use some explaining. We
 create a list of maps from tokens to AST node constructors, ordered by ascending precedence. \func{parseExprPrec} (short
@@ -164,8 +160,6 @@ precedence), but we include a hack for the ``instanceof'' case by short-circuiti
 
 
 \subsection{Abstract Syntax Tree}
-
-\subsubsection{Overview}
 
 \subsubsection{Visiting}
 \label{sec:visiting}
@@ -210,16 +204,6 @@ ast.visit(_ && _) { (self, context) =>
 
 
 
-
-\subsubsection{Operators}
-
-
-
-\source{ast/AST}{BinaryOperator}
-
-
-
-
 \subsection{Weeding}
 \source{weeder/Weeder}{Weeder\#apply}
 The weeder in our compiler uses the {\tt Visitor} trait mentioned in Section \ref{sec:visiting} to match
@@ -260,6 +244,9 @@ errors have been caught, they will be grouped together and re-thrown in a single
 as many semantic errors as possible to the user, to improve fixing whatever is invalid
 with the code. All errors retain the {\tt SourceLocation} of the most relevant token of the
 node in the AST, to help the user find the exact location of the error.
+
+
+
 \section{Challenges}
 
 \begin{itemize}
