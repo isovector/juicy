@@ -66,8 +66,13 @@
 
 
 \subsection{Tokenizing}
-\source{tokenizer/Tokenizer}{Tokenizer\#apply}
-The lexer/tokenizer we implemented uses a variant of maximal munch, trying to match each pattern of valid tokens while consuming as much of the input as possible per token. We treat the file's contents as a stream of data, often consuming as much as possible satisfying a given predicate. Every keyword, operator, and literal produces a corresponding token, as do identifiers. We also produce an {\tt Invalid} token type, for when there is no valid token matching a given part of the input, which takes an optional field denoting the exact nature of the error. For instance, when matching an integer literal, we use the following pattern:
+The lexer/tokenizer we implemented uses a variant of maximal munch, trying to match each pattern of valid tokens while
+consuming as much of the input as possible per token. We treat the file's contents as a stream of data, often consuming
+as much as possible satisfying a given predicate. Every keyword, operator, and literal produces a corresponding token,
+as do identifiers. We also produce an {\tt Invalid} token type, for when there is no valid token matching a given part
+of the input, which takes an optional field denoting the exact nature of the error. For instance, when matching an
+integer literal, we use the following pattern:
+
 \begin{lstlisting}[language=Scala]
   val ipart = source.takeWhile(_.isdigit)
   if (cur.isLetter || cur == '_') {
@@ -83,7 +88,15 @@ The lexer/tokenizer we implemented uses a variant of maximal munch, trying to ma
   }
 \end{lstlisting}
 
-Notably, our integer literals are stored as long integers internally during the lexing step. This is due to the fact that negative signs are parsed as their own token, so range checks can't be done until parsing. Token literals, once produced, are assigned a {\tt SourceLocation} with their originating file, line, and column, to facilitate debugging and helpful error message production. Tokens are then appended to a {\tt TokenStream}, which is a representation of a tokenized file. This is similar to the {\tt CharStream} used to read in the files, but can be rewound to pre-set bookmark locations to facilitate backtracking in the parser as needed. The tokenizer runs until the end of a file, or the first {\tt Invalid} token produced.
+\source{tokenizer/Tokenizer}{Tokenizer\#apply}
+
+Notably, our integer literals are stored as long integers internally during the lexing step. This is due to the fact
+that negative signs are parsed as their own token, so range checks can't be done until parsing. Token literals, once
+produced, are assigned a {\tt SourceLocation} with their originating file, line, and column, to facilitate debugging and
+helpful error message production. Tokens are then appended to a {\tt TokenStream}, which is a representation of a
+tokenized file. This is similar to the {\tt CharStream} used to read in the files, but can be rewound to pre-set
+bookmark locations to facilitate backtracking in the parser as needed. The tokenizer runs until the end of a file, or
+the first {\tt Invalid} token produced.
 
 \subsection{Parsing}
 
