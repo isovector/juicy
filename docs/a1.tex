@@ -1,8 +1,51 @@
 \documentclass{article}
 \usepackage{todonotes}
+\usepackage{listings}
 
 \title{CS 444 - A1}
 \author{Jacob Abrahams - 20370104\\ Alexander Maguire - 20396195}
+
+\lstdefinelanguage{scala}{
+  morekeywords={abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[n]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]',
+  morestring=[b]"""
+}
+
+
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+% Default settings for code listings
+\lstset{frame=tb,
+  language=scala,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  frame=single,
+  breaklines=true,
+  breakatwhitespace=true
+  tabsize=3
+}
 
 \begin{document}
 
@@ -28,6 +71,30 @@
 \subsection{Parsing}
 
 \subsubsection{Overview}
+
+
+\begin{lstlisting}[language=Scala]
+def parseIf(): IfStmnt = withSource {
+  ensure("if")
+  ensure("(")
+  val cond = parseExpr()
+  ensure(")")
+  val then = parseStmnt()
+
+  val otherwise =
+    if (check("else")) {
+      ensure("else")
+      Some(parseStmnt())
+    } else None
+
+  new IfStmnt(cond, then, otherwise)
+}
+\end{lstlisting}
+
+
+
+
+
 \subsubsection{Compilation Unit}
 \source{parser/Parser}{Parser\#parseFile}
 
@@ -59,6 +126,24 @@ Additionally, the \value{Visitor} lifts its function arguments to provide automa
 deriving from \type{CompilerError} thrown in the \textit{visit function} are caught and bundled together, allowing for
 natural error handling while visiting, without sacrificing encapsulation.
 
+
+\begin{lstlisting}[language=Scala]
+ast.visit(_ && _) { (self, context) =>
+  node match {
+    case Before(MethodDefn(name, _, _, _, _)) =>
+      println("Entering method " + name)
+      true
+
+    case After(MethodDefn(name, _, _, _, _)) =>
+      println("Leaving method " + name)
+      true
+
+    case _ => true
+  }
+}
+
+
+\end{lstlisting}
 
 
 
