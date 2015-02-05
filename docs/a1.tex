@@ -83,6 +83,9 @@ The lexer/tokenizer we implemented uses a variant of maximal munch, trying to ma
 Notably, our integer literals are stored as long integers internally during the lexing step. This is due to the fact that negative signs are parsed as their own token, so range checks can't be done until parsing. Token literals, once produced, are assigned a {\tt SourceLocation} with their originating file, line, and column, to facilitate debugging and helpful error message production. Tokens are then appended to a {\tt TokenStream}, which is a representation of a tokenized file. This is similar to the {\tt CharStream} used to read in the files, but can be rewound to pre-set bookmark locations to facilitate backtracking in the parser as needed. The tokenizer runs until the end of a file, or the first {\tt Invalid} token produced.
 
 \subsection{Parsing}
+
+\subsection{Overview}
+
 We decided to implement our parser with recursive-descent because we felt it would lead to a clearer, more
 comprehensible code base in the final project. Additionally, we forgo building a parse tree, deciding to build the AST
 directly. The parser is made up of dozens of functions, \func{parseX}, which are typed as strongly as possible,
@@ -127,12 +130,28 @@ def parseIf(): IfStmnt = withSource {
 
 
 
+\subsection{Operators}
+
+While most of the parser is straight-forward, our approach to parsing binary operators could use some explaining. We
+create a list of maps from tokens to AST node constructors, ordered by ascending precedence. \func{parseExprPrec} (short
+for \emph{parse expression of precedence}) will recursively call itself with higher and higher levels of precedence to
+match the left-hand-side of an operator, and then matches as many of its operator tokens in the token stream, creating a
+left-associative tree. This recursion automatically handles precedence for us.
+
+There are two issues with this approach, the first is that it will always derive a left-associative tree (which is
+problematic for the right-associate assignment operator), and for the ``instanceof'' operator, which does not take an
+expression for a right-hand side. We handle the assignment issue by parsing it separately (since it has the lowest
+precedence), but we include a hack for the ``instanceof'' case by short-circuiting the function in this case.
+
+\source{parser/Parser}{Parser\#parseExprPrec}
+
+
+
 \subsection{Abstract Syntax Tree}
 
 \subsubsection{Overview}
 
 \subsubsection{Visiting}
-\source{utils/Visitor}{Visitable}
 
 Our compiler takes a relatively novel approach to visiting the AST; all syntax nodes are derived from \type{Visitable}
 -- an abstract trait whose \value{children} member acts as a manifest for which nodes are visitable from this node. To
@@ -148,6 +167,10 @@ Additionally, the \value{Visitor} lifts its function arguments to provide automa
 deriving from \type{CompilerError} thrown in the \textit{visit function} are caught and bundled together, allowing for
 natural error handling while visiting, without sacrificing encapsulation.
 
+For a toy example, the following invocation will return a \texttt{Left(List<Error>)} if \value{ast} contains any boolean
+literals, or a \value{Right(Boolean)}, whose inner value represents whether the AST contains only method definitions
+(and absolutely nothing else). Such an example is obviously frivolous, but serves to illustrate the power of our
+visitor.
 
 \begin{lstlisting}[language=Scala]
 ast.visit(_ && _) { (self, context) =>
@@ -160,23 +183,24 @@ ast.visit(_ && _) { (self, context) =>
       println("Leaving method " + name)
       true
 
-    case _ => true
+    case Before(BoolVal(_)) =>
+      throw CompilerException("no booleans allowed")
+
+    case _ =>
+      false
   }
 }
-
-
 \end{lstlisting}
+\source{utils/Visitor}{Visitable\#visit}
 
 
 
 
 \subsubsection{Operators}
+
+
+
 \source{ast/AST}{BinaryOperator}
-
-\subsubsection{Literals}
-\source{ast/AST}{\todo{}}
-
-
 
 
 

@@ -12,7 +12,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def cur: Token = tokens.cur
   def next() = tokens.next()
 
-  def operators = Seq(
+  val operators = Seq(
     Map(
       "||" -> (LogicOr.tupled _)
     ),
@@ -89,7 +89,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
           throw UnexpectedError("Duplicate modifier " + unwrap(m), m.from)
       }
     })
-    
+
     (0 /: mods)((agg, token) => agg | Modifiers.parse(unwrap(token)))
   }
 
