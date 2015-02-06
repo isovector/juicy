@@ -248,15 +248,15 @@ node in the AST, to help the user find the exact location of the error.
 
 
 \section{Challenges}
-
+We faced several difficulties in building scanner and parser, most notably:
 \begin{itemize}
-    \item no grammar
-    \item forgot to parse constructors
-    \item Corner case of $-2^{31}$
-    \item duplicate modifiers
-    \item rewinding to parse
-    \item visitor would reduce to a single value -- hard to return errors
-    \item automatic binary expression precedence; made instanceof hacky
+    \item We made the decision early on in design to not build a concrete parse tree in any step of the process, jumping immediately from a token stream to an abstract syntax tree. This choice had its pros and cons, the latter including having stranger corner cases where our results did not match expectations.
+    \item Partially due to the aforementioned lack of parse tree, there were a few language features we lacked in early tests, such as constructors.
+    \item Due to our tokenizer immediately taking the negative sign as its own token, we could not initially do correct range checks on integer literals, as $-2147483648$ would have failed the scanner, when it is a perfectly valid integer. We fixed this by storing integers in longs initially, and doing the range check in the parser, coalescing an adjacent negative sign to the literal if present.
+    \item Due to the way our weeder was structured, we could not initially detect duplicate modifiers on fields and methods (eg. \texttt{public public int x;}) This was fixed by adding logic to the parser, when building up a list of the flags applied to an identifier.
+    \item Due again to the decision to solely build an AST, some structures were initially hard to parse, as they required scanning multiple tokens in a row to determine what the actual type of statement should be. An example of this would be distinguishing a variable declaration from a field assignment. We fixed this by adding checkpointing and rewinding to the token stream, so we could try to parse a series of tokens as one statement type, and, should it fail, try another type of statement, and so forth as necessary.
+    \item Originally (and still, to some extent), our \type{Visitor} was implemented as a giant fold statement, returning a single boolean based on the output of the child nodes. This made error handling difficult/impossible, as there was no way to determine what caused the visitor to fail. Our initial solution to this problem was to have the Visitor instead return an \type{Either} monad containing either a boolean, or a list of strings representing the errors that accumulated. We realized this was not as clear as preferred, however, and changed our solution to just accumulate all the thrown exceptions and rethrow them all at the same time.
+    \item Our solution to binary operator precedence worked well, provided the operator was left-associative and took two arbitrary expressions as operands. This didn't hold true in two cases: the assignment operator (which is right-associative), and the \func{instanceof} operator (which required the second operator to be a class name). We handled assignment well as a special case (since it has lowest priority anyway), but had to hack-in proper support for instanceof (since it's at neither end of the precedence spectrum).
 \end{itemize}
 
 
