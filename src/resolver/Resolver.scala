@@ -85,6 +85,7 @@ object Resolver {
         }
       }
 
+      importPkg(Seq("java", "lang"), SourceLocation("<internal>", 0, 0))
       if (node.pkg != Seq())
         importPkg(node.pkg, node.from)
 
