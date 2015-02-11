@@ -20,9 +20,9 @@ object Resolver {
   def qualify(name: String, context: Seq[Visitable]): QName = {
     context.reverse.flatMap { element =>
       element match {
-        case ClassDefn(name, _, _, _, _, _, _, _) => Seq(name)
-        case FileNode(pkg, _, _)                  => pkg
-        case _                                    => Seq()
+        case c: ClassDefn => Seq(c.name)
+        case f: FileNode  => f.pkg
+        case _            => Seq()
       }
     } :+ name
   }
@@ -45,7 +45,7 @@ object Resolver {
 
     def addPrimitive(name: String) =
       types += Seq(name) -> ClassDefn(
-        name, Modifiers.PUBLIC, None, Seq(), Seq(), Seq(), Seq())
+        name, Modifiers.PUBLIC, None, Seq(), Seq(), Seq())
 
     addPrimitive("int")
     addPrimitive("char")
@@ -65,8 +65,8 @@ object Resolver {
       { (self, context) =>
         self match {
           // TODO: check for conflicts
-          case Before(classDef@ClassDefn(name, _, _, _, _, _, _, _)) =>
-            val qname = qualify(name, context)
+          case Before(classDef: ClassDefn) =>
+            val qname = qualify(classDef.name, context)
             types += qname -> classDef.asInstanceOf[ClassDefn]
             packages(pkg) += qname
           case _ =>

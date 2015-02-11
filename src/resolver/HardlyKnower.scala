@@ -42,7 +42,7 @@ object HardlyKnower {
         }
 
         throwIf(s"Class `$name` has non-unique methods") {
-          val methods = (t.methods ++ t.cxrs).map(_.signature)
+          val methods = t.methods.map(_.signature)
           methods != methods.distinct
         }
 

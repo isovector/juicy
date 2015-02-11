@@ -26,7 +26,9 @@ object Weeder {
       implicit val implContext = context
 
       before(self) match {
-        case me@ClassDefn(name, mods, extnds, impls, fields, cxrs, methods, isInterface) =>
+        case me@ClassDefn(name, mods, extnds, impls, fields, rawmethods, isInterface) =>
+          val (cxrs, methods) = rawmethods.partition(_.isCxr)
+
           val basename = {
             val fname = node.originalToken.from.file.split('/').last
             if (fname endsWith ".java") fname.slice(0, fname.length - ".java".length) else ""
@@ -107,7 +109,7 @@ object Weeder {
           }
 
 
-        case me@MethodDefn(name, mods, _, _, body) =>
+        case me@MethodDefn(name, mods, _, _, _, body) =>
           if (isIn[ClassDefn](_.isInterface)) {
             // An interface method cannot have a body.
             if (!body.isEmpty) {

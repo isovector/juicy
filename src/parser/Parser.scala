@@ -176,14 +176,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       }
     }
 
-    val functionMembers = rawFunctionMembers.map(_.asInstanceOf[MethodDefn])
+    val methods = rawFunctionMembers.map(_.asInstanceOf[MethodDefn])
 
-    val (constructors, methods) = functionMembers.partition { member =>
-      member match {
-        case method: MethodDefn if method.isConstructor => true
-        case _                                          => false
-      }
-    }
     ensure("}")
 
     new ClassDefn(
@@ -192,7 +186,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       extnds,
       impls,
       fields.map(_.asInstanceOf[VarStmnt]),
-      constructors,
       methods,
       isInterface)
   }
@@ -232,7 +225,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def parseConstructor(className: String, mods: Modifiers.Value) = {
-    parseMethod(className, mods, new Typename(Seq(className)))
+    parseMethod(className, mods, new Typename(Seq(className)), true)
   }
 
   // Parse  `= Expr` or ``
@@ -266,7 +259,8 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseMethod(
       name: String,
       mods: Modifiers.Value,
-      tname: Typename): MethodDefn = withSource {
+      tname: Typename,
+      isCxr: Boolean = false): MethodDefn = withSource {
     val params = parseParams()
     val body =
       if (!check(";"))
@@ -276,7 +270,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         None
       }
 
-    new MethodDefn(name, mods, tname, params, body)
+    new MethodDefn(name, mods, isCxr, tname, params, body)
   }
 
   // Parse `{ Statement[] }`

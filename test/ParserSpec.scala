@@ -304,15 +304,16 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseFile()
 
     val classes = result.classes
-    classes(0).cxrs should be ===
+    classes(0).methods.filter(_.isCxr) should be ===
       Seq(
-        new MethodDefn("A", PUBLIC, typename("A"), Seq(), None),
-        new MethodDefn(
+        MethodDefn("A", PUBLIC, true, typename("A"), Seq(), None),
+        MethodDefn(
           "A",
           STATIC,
+          true,
           typename("A"),
           Seq(
-            new VarStmnt("B", NONE, typename("int"), None)),
+            VarStmnt("B", NONE, typename("int"), None)),
           None))
   }
 
@@ -342,9 +343,9 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           new ImportClass(typename("a")),
           new ImportPkg(Seq("b"))),
         Seq(
-          new ClassDefn("Hello", NONE, Some(typename("java.lang.Object")), Seq(), Seq(), Seq(), Seq()),
+          new ClassDefn("Hello", NONE, Some(typename("java.lang.Object")), Seq(), Seq(), Seq()),
           new ClassDefn(
-            "Jello", PUBLIC, Some(typename("java.lang.Object")), Seq(), Seq(), Seq(), Seq(), true)))
+            "Jello", PUBLIC, Some(typename("java.lang.Object")), Seq(), Seq(), Seq(), true)))
   }
 
   it should "not parse multiple stars in imports" in {

@@ -72,11 +72,10 @@ case class ClassDefn(
   extnds: Option[Typename],
   impls: Seq[Typename],
   fields: Seq[VarStmnt],
-  cxrs: Seq[MethodDefn],
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
-  val children = extnds.toList ++ impls ++ fields ++ cxrs ++ methods
+  val children = extnds.toList ++ impls ++ fields ++ methods
 
   val isClass = !isInterface
 
@@ -108,11 +107,11 @@ case class Signature(name: String, params: Seq[Typename])
 case class MethodDefn(
   name: String,
   mods: Modifiers.Value,
+  isCxr: Boolean,
   tname: Typename,
   params: Seq[VarStmnt],
   body: Option[Statement]
 ) extends Definition {
-  val isConstructor = name == tname.toString
   val signature = Signature(name, params.map(_.tname))
 
   val children = Seq(tname) ++ params ++ body.toList

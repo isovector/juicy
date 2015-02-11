@@ -1,10 +1,10 @@
 package juicy.source.scoper
 
 import juicy.source.ast._
-import juicy.source.tokenizer._
 import juicy.source.ast.Modifiers._
-import juicy.utils.visitor._
+import juicy.source.tokenizer._
 import juicy.utils.CompilerError
+import juicy.utils.visitor._
 
 case class ScopeError(msg: String, from: SourceLocation) extends CompilerError
 
@@ -71,14 +71,14 @@ class ClassScope extends BlockScope {
 }
 
 object Hashtag360NoScoper {
-    
+
   def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
   def apply(node: Visitable): Boolean = {
     var curBlock: Option[BlockScope] = None
     var curClass: ClassScope = null
-    
+
     def makeChildScope(from: SourceLocation): Boolean = {
       if (curBlock.isEmpty) {
         throw new ScopeError("Invalid scoping", from)
@@ -87,7 +87,7 @@ object Hashtag360NoScoper {
         true
       }
     }
-    
+
     def freeChildScope(from: SourceLocation) = {
       if (curBlock.isEmpty) {
         throw new ScopeError("Somehow outside a non-existent scope", from)
@@ -96,7 +96,7 @@ object Hashtag360NoScoper {
         true
       }
     }
-    
+
     node.visit((a: Unit, b: Unit) => {})
     { (self, context) =>
       val from = self match {
@@ -104,21 +104,21 @@ object Hashtag360NoScoper {
         case After(a) => a.from
       }
       self match {
-        case Before(c@ClassDefn(_,_,_,_,fields,_,methods,_)) => {
+        case Before(c@ClassDefn(_,_,_,_,fields,methods,_)) => {
             if (!curBlock.isEmpty) {
                 throw new ScopeError("Nested classes forbidden", from)
             } else {
                 curClass = new ClassScope()
                 curBlock = Some(curClass)
                 fields.foreach(f => curClass.define(f.name, f.tname))
-                methods.foreach(m => curClass.defineMethod(m.name, m.params.map(_.tname), m.isConstructor))
+                methods.foreach(m => curClass.defineMethod(m.name, m.params.map(_.tname), m.isCxr))
                 true
             }
         }
-        case Before(MethodDefn(name,_,_,fields,_)) => {
+        case Before(m@MethodDefn(name,_,_,_,fields,_)) => {
           if (!makeChildScope(from)) {
             false
-          } else {            
+          } else {
             fields.foreach(f => curBlock.get.define(f.name, f.tname))
             true
           }
@@ -135,10 +135,10 @@ object Hashtag360NoScoper {
              true
            }
         }
-        case Before(WhileStmnt(_,_)) => {
+        case Before(_: WhileStmnt) => {
           makeChildScope(from)
         }
-        case After(WhileStmnt(_,_)) => {
+        case After(_: WhileStmnt) => {
           freeChildScope(from)
         }
         case Before(Id(name)) => {
@@ -150,19 +150,19 @@ object Hashtag360NoScoper {
             throw new ScopeError(s"Undefined reference to $name", from)
           }
         }
-        case Before(ForStmnt(_,_,_,_)) => {
+        case Before(_: ForStmnt) => {
           makeChildScope(from)
         }
-        case After(ForStmnt(_,_,_,_)) => {
+        case After(_:ForStmnt) => {
           freeChildScope(from)
         }
-        case Before(BlockStmnt(_)) => {
+        case Before(_: BlockStmnt) => {
           makeChildScope(from)
         }
-        case After(BlockStmnt(_)) => {
+        case After(_: BlockStmnt) => {
           freeChildScope(from)
         }
-        case After(ClassDefn(_,_,_,_,_,_,_,_)) => {
+        case After(_: ClassDefn) => {
           if(!freeChildScope(from)) {
             false
           } else {
@@ -170,10 +170,10 @@ object Hashtag360NoScoper {
             true
           }
         }
-        case After(MethodDefn(_,_,_,_,_)) => {
+        case After(_: MethodDefn) => {
           freeChildScope(from)
         }
-        case _ => 
+        case _ =>
       }
     }.fold(
       l => {
