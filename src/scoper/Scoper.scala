@@ -75,34 +75,38 @@ object Hashtag360NoScoper {
   def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
-  def apply(node: Visitable): Either[Seq[CompilerError],Boolean] = {
+  def apply(node: Visitable): Boolean = {
     var curBlock: Option[BlockScope] = None
     var curClass: ClassScope = null
     
-    def makeChildScope(): Boolean = {
+    def makeChildScope(from: SourceLocation): Boolean = {
       if (curBlock.isEmpty) {
-        false
+        throw new ScopeError("Invalid scoping", from)
       } else {
         curBlock = Some(new BlockScope(curBlock))
         true
       }
     }
     
-    def freeChildScope() = {
+    def freeChildScope(from: SourceLocation) = {
       if (curBlock.isEmpty) {
-        false
+        throw new ScopeError("Somehow outside a non-existent scope", from)
       } else {
         curBlock = curBlock.get.parent
         true
       }
     }
     
-    node.visit((a: Boolean, b: Boolean) => a && b)
+    node.visit((a: Unit, b: Unit) => {})
     { (self, context) =>
+      val from = self match {
+        case Before(b) => b.from
+        case After(a) => a.from
+      }
       self match {
         case Before(c@ClassDefn(_,_,_,_,fields,_,_,_)) => {
             if (!curBlock.isEmpty) {
-                throw new ScopeError("Nested classes forbidden", c.from)
+                throw new ScopeError("Nested classes forbidden", from)
             } else {
                 curClass = new ClassScope()
                 curBlock = Some(curClass)
@@ -110,58 +114,57 @@ object Hashtag360NoScoper {
                 true
             }
         }
-        case Before(m@MethodDefn(name,_,_,fields,_)) => {
-          if (!makeChildScope()) {
+        case Before(MethodDefn(name,_,_,fields,_)) => {
+          if (!makeChildScope(from)) {
             false
           } else if (!curClass.defineMethod(name, fields.map(_.tname))){
-            throw new ScopeError(s"Duplicate definition of method $name with parameters $fields", m.from)
+            throw new ScopeError(s"Duplicate definition of method $name with parameters $fields", from)
           } else {            
             fields.foreach(f => curBlock.get.define(f.name, f.tname))
             true
           }
         }
-        case Before(v@VarStmnt(name,_,tname,_)) => {
-           if(curBlock.isEmpty) {
-               throw new ScopeError(s"Definition of $name outside class body", v.from)
+        case Before(VarStmnt(name,_,tname,_)) => {
+          if(curBlock.isEmpty) {
+               throw new ScopeError(s"Definition of $name outside class body", from)
            } else if (curBlock.get == curClass) {
-             // Ignore field decls if we get them again
              true
            } else if (!curBlock.get.define(name, tname)) {
              // Already defined
-             throw new ScopeError(s"Duplicate definition of variable $name", v.from)
+             throw new ScopeError(s"Duplicate definition of variable $name", from)
            } else {
              true
            }
         }
         case Before(WhileStmnt(_,_)) => {
-          makeChildScope()
+          makeChildScope(from)
         }
         case After(WhileStmnt(_,_)) => {
-          freeChildScope()
+          freeChildScope(from)
         }
-        case Before(i@Id(name)) => {
+        case Before(Id(name)) => {
           if (curBlock.isEmpty) {
-            throw new ScopeError("Variable $name used outside class scope", i.from)
+            throw new ScopeError("Variable $name used outside class scope", from)
           } else if (curBlock.get.resolve(name).isDefined) {
             true
           } else {
-            throw new ScopeError("Undefined reference to $name", i.from)
+            throw new ScopeError(s"Undefined reference to $name", from)
           }
         }
         case Before(ForStmnt(_,_,_,_)) => {
-          makeChildScope()
+          makeChildScope(from)
         }
         case After(ForStmnt(_,_,_,_)) => {
-          freeChildScope()
+          freeChildScope(from)
         }
         case Before(BlockStmnt(_)) => {
-          makeChildScope()
+          makeChildScope(from)
         }
         case After(BlockStmnt(_)) => {
-          freeChildScope()
+          freeChildScope(from)
         }
         case After(ClassDefn(_,_,_,_,_,_,_,_)) => {
-          if(!freeChildScope()) {
+          if(!freeChildScope(from)) {
             false
           } else {
             curClass = null
@@ -169,10 +172,15 @@ object Hashtag360NoScoper {
           }
         }
         case After(MethodDefn(_,_,_,_,_)) => {
-          freeChildScope()
+          freeChildScope(from)
         }
-        case _ => true
+        case _ => 
       }
-    }
+    }.fold(
+      l => {
+        throw new VisitError(l)
+      },
+      r => true
+    )
   }
 }
