@@ -1,22 +1,25 @@
-import org.scalatest._
-import org.scalatest.matchers.ShouldMatchers
-import juicy.source._
 import java.io.File
 import java.nio.file.{Files,Paths}
 import java.security.Permission
+import juicy.source._
+import org.scalatest._
+import org.scalatest.matchers.ShouldMatchers
 
 class MarmoTest extends FreeSpec with ShouldMatchers {
-  
+
   def recurseList(f: File): Seq[File] = {
     val mine = f.listFiles
     mine ++ mine.filter(_.isDirectory).flatMap(recurseList)
   }
   def allFilenames(f: File) = {
-    recurseList(f).filter(!_.isDirectory).map(_.toString)
+    recurseList(f)
+      .filter(!_.isDirectory)
+      .filterNot(_.getName startsWith ".")
+      .map(_.toString)
   }
-  
+
   val stdlib = allFilenames(new File("./stdlib"))
-  
+
   CompilerTerminate.debug = true
   def failTestDirectory(directory: File) = {
     val dirName = directory.toString
@@ -25,7 +28,7 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
         CompilerMain.main(allFilenames(directory).toArray ++ stdlib)
       } catch {
         case CompilerExit(st) => st should be === 42
-      } 
+      }
     }
   }
   def failTestFile(f: File) = {
@@ -60,14 +63,14 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   }
   val failPrefix = "Je"
   val successPrefixes = Seq("J1", "J2")
-  
+
   def shouldSucceed (fname: String) = {
     successPrefixes.map(s => fname.startsWith(s)).exists(b => b)
   }
   def shouldFail (fname: String) = {
     fname startsWith failPrefix
   }
-  
+
   def recurseTest(f: File): Any = {
     if (f.isDirectory) {
       if (shouldSucceed(f.getName)) {

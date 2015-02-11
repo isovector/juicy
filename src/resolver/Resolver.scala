@@ -9,12 +9,12 @@ import juicy.utils.visitor._
 object Resolver {
   case class UnresolvedTypeError(qname: QName, from: SourceLocation)
       extends CompilerError {
-    val msg = "unresolved type `" + qname.mkString(".") +  "`"
+    val msg = "Unresolved type `" + qname.mkString(".") +  "`"
   }
 
   case class UnknownPackageError(pkg: QName, from: SourceLocation)
       extends CompilerError {
-    val msg = "unknown package `" + pkg.mkString(".") +  "`"
+    val msg = "Unknown package `" + pkg.mkString(".") +  "`"
   }
 
   def qualify(name: String, context: Seq[Visitable]): QName = {
