@@ -9,6 +9,19 @@ import juicy.utils.CompilerError
 import juicy.utils.visitor.VisitError
 import scala.io.Source
 
+case class CompilerExit(code: Int) extends Exception
+
+object CompilerTerminate {
+  var debug = false
+  def apply(code: Int) {
+    if (debug) {
+      throw new CompilerExit(code)
+    } else {
+      System.exit(code)
+    }
+  }
+}
+
 object CompilerMain {
   def handleErrors(cmd: => Unit) = {
     try {
@@ -16,13 +29,13 @@ object CompilerMain {
     } catch {
       case e: CompilerError =>
         System.err.println(e)
-        System.exit(42)
+        CompilerTerminate(42)
 
       case e: VisitError =>
         e.errors.map { error =>
           System.err.println(error)
         }
-        System.exit(42)
+        CompilerTerminate(42)
     }
   }
 
@@ -47,7 +60,6 @@ object CompilerMain {
     handleErrors {
       asts.foreach(Hashtag360NoScoper(_))
     }
-
-    System.exit(0)
+    CompilerTerminate(0)
   }
 }

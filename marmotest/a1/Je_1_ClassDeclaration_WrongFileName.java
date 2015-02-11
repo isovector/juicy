@@ -1,0 +1,9 @@
+// JOOS1:PARSER_WEEDER,INVALID_SOURCE_FILE_NAME
+// JOOS2:PARSER_WEEDER,INVALID_SOURCE_FILE_NAME
+// JAVAC:UNKNOWN
+// 
+public class WrongName {
+    
+    public WrongName(){}
+
+}
