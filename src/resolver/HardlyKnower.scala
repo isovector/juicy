@@ -70,7 +70,7 @@ object HardlyKnower {
             }
           }
 
-          if (!check(t.mods, ABSTRACT)) {
+          if (!t.isInterface && !check(t.mods, ABSTRACT)) {
             // Ensure no methods are abstract
             t.allMethods.foreach { method =>
               throwIf(s"Non-abstract class `$name` contains abstract methods") {
