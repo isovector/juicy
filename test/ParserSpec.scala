@@ -113,7 +113,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     result.cond should be === IntVal(1)
     result.otherwise should be === None
 
-    val inner = result.then.asInstanceOf[IfStmnt]
+    val inner = result.then.asInstanceOf[BlockStmnt].children(0).asInstanceOf[IfStmnt]
     inner.cond should be === IntVal(2)
     inner.then should be === BlockStmnt(Seq())
     inner.otherwise should be === Some(BlockStmnt(Seq()))

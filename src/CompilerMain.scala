@@ -4,6 +4,7 @@ import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.tokenizer._
 import juicy.source.weeder._
+import juicy.source.scoper._
 import juicy.utils.CompilerError
 import juicy.utils.visitor.VisitError
 import scala.io.Source
@@ -42,6 +43,9 @@ object CompilerMain {
 
     handleErrors {
       HardlyKnower(Resolver(asts))
+    }
+    handleErrors {
+      asts.foreach(Hashtag360NoScoper(_))
     }
 
     System.exit(0)
