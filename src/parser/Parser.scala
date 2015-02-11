@@ -117,7 +117,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         parseImport()
       } else if (checkModifier() || check("class") || check("interface")) {
         val mods = parseModifiers()
-        parseClass(mods)
+        parseClass(mods, pkg)
 
       } else throw Expected("file-level declaration")
     }
@@ -137,7 +137,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     )
   }
 
-  def parseClass(mods: Modifiers.Value): ClassDefn = withSource {
+  def parseClass(mods: Modifiers.Value, pkg: QName = Seq()): ClassDefn = withSource {
     val isInterface =
       if (check("interface")) {
         next()
@@ -154,7 +154,10 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       if (check("extends")) {
         next()
         Some(qualifiedName())
-      } else None
+      } else if (pkg == Seq("java", "lang") && name == "Object")
+        None
+      else
+        Some(new Typename(Seq("java", "lang", "Object")))
 
     val impls = if (check("implements")) {
       next()
@@ -377,7 +380,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
     val otherwise : Option[BlockStmnt] = if (check("else")) {
       ensure("else")
-      val stmnt = parseStmnt() 
+      val stmnt = parseStmnt()
       val block: BlockStmnt = stmnt match {
         case BlockStmnt(_) => stmnt.asInstanceOf[BlockStmnt]
         case s: Statement => new BlockStmnt(Seq(s))

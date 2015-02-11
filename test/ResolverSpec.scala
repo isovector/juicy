@@ -8,8 +8,21 @@ import juicy.source.tokenizer._
 import juicy.utils.visitor.VisitError
 
 class ResolverSpec extends FlatSpec with ShouldMatchers {
+  val stdlib = Seq("""
+    package java.lang;
+    class Object {
+      String toString() { }
+      boolean equals(Object o) { }
+    }
+    """, """
+    package java.lang;
+    class String {
+    }
+    """)
+
   def parse(sources: String*) = {
-    val files = sources.toList.map { source =>
+    val srcs = sources.toList ++ stdlib
+    val files = srcs.map { source =>
       new Parser(new TokenStream(source)).parseFile()
     }
 
@@ -18,7 +31,8 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
   }
 
   def know(sources: String*) = {
-    val files = sources.toList.map { source =>
+    val srcs = sources.toList ++ stdlib
+    val files = srcs.map { source =>
       new Parser(new TokenStream(source)).parseFile()
     }
 

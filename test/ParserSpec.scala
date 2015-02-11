@@ -19,7 +19,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result.name should be    === "Basic"
     result.mods should be    === NONE
-    result.extnds should be  === None
+    result.extnds should be  === Some(typename("java.lang.Object"))
     result.impls should be   === Seq()
     result.fields should be  === Seq()
     result.methods should be === Seq()
@@ -342,9 +342,9 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           new ImportClass(typename("a")),
           new ImportPkg(Seq("b"))),
         Seq(
-          new ClassDefn("Hello", NONE, None, Seq(), Seq(), Seq(), Seq()),
+          new ClassDefn("Hello", NONE, Some(typename("java.lang.Object")), Seq(), Seq(), Seq(), Seq()),
           new ClassDefn(
-            "Jello", PUBLIC, None, Seq(), Seq(), Seq(), Seq(), true)))
+            "Jello", PUBLIC, Some(typename("java.lang.Object")), Seq(), Seq(), Seq(), Seq(), true)))
   }
 
   it should "not parse multiple stars in imports" in {

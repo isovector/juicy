@@ -35,49 +35,49 @@ object HardlyKnower {
           throwIf(s"Class `$name` extends a final class") {
             resolved(t.extnds)(x => check(x.mods, FINAL))
           }
-          } else {
-            throwIf(s"Interface `$name` extends a class") {
-              resolved(t.impls)(_.exists(_.isClass))
-            }
+        } else {
+          throwIf(s"Interface `$name` extends a class") {
+            resolved(t.impls)(_.exists(_.isClass))
+          }
+        }
+
+        throwIf(s"Class `$name` has non-unique methods") {
+          val methods = (t.methods ++ t.cxrs).map(_.signature)
+          methods != methods.distinct
+        }
+
+        t.hidesMethods.foreach { hidden =>
+          val name = hidden.name
+          val hider = t.allMethods.find(_.name == name).get
+
+          val hideMods = hider.mods
+          val hiddenMods = hidden.mods
+
+          throwIf(s"Non-static method `$name` hides a static method") {
+            !check(hideMods, STATIC) && check(hiddenMods, STATIC)
           }
 
-          throwIf(s"Class `$name` has non-unique methods") {
-            val methods = (t.methods ++ t.cxrs).map(_.signature)
-            methods != methods.distinct
+          throwIf(s"Protected method `$name` hides a public method") {
+            check(hideMods, PROTECTED) && check(hiddenMods, PUBLIC)
           }
 
-          t.hidesMethods.foreach { hidden =>
-            val name = hidden.name
-            val hider = t.allMethods.find(_.name == name).get
-
-            val hideMods = hider.mods
-            val hiddenMods = hidden.mods
-
-            throwIf(s"Non-static method `$name` hides a static method") {
-              !check(hideMods, STATIC) && check(hiddenMods, STATIC)
-            }
-
-            throwIf(s"Protected method `$name` hides a public method") {
-              check(hideMods, PROTECTED) && check(hiddenMods, PUBLIC)
-            }
-
-            throwIf(s"Method `$name` hides a final method") {
-              check(hiddenMods, FINAL)
-            }
-
-            throwIf(s"Method `$name` hides a method with a different return type") {
-              hider.tname != hidden.tname
-            }
+          throwIf(s"Method `$name` hides a final method") {
+            check(hiddenMods, FINAL)
           }
 
-          if (!t.isInterface && !check(t.mods, ABSTRACT)) {
-            // Ensure no methods are abstract
-            t.allMethods.foreach { method =>
-              throwIf(s"Non-abstract class `$name` contains abstract methods") {
-                check(method.mods, ABSTRACT)
-              }
+          throwIf(s"Method `$name` hides a method with a different return type") {
+            hider.tname != hidden.tname
+          }
+        }
+
+        if (!t.isInterface && !check(t.mods, ABSTRACT)) {
+          // Ensure no methods are abstract
+          t.allMethods.foreach { method =>
+            throwIf(s"Non-abstract class `$name` contains abstract methods") {
+              check(method.mods, ABSTRACT)
             }
           }
+        }
       }.fold(
         l => throw VisitError(l),
         r => true
