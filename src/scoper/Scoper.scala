@@ -53,12 +53,12 @@ class BlockScope(val parent: Option[BlockScope] = None){
   }
 }
 
-case class MethodSignature (name: String, fields: Seq[Typename])
+case class MethodSignature (name: String, fields: Seq[Typename], isCxr: Boolean)
 
 class ClassScope extends BlockScope {
   val methods = collection.mutable.Set[MethodSignature]()
-  def defineMethod(name: String, fields: Seq[Typename]): Boolean = {
-    val signature = MethodSignature(name, fields)
+  def defineMethod(name: String, fields: Seq[Typename], isCxr: Boolean): Boolean = {
+    val signature = MethodSignature(name, fields, isCxr)
     if (methods contains signature) {
         false
     } else {
@@ -104,21 +104,20 @@ object Hashtag360NoScoper {
         case After(a) => a.from
       }
       self match {
-        case Before(c@ClassDefn(_,_,_,_,fields,_,_,_)) => {
+        case Before(c@ClassDefn(_,_,_,_,fields,_,methods,_)) => {
             if (!curBlock.isEmpty) {
                 throw new ScopeError("Nested classes forbidden", from)
             } else {
                 curClass = new ClassScope()
                 curBlock = Some(curClass)
                 fields.foreach(f => curClass.define(f.name, f.tname))
+                methods.foreach(m => curClass.defineMethod(m.name, m.params.map(_.tname), m.isConstructor))
                 true
             }
         }
         case Before(MethodDefn(name,_,_,fields,_)) => {
           if (!makeChildScope(from)) {
             false
-          } else if (!curClass.defineMethod(name, fields.map(_.tname))){
-            throw new ScopeError(s"Duplicate definition of method $name with parameters $fields", from)
           } else {            
             fields.foreach(f => curBlock.get.define(f.name, f.tname))
             true
