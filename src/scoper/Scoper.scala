@@ -171,6 +171,7 @@ object Hashtag360NoScoper {
         case After(MethodDefn(_,_,_,_,_)) => {
           freeChildScope()
         }
+        case _ => true
       }
     }
   }
