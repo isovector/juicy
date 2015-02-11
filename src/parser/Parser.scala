@@ -107,7 +107,10 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
         ensure(";")
         tname.qname
-      } else Seq()
+      } else
+        // According to a2/Je_3_UndefinedType_DefaultPackageNotVisible, the
+        // default package should not be visible from other packages.
+        Seq(".DEFAULT")
 
     val children = kleene(new Token.EOF()) {
       if (check("import")) {

@@ -39,6 +39,10 @@ object Resolver {
       new collection.mutable.HashMap[QName,
         collection.mutable.MutableList[QName]]
 
+    def promisePackageExists(pkg: QName) =
+      if (!packages.contains(pkg))
+        packages += pkg -> new collection.mutable.MutableList[QName]()
+
     def addPrimitive(name: String) =
       types += Seq(name) -> ClassDefn(
         name, Modifiers.PUBLIC, None, Seq(), Seq(), Seq(), Seq())
@@ -50,12 +54,12 @@ object Resolver {
     addPrimitive("byte")
     addPrimitive("void")
 
+    promisePackageExists(Seq("java", "lang"))
+
     // Add all new fully qualified types to a big dictionary
     nodes.map { node =>
       val pkg = node.pkg
-
-      if (!packages.contains(pkg))
-        packages += pkg -> new collection.mutable.MutableList[QName]()
+      promisePackageExists(pkg)
 
       node.visit((_: Unit, _: Unit) => {})
       { (self, context) =>

@@ -38,6 +38,21 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
       Some(ast(0).classes(0))
   }
 
+  it should "consider the default package unique" in {
+    intercept[VisitError] {
+      parse("""
+        class A {
+          B b;
+        }
+        """, """
+        package BB;
+        class B {
+          A a;
+        }
+        """)
+    }
+  }
+
   it should "resolve between two files" in {
     val ast = parse("""
       class A {
