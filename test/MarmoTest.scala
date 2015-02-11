@@ -23,7 +23,6 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
     s"compiler should fail on input from directory $dirName" in {
       try {
         CompilerMain.main(allFilenames(directory).toArray ++ stdlib)
-        System.exit(0)
       } catch {
         case CompilerExit(st) => st should be === 42
       } 
@@ -31,7 +30,7 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   }
   def failTestFile(f: File) = {
     val fname = f.toString
-    s"compiler should fail on input from directory $fname" in {
+    s"compiler should fail on input from file $fname" in {
       try {
         CompilerMain.main(Array(fname) ++ stdlib)
       } catch {
@@ -44,7 +43,6 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
     s"compiler should not fail on input from directory $dirName" in {
       try {
         CompilerMain.main(allFilenames(directory).toArray ++ stdlib)
-        System.exit(0)
       } catch {
         case CompilerExit(st) => st should be === 0
       }
@@ -52,10 +50,9 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   }
   def succeedTestFile(f: File) = {
     val fname = f.toString
-    s"compiler should not fail on input from directory $fname" in {
+    s"compiler should not fail on input from file $fname" in {
       try {
         CompilerMain.main(Array(fname) ++ stdlib)
-        System.exit(0)
       } catch {
         case CompilerExit(st) => st should be === 0
       }
