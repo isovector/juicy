@@ -81,8 +81,6 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
       succeedTestFile(f)
     } else if (shouldFail(f.getName)) {
       failTestFile(f)
-    } else {
-      "The code should not reach here" should be === ""
     }
   }
   "MarmoTest" - {
