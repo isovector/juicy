@@ -220,11 +220,11 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     ensure("(")
     // While we don't hit a `)`, parse args delimited by `,`
     val params = kleene(")".asToken) {
-      delimited(",".asToken) {
+      delimited(",".asToken) { withSource {
         val arg_tname = qualifiedName()
         val arg_name = unwrap(ensureIdentifier())
         new VarStmnt(arg_name, Modifiers.NONE, arg_tname, None)
-      }
+      } }
     }.flatMap(xs => xs) // flatten Seq(Seq()) to Seq()
     ensure(")")
 
@@ -256,7 +256,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   def parseArgs(): Seq[Expression] = {
     ensure("(")
     val args = kleene(")".asToken) {
-      delimited(",".asToken)(parseExpr)
+      delimited(",".asToken) { withSource { parseExpr } }
     }.flatMap(xs => xs)
     ensure(")")
 
