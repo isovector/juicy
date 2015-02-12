@@ -134,13 +134,6 @@ object Hashtag360NoScoper {
         case After(_: WhileStmnt) => {
           freeChildScope(from)
         }
-        case Before(Id(name)) => {
-          if (curBlock.isEmpty) {
-            throw new ScopeError("Variable $name used outside class scope", from)
-          } else if (!curBlock.get.resolve(name).isDefined && (!isIn[Call] || curClass.resolveMethod(name).empty)) {
-            throw new ScopeError(s"Undefined reference to $name", from)
-          }
-        }
         case Before(_: ForStmnt) => {
           makeChildScope(from)
         }
