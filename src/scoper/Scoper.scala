@@ -68,6 +68,9 @@ class ClassScope extends BlockScope {
   }
   override def resolveChildren(varname: String) = false
   override def resolveParent(varname: String) = false
+  def resolveMethod(name: String) = {
+    methods.filter(_.name == name)
+  }
 }
 
 object Hashtag360NoScoper {
@@ -97,6 +100,7 @@ object Hashtag360NoScoper {
 
     node.visit((a: Unit, b: Unit) => {})
     { (self, context) =>
+      implicit val ctx = context
       val from = self match {
         case Before(b) => b.from
         case After(a) => a.from
@@ -133,7 +137,7 @@ object Hashtag360NoScoper {
         case Before(Id(name)) => {
           if (curBlock.isEmpty) {
             throw new ScopeError("Variable $name used outside class scope", from)
-          } else if (!curBlock.get.resolve(name).isDefined) {
+          } else if (!curBlock.get.resolve(name).isDefined && (!isIn[Call] || curClass.resolveMethod(name).empty)) {
             throw new ScopeError(s"Undefined reference to $name", from)
           }
         }
