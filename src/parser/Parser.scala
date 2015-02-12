@@ -70,14 +70,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       }, consumeArray())
   }
 
-  // Transform a list of identifiers into a left-assoc tree of member
-  // accesses.
-  def foldMemberAccess(ids: Seq[String]): Expression =
-    ids
-      .map(name => new Id(name))
-      .reduceLeft[Expression](
-        (lhs, rhs) => new Member(lhs, rhs))
-
   // Coalesce subsequent modifier tokens into a bitfield
   def parseModifiers(): Modifiers.Value = {
     val mods = tokens.takeWhile{
@@ -362,27 +354,26 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def parseIf(): IfStmnt = withSource {
+    def toBlock(s: Statement): BlockStmnt = {
+      s match {
+        case b: BlockStmnt => b
+        case _: Statement  => new BlockStmnt(Seq(s))
+      }
+    }
+
     ensure("if")
     ensure("(")
     val cond = parseExpr()
     ensure(")")
-    val then = parseStmnt()
-    val thenBlock = (then match {
-        case BlockStmnt(_) => then.asInstanceOf[BlockStmnt]
-        case s:Statement => new BlockStmnt(Seq(s))
-    }).asInstanceOf[BlockStmnt]
+    val then = toBlock(parseStmnt())
 
-    val otherwise : Option[BlockStmnt] = if (check("else")) {
-      ensure("else")
-      val stmnt = parseStmnt()
-      val block: BlockStmnt = stmnt match {
-        case BlockStmnt(_) => stmnt.asInstanceOf[BlockStmnt]
-        case s: Statement => new BlockStmnt(Seq(s))
-      }
-      Some(block.asInstanceOf[BlockStmnt])
-    } else None
+    val otherwise : Option[BlockStmnt] =
+      if (check("else")) {
+        ensure("else")
+        Some(toBlock(parseStmnt()))
+      } else None
 
-    new IfStmnt(cond, thenBlock, otherwise)
+    new IfStmnt(cond, then, otherwise)
   }
 
   def parseFor(): ForStmnt = withSource {
@@ -397,14 +388,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         None
       }
 
-    val cond = if (!check(";")) {
-      Some(parseExpr())
-    } else None
+    val cond =
+      if (!check(";"))
+        Some(parseExpr())
+      else None
     ensure(";")
 
-    val after = if (!check(")")) {
-      Some(parseExpr())
-    } else None
+    val after =
+      if (!check(")"))
+        Some(parseExpr())
+      else None
     ensure(")")
 
     val body = parseStmnt()
