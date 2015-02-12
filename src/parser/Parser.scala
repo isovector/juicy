@@ -506,7 +506,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         lhs = new Index(lhs, index)
       } else if (check(".")) {
         next()
-        val member = new Id(unwrap(ensureIdentifier()))
+        val member = withSource(new Id(unwrap(ensureIdentifier())))
 
         lhs = new Member(lhs, member)
       }
