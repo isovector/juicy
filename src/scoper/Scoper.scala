@@ -79,12 +79,11 @@ object Hashtag360NoScoper {
     var curBlock: Option[BlockScope] = None
     var curClass: ClassScope = null
     
-    def makeChildScope(from: SourceLocation): Boolean = {
+    def makeChildScope(from: SourceLocation) = {
       if (curBlock.isEmpty) {
         throw new ScopeError("Invalid scoping", from)
       } else {
         curBlock = Some(new BlockScope(curBlock))
-        true
       }
     }
     
@@ -93,7 +92,6 @@ object Hashtag360NoScoper {
         throw new ScopeError("Somehow outside a non-existent scope", from)
       } else {
         curBlock = curBlock.get.parent
-        true
       }
     }
     
@@ -112,27 +110,18 @@ object Hashtag360NoScoper {
                 curBlock = Some(curClass)
                 fields.foreach(f => curClass.define(f.name, f.tname))
                 methods.foreach(m => curClass.defineMethod(m.name, m.params.map(_.tname), m.isConstructor))
-                true
             }
         }
         case Before(MethodDefn(name,_,_,fields,_)) => {
-          if (!makeChildScope(from)) {
-            false
-          } else {            
-            fields.foreach(f => curBlock.get.define(f.name, f.tname))
-            true
-          }
+          makeChildScope(from)
+          fields.foreach(f => curBlock.get.define(f.name, f.tname))
         }
         case Before(VarStmnt(name,_,tname,_)) => {
           if(curBlock.isEmpty) {
                throw new ScopeError(s"Definition of $name outside class body", from)
-           } else if (curBlock.get == curClass) {
-             true
-           } else if (!curBlock.get.define(name, tname)) {
+           } else if (curBlock.get != curClass && !curBlock.get.define(name, tname)) {
              // Already defined
              throw new ScopeError(s"Duplicate definition of variable $name", from)
-           } else {
-             true
            }
         }
         case Before(WhileStmnt(_,_)) => {
@@ -144,9 +133,7 @@ object Hashtag360NoScoper {
         case Before(Id(name)) => {
           if (curBlock.isEmpty) {
             throw new ScopeError("Variable $name used outside class scope", from)
-          } else if (curBlock.get.resolve(name).isDefined) {
-            true
-          } else {
+          } else if (!curBlock.get.resolve(name).isDefined) {
             throw new ScopeError(s"Undefined reference to $name", from)
           }
         }
@@ -163,12 +150,8 @@ object Hashtag360NoScoper {
           freeChildScope(from)
         }
         case After(ClassDefn(_,_,_,_,_,_,_,_)) => {
-          if(!freeChildScope(from)) {
-            false
-          } else {
-            curClass = null
-            true
-          }
+          freeChildScope(from)
+          curClass = null
         }
         case After(MethodDefn(_,_,_,_,_)) => {
           freeChildScope(from)
