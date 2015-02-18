@@ -269,4 +269,20 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
       }
       """)
   }
+
+  it should "enforce multiplicity 1 of implementing interfaces" in {
+    knowAB("IB", "IA", """
+      interface IA { }
+      interface IB { }
+      class AB implements IA, %s { }
+      """)
+  }
+
+  it should "enforce multiplicity 1 of extending interfaces" in {
+    knowAB("IB", "IA", """
+      interface IA { }
+      interface IB { }
+      interface IAB extends IA, %s { }
+      """)
+  }
 }

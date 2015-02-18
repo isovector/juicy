@@ -14,7 +14,6 @@ case class KnowerError(msg: String, in: Visitable)
 }
 
 object HardlyKnower {
-//An interface must not be repeated in an implements clause, or in an extends clause of an interface. (JLS 8.1.4, dOvs simple constraint 3)
   private def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
@@ -28,45 +27,58 @@ object HardlyKnower {
 
         if (t.isClass) {
           throwIf(s"Class `$name` extends an interface") {
-            resolved(t.extnds)(_.exists(_.isInterface))
+            resolve(t.extnds).exists(_.isInterface)
           }
 
           throwIf(s"Class `$name` implements a class") {
-            resolved(t.impls)(_.exists(!_.isInterface))
+            resolve(t.impls).exists(!_.isInterface)
           }
 
           throwIf(s"Class `$name` extends a final class") {
-            resolved(t.extnds)(_.exists(x => check(x.mods, FINAL)))
+            resolve(t.extnds).exists(x => check(x.mods, FINAL))
+          }
+
+          throwIf(
+              s"Class `$name` implements an interface multiple times") {
+            val impls = resolve(t.impls)
+
+            impls.distinct != impls
           }
         } else {
           throwIf(s"Interface `$name` extends a class") {
-            resolved(t.impls)(_.exists(_.isClass))
+            resolve(t.impls).exists(_.isClass)
+          }
+
+          throwIf(
+              s"Interface `$name` extends an interface multiple times") {
+            val extnds = resolve(t.extnds)
+
+            extnds.distinct != extnds
           }
         }
 
         throwIf(s"Class `$name` does not implement what it promises") {
           // Go through each implements, and
-          resolved(t.impls)(
-            _.exists { impl =>
-              impl.allMethods.exists { method =>
-                // Ensure the type has a method with the same signature
-                // This block returns whether or not the method IS constrained
-                !(t.allMethods.find(_ ~== method) match {
-                  case Some(matching) =>
-                    // And that this isn't the SAME method (by comparing
-                    // inherited members), and that it's accessible
-                    matching == method || !check(matching.mods, PROTECTED)
-                  case _ => false
-                })
-              }
+          resolve(t.impls).exists { impl =>
+            impl.allMethods.exists { method =>
+              // Ensure the type has a method with the same signature
+              // This block returns whether or not the method IS constrained
+              !(t.allMethods.find(_ ~== method) match {
+                case Some(matching) =>
+                  // And that this isn't the SAME method (by comparing
+                  // inherited members), and that it's accessible
+                  matching == method || !check(matching.mods, PROTECTED)
+                case _ => false
+              })
             }
-          )
+          }
         }
 
         throwIf(s"Class `$name` has non-unique methods") {
           val methods = t.methods.map(_.signature)
           methods != methods.distinct
         }
+
 
         t.hidesMethods.foreach { hidden =>
           val name = hidden.name
@@ -112,10 +124,8 @@ object HardlyKnower {
     }
   }
 
-  def resolved[T](t: Typename)(predicate: ClassDefn => T): T =
-    predicate(t.resolved.get)
-  def resolved[T](t: Seq[Typename])(predicate: Seq[ClassDefn] => T): T =
-    predicate(t.map(_.resolved.get))
+  def resolve(t: Typename) = t.resolved.get
+  def resolve(t: Seq[Typename]) = t.map(_.resolved.get)
 
   def throwIf(msg: => String)(predicate: => Boolean)(implicit whence: Visitable) = {
     if (predicate)
