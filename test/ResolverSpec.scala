@@ -249,4 +249,24 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
         """)
     }
   }
+
+  it should "ensure interfaces are enforced" in {
+    knowAB("boolean", "int", """
+      interface I {
+        void method(%s a);
+      }
+      class A implements I {
+        void method(boolean a) { }
+      }
+      """)
+
+    knowAB("boolean", "int", """
+      interface I {
+        %s method();
+      }
+      class A implements I {
+        boolean method() { }
+      }
+      """)
+  }
 }

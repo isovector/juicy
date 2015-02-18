@@ -4,7 +4,9 @@ import scala.reflect.ClassTag
 
 package object visitor {
 
-case class VisitError(errors: Seq[CompilerError]) extends Throwable
+case class VisitError(errors: Seq[CompilerError]) extends Exception {
+  override def toString(): String = errors.map(_.toString).mkString("\n")
+}
 
 trait VisitOrder
 case class Before(n: Visitable) extends VisitOrder

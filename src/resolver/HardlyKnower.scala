@@ -44,6 +44,16 @@ object HardlyKnower {
           }
         }
 
+        // Ensure each interface is implemented
+        throwIf(s"Class `$name` does not implement what it promises") {
+          resolved(t.impls)(_.exists(_.allMethods.exists { method =>
+            val matching = t.allMethods.find(_.signature == method.signature)
+
+            // Signatures and return types must match
+            !(matching.isDefined && matching.get.tname == method.tname)
+          }))
+        }
+
         throwIf(s"Class `$name` has non-unique methods") {
           val methods = t.methods.map(_.signature)
           methods != methods.distinct
