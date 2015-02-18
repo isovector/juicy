@@ -98,11 +98,15 @@ object Resolver {
         new collection.mutable.HashMap[QName, QName]
 
       def importPkg(pkg: QName, from: SourceLocation) = {
-        if (!packages.contains(pkg))
+        // Check the pkgtree for the package (since it considers prefixes)...
+        if (!pkgtree.tree.contains(pkg) || pkgtree.tree(pkg).isDefined)
           throw new UnknownPackageError(pkg, from)
 
-        packages(pkg).map { classInPkg =>
-          importTypes += Seq(classInPkg.last) -> classInPkg
+        // ... but import from packages, since it has a useful view of the data
+        if (packages.contains(pkg)) {
+          packages(pkg).map { classInPkg =>
+            importTypes += Seq(classInPkg.last) -> classInPkg
+          }
         }
       }
 
