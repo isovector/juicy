@@ -53,12 +53,12 @@ object Weeder {
           }
 
           // Extends may not be an array
-          if (!extnds.isEmpty !--> !extnds.get.isArray) {
+          if (extnds.find(_.isArray).isDefined) {
             throw new WeederError(s"Class `$name` extends an array", me)
           }
 
           // Extends may not be primitive
-          if (!extnds.isEmpty !--> !extnds.get.isPrimitive) {
+          if (extnds.find(_.isPrimitive).isDefined) {
             throw new WeederError(s"Class `$name` extends a primitive", me)
           }
 
@@ -70,6 +70,11 @@ object Weeder {
           // Implements may not be a primitive
           if (!(true /: impls)(_ && !_.isPrimitive)) {
             throw new WeederError(s"Class `$name` implements a primitive", me)
+          }
+
+          // Classes may only extend 1 thing
+          if (!isInterface && !((0 to 1) contains extnds.length)) {
+            throw new WeederError(s"Class `$name` extends more than 1 class", me)
           }
 
           if (isInterface) {

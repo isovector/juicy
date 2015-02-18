@@ -147,11 +147,11 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     val extnds =
       if (check("extends")) {
         next()
-        Some(qualifiedName())
+        delimited(",".asToken)(qualifiedName)
       } else if (pkg == Seq("java", "lang") && name == "Object")
-        None
+        Seq()
       else
-        Some(new Typename(Seq("java", "lang", "Object")))
+        Seq(new Typename(Seq("java", "lang", "Object")))
 
     val impls = if (check("implements")) {
       next()

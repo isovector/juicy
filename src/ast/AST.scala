@@ -69,19 +69,19 @@ case class FileNode(
 case class ClassDefn(
   name: String,
   mods: Modifiers.Value,
-  extnds: Option[Typename],
+  extnds: Seq[Typename],
   impls: Seq[Typename],
   fields: Seq[VarStmnt],
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
-  val children = extnds.toList ++ impls ++ fields ++ methods
+  val children = extnds ++ impls ++ fields ++ methods
 
   val isClass = !isInterface
 
   lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
     val parentMethods =
-      extnds.map(_.resolved.get.allMethods).getOrElse(Seq())
+      extnds.flatMap(_.resolved.get.allMethods)
     val sigs = methods.map(_.signature)
     val (hides, keeps) = parentMethods.partition { parMeth =>
       sigs.contains(parMeth.signature)

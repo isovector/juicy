@@ -28,7 +28,7 @@ object HardlyKnower {
 
         if (t.isClass) {
           throwIf(s"Class `$name` extends an interface") {
-            resolved(t.extnds)(_.isInterface)
+            resolved(t.extnds)(_.exists(_.isInterface))
           }
 
           throwIf(s"Class `$name` implements a class") {
@@ -36,7 +36,7 @@ object HardlyKnower {
           }
 
           throwIf(s"Class `$name` extends a final class") {
-            resolved(t.extnds)(x => check(x.mods, FINAL))
+            resolved(t.extnds)(_.exists(x => check(x.mods, FINAL)))
           }
         } else {
           throwIf(s"Interface `$name` extends a class") {
@@ -95,8 +95,6 @@ object HardlyKnower {
 
   def resolved(t: Typename)(predicate: ClassDefn => Boolean): Boolean =
     predicate(t.resolved.get)
-  def resolved(t: Option[Typename])(predicate: ClassDefn => Boolean): Boolean =
-    t.map { o => predicate(o.resolved.get) }.getOrElse(false)
   def resolved(t: Seq[Typename])(predicate: Seq[ClassDefn] => Boolean): Boolean =
     predicate(t.map(_.resolved.get))
 

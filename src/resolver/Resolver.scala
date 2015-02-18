@@ -53,7 +53,7 @@ object Resolver {
 
     def addPrimitive(name: String) =
       types += Seq(name) -> ClassDefn(
-        name, Modifiers.PUBLIC, None, Seq(), Seq(), Seq())
+        name, Modifiers.PUBLIC, Seq(), Seq(), Seq(), Seq())
 
     addPrimitive("int")
     addPrimitive("char")

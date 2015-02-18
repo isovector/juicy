@@ -19,7 +19,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result.name should be    === "Basic"
     result.mods should be    === NONE
-    result.extnds should be  === Some(typename("java.lang.Object"))
+    result.extnds should be  === Seq(typename("java.lang.Object"))
     result.impls should be   === Seq()
     result.fields should be  === Seq()
     result.methods should be === Seq()
@@ -32,7 +32,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result.name should be    === "Child"
     result.mods should be    === NONE
-    result.extnds should be  === Some(typename("Parent"))
+    result.extnds should be  === Seq(typename("Parent"))
     result.impls should be   ===
       Seq(Seq("IA"), Seq("pkg", "IB")).map(Typename.tupled(_, false))
     result.fields should be  === Seq()
@@ -325,6 +325,18 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+  it should "parse multiple extends" in {
+    mkParser("""
+      interface A extends IA, IB { }
+      """)
+    .parseFile().classes(0) should be ===
+      ClassDefn(
+        "A",
+        NONE,
+        Seq(typename("IA"), typename("IB")),
+        Seq(), Seq(), Seq(), true)
+  }
+
   it should "parse files" in {
     val parser = mkParser("""
       package look.mom;
@@ -343,9 +355,9 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           new ImportClass(typename("a")),
           new ImportPkg(Seq("b"))),
         Seq(
-          new ClassDefn("Hello", NONE, Some(typename("java.lang.Object")), Seq(), Seq(), Seq()),
+          new ClassDefn("Hello", NONE, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq()),
           new ClassDefn(
-            "Jello", PUBLIC, Some(typename("java.lang.Object")), Seq(), Seq(), Seq(), true)))
+            "Jello", PUBLIC, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq(), true)))
   }
 
   it should "not parse multiple stars in imports" in {

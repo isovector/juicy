@@ -276,6 +276,22 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(parser.parseStmnt()) should be === true
   }
 
+  it should "fail classes with multiple extends" in {
+    val parser = mkParser("""
+      class A extends AA, AB { }
+      """)
+
+    Weeder(parser.parseFile()) should be === false
+  }
+
+  it should "allow interfaces with multiple extends" in {
+    val parser = mkParser("""
+      interface A extends AA, AB { }
+      """)
+
+    Weeder(parser.parseFile()) should be === false
+  }
+
   it should "not allow super or this calls" in {
     val parser = mkParser("""
       this.hello();
