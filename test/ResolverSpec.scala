@@ -5,6 +5,7 @@ import juicy.source.ast._
 import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.tokenizer._
+import juicy.utils.CompilerError
 import juicy.utils.visitor.VisitError
 
 class ResolverSpec extends FlatSpec with ShouldMatchers {
@@ -181,6 +182,16 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
     resolvedType(2).name should be === "boolean"
     resolvedType(3).name should be === "char"
     resolvedType(4).name should be === "short"
+  }
+
+  it should "fail prefix overlaps" in {
+    intercept[CompilerError] {
+      parse("""
+        package java;
+        class lang {
+        }
+        """)
+    }
   }
 
   // ---------- BEGIN KNOWER TESTS -------------

@@ -1,6 +1,7 @@
 package juicy.source.resolver
 
 import juicy.source.ast._
+import juicy.source.PackageTree
 import juicy.source.tokenizer.SourceLocation
 import juicy.utils.CompilerError
 import juicy.utils.Implicits._
@@ -17,6 +18,13 @@ object Resolver {
     val msg = "Unknown package `" + pkg.mkString(".") +  "`"
   }
 
+  case class OverlappingPackagesError()
+      extends CompilerError {
+    val from = SourceLocation("<compiled files>", 0, 0)
+    val msg = "Some objects in the package tree have the same qualified name." +
+              "This is likely due to having a class whose qualified name is a prefix of a package."
+  }
+
   def qualify(name: String, context: Seq[Visitable]): QName = {
     context.reverse.flatMap { element =>
       element match {
@@ -27,7 +35,7 @@ object Resolver {
     } :+ name
   }
 
-  def apply(nodes: Seq[FileNode]): Seq[ClassDefn] = {
+  def apply(nodes: Seq[FileNode]): PackageTree = {
     /*No single-type-import declaration clashes with the class or interface declared in the same file.*/
    //No two single-type-import declarations clash with each other.
    //When a fully qualified name resolves to a type, no strict prefix of the fully qualified name can resolve to a type in the same environment.
@@ -73,6 +81,15 @@ object Resolver {
         }
       }
     }
+
+    // Build the package tree
+    val pkgtree = PackageTree(
+      packages.toSeq.map(_._1),
+      types.toMap)
+
+    if (!pkgtree.valid)
+      throw OverlappingPackagesError()
+
 
     // Resolve typenames to the classes above
     nodes.map { node =>
@@ -128,7 +145,7 @@ object Resolver {
       )
     }
 
-    types.toSeq.map(_._2)
+    pkgtree
   }
 }
 

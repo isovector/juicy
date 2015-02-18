@@ -129,7 +129,9 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     )
   }
 
-  def parseClass(mods: Modifiers.Value, pkg: QName = Seq()): ClassDefn = withSource {
+  def parseClass(
+      mods: Modifiers.Value,
+      pkg: QName = Seq()): ClassDefn = withSource {
     val isInterface =
       if (check("interface")) {
         next()

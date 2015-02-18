@@ -2,6 +2,7 @@ package juicy.source.resolver
 
 import juicy.source.ast._
 import juicy.source.ast.Modifiers._
+import juicy.source.PackageTree
 import juicy.utils.CompilerError
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
@@ -17,7 +18,9 @@ object HardlyKnower {
   private def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
-  def apply(types: Seq[ClassDefn]): Boolean = {
+  def apply(pkgtree: PackageTree): Boolean = {
+    val types = pkgtree.tree.toSeq.map(_._2).flatten
+
     try {
       types.collectMap { t =>
         implicit val implType = t
