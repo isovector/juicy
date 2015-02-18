@@ -44,16 +44,23 @@ object HardlyKnower {
           }
         }
 
-        // Ensure each interface is implemented
         throwIf(s"Class `$name` does not implement what it promises") {
-          // For each resolved `implements`: check if any has any method which
-          // doesn't exist in the current type
-          resolved(t.impls)(_.exists(_.allMethods.exists { method =>
-            t.allMethods.find(_.signature == method.signature) match {
-              case Some(matching) => !(matching ~== method)
-              case None           => true
+          // Go through each implements, and
+          resolved(t.impls)(
+            _.exists { impl =>
+              impl.allMethods.exists { method =>
+                // Ensure the type has a method with the same signature
+                // This block returns whether or not the method IS constrained
+                !(t.allMethods.find(_ ~== method) match {
+                  case Some(matching) =>
+                    // And that this isn't the SAME method (by comparing
+                    // inherited members), and that it's accessible
+                    matching == method || !check(matching.mods, PROTECTED)
+                  case _ => false
+                })
+              }
             }
-          }))
+          )
         }
 
         throwIf(s"Class `$name` has non-unique methods") {
@@ -105,9 +112,9 @@ object HardlyKnower {
     }
   }
 
-  def resolved(t: Typename)(predicate: ClassDefn => Boolean): Boolean =
+  def resolved[T](t: Typename)(predicate: ClassDefn => T): T =
     predicate(t.resolved.get)
-  def resolved(t: Seq[Typename])(predicate: Seq[ClassDefn] => Boolean): Boolean =
+  def resolved[T](t: Seq[Typename])(predicate: Seq[ClassDefn] => T): T =
     predicate(t.map(_.resolved.get))
 
   def throwIf(msg: => String)(predicate: => Boolean)(implicit whence: Visitable) = {
