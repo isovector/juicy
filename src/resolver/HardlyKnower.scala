@@ -46,11 +46,13 @@ object HardlyKnower {
 
         // Ensure each interface is implemented
         throwIf(s"Class `$name` does not implement what it promises") {
+          // For each resolved `implements`: check if any has any method which
+          // doesn't exist in the current type
           resolved(t.impls)(_.exists(_.allMethods.exists { method =>
-            val matching = t.allMethods.find(_.signature == method.signature)
-
-            // Signatures and return types must match
-            !(matching.isDefined && matching.get.tname == method.tname)
+            t.allMethods.find(_.signature == method.signature) match {
+              case Some(matching) => !(matching ~== method)
+              case None           => true
+            }
           }))
         }
 

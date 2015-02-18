@@ -112,9 +112,13 @@ case class MethodDefn(
   params: Seq[VarStmnt],
   body: Option[Statement]
 ) extends Definition {
+  val children = Seq(tname) ++ params ++ body.toList
+
   val signature = Signature(name, params.map(_.tname))
 
-  val children = Seq(tname) ++ params ++ body.toList
+  // Equivalency equality
+  def ~==(other: MethodDefn): Boolean =
+    signature == other.signature && tname == other.tname
 }
 
 case class VarStmnt(
