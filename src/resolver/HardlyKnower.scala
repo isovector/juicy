@@ -67,8 +67,11 @@ object HardlyKnower {
                 case Some(matching) =>
                   // And that this isn't the SAME method (by comparing
                   // inherited members), and that it's accessible
-                  matching == method || !check(matching.mods, PROTECTED)
-                case _ => false
+                  (matching == method || !check(matching.mods, PROTECTED)) &&
+                  (matching.tname == method.tname)
+
+                // Abstract classes don't need to implement the whole interface
+                case _ => check(t.mods, ABSTRACT)
               })
             }
           }

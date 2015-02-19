@@ -118,7 +118,7 @@ case class MethodDefn(
 
   // Equivalency equality
   def ~==(other: MethodDefn): Boolean =
-    signature == other.signature && tname == other.tname
+    signature == other.signature
 }
 
 case class VarStmnt(
