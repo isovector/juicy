@@ -411,14 +411,20 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     parser.parseFile()
   }
+
   it should "fail on duplicate modifiers" in {
-      val parser = mkParser("""
-        class Failure {
-          public public int x;
-        }
+    val parser = mkParser("""
+      class Failure {
+        public public int x;
+      }
       """)
+
     intercept[UnexpectedError] {
       parser.parseExpr()
     }
+  }
+
+  it should "parse things from marmotest that it isn't" in {
+    mkParser("return o1 - o2 + 123;").parseStmnt()
   }
 }

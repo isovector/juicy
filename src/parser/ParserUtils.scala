@@ -53,7 +53,7 @@ trait ParserUtils {
       next()
       cur
     } else {
-      throw Expected("`" + source + "`")
+      throw Expected(s"`$source`")
     }
   }
 
@@ -121,7 +121,7 @@ trait ParserUtils {
 
   def Expected(what: String) =
     new UnexpectedError(
-      "Expected `" + what + "`, but got `" + cur.toString + "` instead",
+      "Expected " + what + ", but got `" + cur.toString + "` instead",
       cur.from)
 }
 
