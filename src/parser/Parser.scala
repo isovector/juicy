@@ -433,18 +433,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     var lhs = parseNextPrec()
     val syms = operators(level).keys.map(_.asToken)
     while (syms.exists(_ == cur)) {
-      operators(level).foreach { case (sym, constructor) =>
-        if (check(sym)) {
-          next()
-          // HACK: big ugly programming is here, but it's too much work to do
-          // properly now
-          if (sym == "instanceof") {
-            lhs = new InstanceOf(lhs, qualifiedName())
-          } else {
-            val rhs = parseNextPrec()
-            lhs = constructor()((lhs, rhs))
-          }
-        }
+      val sym = unwrap(cur)
+      val constructor = operators(level)(sym)
+      next()
+      // HACK: big ugly programming is here, but it's too much work to do
+      // properly now
+      if (sym == "instanceof") {
+        lhs = new InstanceOf(lhs, qualifiedName())
+      } else {
+        val rhs = parseNextPrec()
+        lhs = constructor()((lhs, rhs))
       }
     }
 
