@@ -60,6 +60,16 @@ def isIn[T : ClassTag]
   }
 }
 
+def ancestor[T : ClassTag](implicit context: Seq[Visitable]): Option[T] = {
+  val clazz = implicitly[ClassTag[T]].runtimeClass
+  context.foreach { node =>
+    if (clazz.isInstance(node))
+      return Some(node.asInstanceOf[T])
+  }
+
+  None
+}
+
 
 trait Visitable {
   import juicy.source.tokenizer._

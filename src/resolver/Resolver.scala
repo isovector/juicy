@@ -8,6 +8,11 @@ import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
 object Resolver {
+  case class OverlappingTypeError(qname: QName, from: SourceLocation)
+      extends CompilerError {
+    val msg = "Type `" + qname.mkString(".") +  "` overlaps with other types."
+  }
+
   case class UnresolvedTypeError(qname: QName, from: SourceLocation)
       extends CompilerError {
     val msg = "Unresolved type `" + qname.mkString(".") +  "`"
@@ -16,6 +21,11 @@ object Resolver {
   case class UnknownPackageError(pkg: QName, from: SourceLocation)
       extends CompilerError {
     val msg = "Unknown package `" + pkg.mkString(".") +  "`"
+  }
+
+  case class AmbiguousResolveError(qname: QName, from: SourceLocation)
+      extends CompilerError {
+    val msg = "Unqualified type `" + qname.mkString(".") +  "` resolves ambiguously."
   }
 
   case class OverlappingPackagesError()
@@ -36,49 +46,40 @@ object Resolver {
   }
 
   def apply(nodes: Seq[FileNode]): PackageTree = {
-    /*No single-type-import declaration clashes with the class or interface declared in the same file.*/
-   //No two single-type-import declarations clash with each other.
-   //When a fully qualified name resolves to a type, no strict prefix of the fully qualified name can resolve to a type in the same environment.
-   //No package names or prefixes of package names of declared packages, single-type-import declarations or import-on-demand declarations that are used may resolve to types, except for types in the default package.
-   //Every import-on-demand declaration must refer to a package declared in some file listed on the Joos command line. That is, the import-on-demand declaration must refer to a package whose name appears as the package declaration in some source file, or whose name is a prefix of the name appearing in some package declaration.
-
     val types = new collection.mutable.HashMap[QName, ClassDefn]
     val packages =
       new collection.mutable.HashMap[QName,
         collection.mutable.MutableList[QName]]
 
-    def promisePackageExists(pkg: QName) =
+    def createPkg(pkg: QName) =
       if (!packages.contains(pkg))
         packages += pkg -> new collection.mutable.MutableList[QName]()
 
-    def addPrimitive(name: String) =
+    def defaultType(name: String) =
       types += Seq(name) -> ClassDefn(
         name, Modifiers.PUBLIC, Seq(), Seq(), Seq(), Seq())
 
-    addPrimitive("int")
-    addPrimitive("char")
-    addPrimitive("boolean")
-    addPrimitive("short")
-    addPrimitive("byte")
-    addPrimitive("void")
+    defaultType("int")
+    defaultType("char")
+    defaultType("boolean")
+    defaultType("short")
+    defaultType("byte")
+    defaultType("void")
 
-    promisePackageExists(Seq("java", "lang"))
+    createPkg(Seq("java", "lang"))
 
     // Add all new fully qualified types to a big dictionary
-    nodes.map { node =>
+    nodes.foreach { node =>
       val pkg = node.pkg
-      promisePackageExists(pkg)
+      createPkg(pkg)
 
-      node.visit((_: Unit, _: Unit) => {})
-      { (self, context) =>
-        self match {
-          // TODO: check for conflicts
-          case Before(classDef: ClassDefn) =>
-            val qname = qualify(classDef.name, context)
-            types += qname -> classDef.asInstanceOf[ClassDefn]
-            packages(pkg) += qname
-          case _ =>
-        }
+      node.classes.foreach { classDef =>
+        val qname = pkg :+ classDef.name
+        if (!types.contains(qname))
+          types += qname -> classDef.asInstanceOf[ClassDefn]
+        else
+          throw OverlappingTypeError(qname, classDef.from)
+        packages(pkg) += qname
       }
     }
 
@@ -90,56 +91,70 @@ object Resolver {
     if (!pkgtree.valid)
       throw OverlappingPackagesError()
 
+    nodes.foreach { node =>
+      val importedTypes = new collection.mutable.HashMap[QName, ClassDefn]
+      val importedPkgs = new collection.mutable.MutableList[QName]
 
-    // Resolve typenames to the classes above
-    nodes.map { node =>
-      // Build the import list
-      val importTypes =
-        new collection.mutable.HashMap[QName, QName]
+      // TODO: primitives
+      importedPkgs += Seq("java", "lang")
 
-      def importPkg(pkg: QName, from: SourceLocation) = {
-        // Check the pkgtree for the package (since it considers prefixes)...
-        if (!pkgtree.tree.contains(pkg) || pkgtree.tree(pkg).isDefined)
-          throw new UnknownPackageError(pkg, from)
+      node.imports.foreach {
+        case impl@ImportClass(tname) =>
+          val qname = tname.qname
+          val resolved = pkgtree.getType(qname)
+          val name = Seq(qname.last)
 
-        // ... but import from packages, since it has a useful view of the data
-        if (packages.contains(pkg)) {
-          packages(pkg).map { classInPkg =>
-            importTypes += Seq(classInPkg.last) -> classInPkg
-          }
-        }
+          if (resolved.isDefined)
+            if (
+                !importedTypes.contains(name) ||
+                importedTypes(name) == resolved.get)
+              importedTypes += name -> resolved.get
+            else throw OverlappingTypeError(qname, impl.from)
+          else
+            throw UnresolvedTypeError(qname, impl.from)
+
+        case impl@ImportPkg(qname) =>
+          if (!pkgtree.tree.contains(qname))
+            throw UnknownPackageError(qname, impl.from)
+
+          if (!importedPkgs.contains(qname))
+            importedPkgs += qname
       }
 
-      importPkg(Seq("java", "lang"), SourceLocation("<internal>", 0, 0))
-      if (node.pkg != Seq())
-        importPkg(node.pkg, node.from)
-
-      node.imports.map {
-        case ImportClass(tname) =>
-          importTypes += Seq(tname.qname.last) -> tname.qname
-        case imp@ImportPkg(pkg) => importPkg(pkg, imp.from)
-        case _                  =>
-      }
-
-      // Change a tname's resolved var to the class it describes
-      def resolve(tname: Typename, from: SourceLocation): Unit = {
-        if (tname.resolved.isDefined) return;
-        val qname = tname.qname
-
-        tname.resolved =
-          if (types.contains(qname))
-            Some(types(qname))
-          else if (importTypes.contains(qname))
-            Some(types(importTypes(qname)))
-          else throw new UnresolvedTypeError(qname, from)
-      }
-
-      // Resolve all typenames in the AST
-      node.visit((_: Unit, _: Unit) => {})
+      val pkg = node.pkg
+      node.visit((a: Unit, b: Unit) => {})
       { (self, context) =>
+        implicit val implContext = context
         self match {
-          case Before(me: Typename) =>
-            resolve(me, me.from)
+          case Before(tname@Typename(qname, _)) =>
+            tname.resolved =
+              if (types.contains(qname))
+                types.get(qname)
+              else if (importedTypes.contains(qname))
+                importedTypes.get(qname)
+              else
+                None
+
+
+            def tryResolveFromPackage(pkg: QName) = {
+              val pkgContents = pkgtree.getPackage(pkg)
+              val contained = pkgContents.get(qname)
+
+              if (contained.isDefined) {
+                // TODO: this second comparison fails if the classes
+                // are identical
+                if (!tname.resolved.isDefined || tname.resolved == contained)
+                  tname.resolved = contained
+                else throw AmbiguousResolveError(qname, tname.from)
+              }
+            }
+
+            tryResolveFromPackage(pkg)
+            if (!tname.resolved.isDefined)
+              importedPkgs.foreach(tryResolveFromPackage)
+
+            if (!tname.resolved.isDefined)
+              throw UnresolvedTypeError(qname, tname.from)
 
           case _ =>
         }
@@ -152,4 +167,5 @@ object Resolver {
     pkgtree
   }
 }
+
 
