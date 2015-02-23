@@ -76,7 +76,7 @@ object Resolver {
       node.classes.foreach { classDef =>
         val qname = pkg :+ classDef.name
         if (!types.contains(qname))
-          types += qname -> classDef.asInstanceOf[ClassDefn]
+          types += qname -> classDef
         else
           throw OverlappingTypeError(qname, classDef.from)
         packages(pkg) += qname

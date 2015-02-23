@@ -7,10 +7,21 @@ import juicy.utils.CompilerError
 import juicy.utils.visitor._
 
 object ParserUtils {
+  private val memoized = new collection.mutable.HashMap[String, Token]
+
   // Add asToken() to strings
   case class RichString(underlying: String) {
-    def asToken(): Token = new Tokenizer(underlying).next()
+    def asToken(): Token = {
+      memoized
+        .get(underlying)
+        .getOrElse {
+          val token = new Tokenizer(underlying).next()
+          memoized += underlying -> token
+          token
+        }
+    }
   }
+
   implicit def strToToken(underlying: String) = new RichString(underlying)
 }
 
@@ -116,8 +127,9 @@ trait ParserUtils {
     val source = cur
     val result = parser
 
+    // Uncomment this for better debugging (but it's slow)
+/*
     val default = result.originalToken
-
     result.visit((_: Unit, _: Unit) => {})
     { case (node, context) =>
       node match {
@@ -127,8 +139,9 @@ trait ParserUtils {
 
         case _ =>
       }
-    }
+    }*/
 
+    result.originalToken = source
     result
   }
 
