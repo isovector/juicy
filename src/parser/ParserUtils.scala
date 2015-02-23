@@ -115,7 +115,20 @@ trait ParserUtils {
   def withSource[T <: Visitable](parser: => T): T = {
     val source = cur
     val result = parser
-    result.originalToken = source
+
+    val default = result.originalToken
+
+    result.visit((_: Unit, _: Unit) => {})
+    { case (node, context) =>
+      node match {
+        case Before(n: Visitable) =>
+          if (n.originalToken == default)
+            n.originalToken = source
+
+        case _ =>
+      }
+    }
+
     result
   }
 
