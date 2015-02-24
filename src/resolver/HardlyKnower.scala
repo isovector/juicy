@@ -44,6 +44,17 @@ object HardlyKnower {
 
             impls.distinct != impls
           }
+
+          throwIf(
+              s"Class `$name` extends a type without a default constructor") {
+            !t.extnds.isEmpty &&
+            !resolve(t.extnds).exists { c =>
+              c
+                .methods
+                .filter(_.isCxr)
+                .exists(_.params.isEmpty)
+            }
+          }
         } else {
           throwIf(s"Interface `$name` extends a class") {
             resolve(t.impls).exists(_.isClass)
@@ -104,6 +115,10 @@ object HardlyKnower {
 
           throwIf(s"Non-static method `$name` hides a static method") {
             !check(hideMods, STATIC) && check(hiddenMods, STATIC)
+          }
+
+          throwIf(s"Static method `$name` hides a non-static method") {
+            check(hideMods, STATIC) && !check(hiddenMods, STATIC)
           }
 
           throwIf(s"Protected method `$name` hides a public method") {

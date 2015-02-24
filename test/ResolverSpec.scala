@@ -12,6 +12,7 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
   val stdlib = Seq("""
     package java.lang;
     class Object {
+      public Object() { }
       String toString() { }
       boolean equals(Object o) { }
     }
@@ -211,14 +212,14 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
 
   it should "not allow hiding of final methods" in {
     knowAB("", "final", """
-      class A { %s A test(); }
+      class A { public A() {} %s A test(); }
       class B extends A { final A test(); }
       """)
   }
 
   it should "not allow rewriting return types" in {
     knowAB("A", "B", """
-      class A { A test(); }
+      class A { public A() {} A test(); }
       class B extends A { %s test(); }
       """)
   }
@@ -235,7 +236,7 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
 
   it should "not allow implementing classes" in {
     knowAB("ISame", "Same", """
-      class Same { }
+      class Same { public Same() { } }
       interface ISame { }
       class A implements %s {}
       """)
@@ -244,8 +245,8 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
   it should "explode on cyclic classes" in {
     intercept[KnowerError] {
       know("""
-        class A extends B {}
-        class B extends A {}
+        class A extends B { public A() { }}
+        class B extends A { public B() { }}
         """)
     }
   }

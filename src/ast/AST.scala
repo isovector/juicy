@@ -55,6 +55,23 @@ case class Typename (qname: QName, isArray: Boolean=false) extends Visitable {
     Seq("void", "boolean", "int", "short", "byte", "char").contains(name)
   override def toString() = s"$name$brackets"
 
+  override def equals(o: Any) = o match {
+    case that: Typename =>
+      if (resolved.isDefined)
+        resolved == that.resolved
+      else
+         ( qname == that.qname
+        && isArray == that.isArray
+         )
+
+    case _              => false
+  }
+
+  override def hashCode = resolved match {
+    case Some(classDef) => classDef.hashCode
+    case _              => qname.hashCode + isArray.hashCode
+  }
+
   val children = Seq()
 }
 
@@ -100,7 +117,7 @@ case class ClassDefn(
 
   lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
     val parentMethods =
-      extnds.flatMap(_.resolved.get.allMethods)
+      extnds.flatMap(_.resolved.get.allMethods).filter(!_.isCxr)
     val sigs = methods.map(_.signature)
     val (hides, keeps) = parentMethods.partition { parMeth =>
       sigs.contains(parMeth.signature)
