@@ -1,5 +1,6 @@
 package juicy.source
 
+import juicy.source.ast.FileNode
 import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.scoper._
@@ -41,12 +42,12 @@ object CompilerMain {
     }
   }
 
-  def main(args: Array[String]): Unit = {
-    val asts = args.map { fname =>
+  def parseFiles(files: Seq[String]): Seq[FileNode] = {
+    files.map { fname =>
       val file = Source.fromFile(fname, "ISO-8859-1").mkString
       val tokens = new TokenStream(file, fname)
 
-      var fast: Option[juicy.source.ast.FileNode] = None
+      var fast: Option[FileNode] = None
       handleErrors {
         val ast = new Parser(tokens).parseFile()
         Weeder(ast)
@@ -55,12 +56,19 @@ object CompilerMain {
 
       fast
     }.toList.flatten
+  }
 
+  def build(asts: Seq[FileNode]) = {
     handleErrors {
       HardlyKnower(Resolver(asts))
       asts.foreach(Hashtag360NoScoper(_))
     }
 
+    CompilerTerminate(0)
+  }
+
+  def main(args: Array[String]): Unit = {
+    build(parseFiles(args.toList))
     CompilerTerminate(0)
   }
 }
