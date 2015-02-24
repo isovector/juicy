@@ -77,26 +77,23 @@ trait Visitable {
   def from = originalToken.from
   val children: Seq[Visitable]
 
-  def visit[T]
-      (fold: (T, T) => T)
-      (func: (VisitOrder, Seq[Visitable]) => T): Visited[T] = {
-
-    def lifted(a: Visited[T], b: Visited[T]): Visited[T] =
+  def visit(func: (VisitOrder, Seq[Visitable]) => Unit): Visited[Unit] = {
+    def lifted(a: Visited[Unit], b: Visited[Unit]): Visited[Unit] =
       if (a.isLeft || b.isLeft)
         Left(Visited.unwrapLeft(a) ++ Visited.unwrapLeft(b))
       else
-        Right(fold(Visited.unwrapRight(a), Visited.unwrapRight(b)))
+        Right({ })
 
     visit(this, Seq())(lifted)(func)
   }
 
-  def visit[T]
+  def visit
       (self: Visitable, context: Seq[Visitable])
-      (lifted: (Visited[T], Visited[T]) => Visited[T])
-      (func: (VisitOrder, Seq[Visitable]) => T): Visited[T] = {
+      (lifted: (Visited[Unit], Visited[Unit]) => Visited[Unit])
+      (func: (VisitOrder, Seq[Visitable]) => Unit): Visited[Unit] = {
     val newContext = Seq(self) ++ context
 
-    val before: Visited[T] =
+    val before: Visited[Unit] =
       try {
         Right(func(Before(self), context))
       } catch {
@@ -107,7 +104,7 @@ trait Visitable {
       child.visit(child, newContext)(lifted)(func)
     }
 
-    val after: Visited[T] =
+    val after: Visited[Unit] =
       try {
         Right(func(After(self), context))
       } catch {

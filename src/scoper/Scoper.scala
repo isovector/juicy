@@ -98,8 +98,7 @@ object Hashtag360NoScoper {
       }
     }
 
-    node.visit((a: Unit, b: Unit) => {})
-    { (self, context) =>
+    node.visit { (self, context) =>
       implicit val ctx = context
       val from = self match {
         case Before(b) => b.from

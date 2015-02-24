@@ -122,8 +122,7 @@ object Resolver {
       }
 
       val pkg = node.pkg
-      node.visit((a: Unit, b: Unit) => {})
-      { (self, context) =>
+      node.visit { (self, context) =>
         implicit val implContext = context
         self match {
           case Before(classDefn: ClassDefn) =>

@@ -21,8 +21,7 @@ object Weeder {
     (which & flag) == flag
 
   def apply(node: Visitable): Boolean = {
-    node.visit((a: Unit, b: Unit) => {})
-    { (self, context) =>
+    node.visit { (self, context) =>
       implicit val implContext = context
 
       before(self) match {
