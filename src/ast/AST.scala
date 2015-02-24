@@ -66,6 +66,23 @@ case class FileNode(
   val children = imports ++ classes
 }
 
+object ClassDefn {
+  private var autoIncr = 0
+  private var enableIncr = true
+
+  def getNextEqualityComparitor: Int = {
+    if (enableIncr)
+      autoIncr += 1
+    autoIncr
+  }
+
+  def suspendUniqueness[T](c: => T) = {
+    enableIncr = false
+    c
+    enableIncr = true
+  }
+}
+
 case class ClassDefn(
   name: String,
   mods: Modifiers.Value,
@@ -75,6 +92,8 @@ case class ClassDefn(
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends Definition {
+  val equalityComparitor = ClassDefn.getNextEqualityComparitor
+
   val children = extnds ++ impls ++ fields ++ methods
 
   val isClass = !isInterface
@@ -89,6 +108,24 @@ case class ClassDefn(
 
     (methods ++ keeps, hides)
   }
+
+  override def equals(o: Any) = o match {
+    case that: ClassDefn =>
+       ( name               == that.name
+      && mods               == that.mods
+      && extnds             == that.extnds
+      && impls              == that.impls
+      && fields             == that.fields
+      && methods            == that.methods
+      && isInterface        == that.isInterface
+      && equalityComparitor == that.equalityComparitor
+       )
+    case _               => false
+  }
+
+  override def hashCode = name.hashCode + equalityComparitor.hashCode
+
+  override def toString = equalityComparitor.toString
 }
 
 case class ImportClass(
