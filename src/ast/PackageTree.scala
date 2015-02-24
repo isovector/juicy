@@ -28,6 +28,13 @@ case class PackageTree(rawPkgs: Seq[QName], classes: Map[QName, ClassDefn]) {
       }
   }
 
+  def isPackage(qname: QName): Boolean = {
+    tree.get(qname) match {
+      case Some(None) => true
+      case _          => false
+    }
+  }
+
   def getType(qname: QName): Option[ClassDefn] = {
     tree.get(qname) match {
       case Some(Some(c)) => Some(c)

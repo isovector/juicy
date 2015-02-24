@@ -126,6 +126,12 @@ object Resolver {
       { (self, context) =>
         implicit val implContext = context
         self match {
+          case Before(classDefn: ClassDefn) =>
+            val qname = Seq(classDefn.name)
+            if (importedTypes.contains(qname) &&
+                importedTypes(qname) != classDefn)
+              throw AmbiguousResolveError(qname, classDefn.from)
+
           case Before(tname@Typename(qname, _)) =>
             tname.resolved =
               if (types.contains(qname))
@@ -141,15 +147,14 @@ object Resolver {
               val contained = pkgContents.get(qname)
 
               if (contained.isDefined) {
-                // TODO: this second comparison fails if the classes
-                // are identical
                 if (!tname.resolved.isDefined || tname.resolved == contained)
                   tname.resolved = contained
                 else throw AmbiguousResolveError(qname, tname.from)
               }
             }
 
-            tryResolveFromPackage(pkg)
+            if (!tname.resolved.isDefined)
+              tryResolveFromPackage(pkg)
             if (!tname.resolved.isDefined)
               importedPkgs.foreach(tryResolveFromPackage)
 
