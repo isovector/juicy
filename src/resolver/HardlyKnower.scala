@@ -59,7 +59,7 @@ object HardlyKnower {
 
         throwIf(s"Class `$name` does not implement what it promises") {
           // Go through each implements, and
-          resolve(t.impls).exists { impl =>
+          t.allInterfaces.exists { impl =>
             impl.allMethods.exists { method =>
               // Ensure the type has a method with the same signature
               // This block returns whether or not the method IS constrained

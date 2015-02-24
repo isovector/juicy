@@ -109,6 +109,18 @@ case class ClassDefn(
     (methods ++ keeps, hides)
   }
 
+  lazy val allInterfaces: Seq[ClassDefn] = {
+    val resolvedExtnds = extnds.map(_.resolved.get)
+    val resolvedImpls = impls.map(_.resolved.get)
+
+    (  resolvedExtnds
+    ++ resolvedImpls
+    ++ resolvedExtnds.flatMap(_.allInterfaces)
+    ++ resolvedImpls.flatMap(_.allInterfaces)
+    )
+      .filter(_.isInterface)
+  }
+
   override def equals(o: Any) = o match {
     case that: ClassDefn =>
        ( name               == that.name
