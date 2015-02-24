@@ -113,11 +113,11 @@ case class ClassDefn(
     val resolvedExtnds = extnds.map(_.resolved.get)
     val resolvedImpls = impls.map(_.resolved.get)
 
-    (  resolvedExtnds
+     ( resolvedExtnds
     ++ resolvedImpls
     ++ resolvedExtnds.flatMap(_.allInterfaces)
     ++ resolvedImpls.flatMap(_.allInterfaces)
-    )
+     )
       .filter(_.isInterface)
   }
 

@@ -77,6 +77,18 @@ object HardlyKnower {
           }
         }
 
+        throwIf(s"Class `$name` implements mutually-exlusive interfaces") {
+          val methodsBySignatures =
+            t.allInterfaces
+              .flatMap(_.methods)
+              .groupBy(_.signature)
+
+          methodsBySignatures.exists { case (_, methods) =>
+            val returnType = methods.head.tname
+            methods.exists(_.tname != returnType)
+          }
+        }
+
         throwIf(s"Class `$name` has non-unique methods") {
           val methods = t.methods.map(_.signature)
           methods != methods.distinct
