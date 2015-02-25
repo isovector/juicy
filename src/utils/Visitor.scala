@@ -13,6 +13,7 @@ case class Before(n: Visitable) extends VisitOrder
 case class After(n: Visitable) extends VisitOrder
 case class EmptyNode() extends Visitable {
   val children = Seq()
+  def rewrite(implicit rule: Rewriter) = this
 }
 
 def before(order: VisitOrder): Visitable =
@@ -70,6 +71,10 @@ def ancestor[T : ClassTag](implicit context: Seq[Visitable]): Option[T] = {
   None
 }
 
+case class Rewriter(rule: Visitable => Visitable) {
+  def apply(node: Visitable): Visitable = rule(node)
+}
+
 
 trait Visitable {
   import juicy.source.tokenizer._
@@ -84,35 +89,37 @@ trait Visitable {
       else
         Right({ })
 
-    visit(this, Seq())(lifted)(func)
+    visit(Seq())(lifted)(func)
   }
 
-  def visit
-      (self: Visitable, context: Seq[Visitable])
+  private def visit
+      (context: Seq[Visitable])
       (lifted: (Visited[Unit], Visited[Unit]) => Visited[Unit])
       (func: (VisitOrder, Seq[Visitable]) => Unit): Visited[Unit] = {
-    val newContext = Seq(self) ++ context
+    val newContext = Seq(this) ++ context
 
     val before: Visited[Unit] =
       try {
-        Right(func(Before(self), context))
+        Right(func(Before(this), context))
       } catch {
         case e: CompilerError => Left(Seq(e))
       }
 
     val childResults = children.map { child =>
-      child.visit(child, newContext)(lifted)(func)
+      child.visit(newContext)(lifted)(func)
     }
 
     val after: Visited[Unit] =
       try {
-        Right(func(After(self), context))
+        Right(func(After(this), context))
       } catch {
         case e: CompilerError => Left(Seq(e))
       }
 
     lifted((before /: childResults)(lifted), after)
   }
+
+  def rewrite(implicit rule: Rewriter): Visitable
 }
 
 }

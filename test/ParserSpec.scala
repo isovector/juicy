@@ -155,7 +155,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "parse binary expressions with precedence" in {
-    def coerce(expr: Expression) = expr.asInstanceOf[BinaryOperator]
+    def coerce(expr: Expression) = expr.asInstanceOf[BinOp]
 
     val parser = mkParser("1 + 2 * 5 = true")
     val result = coerce(parser.parseExpr())
