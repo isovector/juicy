@@ -13,8 +13,8 @@ class BlockScope(val parent: Option[BlockScope] = None){
   if (parent.isDefined) {
     parent.get.children ::= this
   }
-  val variables = collection.mutable.Map[String, Typename]()
-  def resolve(varname: String) : Option[Typename] = {
+  val variables = collection.mutable.Map[String, (Typename, SourceLocation)]()
+  def resolve(varname: String) : Option[(Typename, SourceLocation)] = {
     if (variables contains varname) {
       return Some(variables(varname))
     } else if (parent.isEmpty) {
@@ -23,13 +23,13 @@ class BlockScope(val parent: Option[BlockScope] = None){
       parent.get.resolve(varname)
     }
   }
-  def define(varname: String, tname: Typename): Boolean = {
+  def define(varname: String, tname: Typename, source: SourceLocation): Boolean = {
     if (parent.isDefined && parent.get.resolveParent(varname)) {
       false
-    } else if (resolveChildren(varname)) {
+    } else if (variables contains varname) {
       false
     } else {
-      variables(varname) = tname
+      variables(varname) = (tname, source)
       true
     }
   }
@@ -38,15 +38,6 @@ class BlockScope(val parent: Option[BlockScope] = None){
       true
     } else if (parent.isDefined){
       parent.get.resolveParent(varname)
-    } else {
-      false
-    }
-  }
-  def resolveChildren(varname: String): Boolean = {
-    if (children.find(_.variables contains varname) != None) {
-      true
-    } else if (children.find(_.resolveChildren(varname)) != None) {
-      true
     } else {
       false
     }
@@ -66,7 +57,6 @@ class ClassScope extends BlockScope {
         true
     }
   }
-  override def resolveChildren(varname: String) = false
   override def resolveParent(varname: String) = false
   def resolveMethod(name: String) = {
     methods.filter(_.name == name)
@@ -111,22 +101,28 @@ object Hashtag360NoScoper {
             } else {
                 curClass = new ClassScope()
                 curBlock = Some(curClass)
-                fields.foreach(f => curClass.define(f.name, f.tname))
+                fields.foreach(f => 
+                  if(!curClass.define(f.name, f.tname, from)) {
+                    val source = curClass.resolve(f.name).get._1
+                    throw new ScopeError(s"Duplicate field $f.name (originally defined at: $source)", from)
+                  }
+                )
                 methods.foreach(m => 
                   if (!curClass.defineMethod(m.name, m.params.map(_.tname), m.isCxr))
                  throw new ScopeError("Duplicate Method " + m.name + " with parameters " + m.params.mkString, from)
+               )
             }
         }
         case Before(MethodDefn(name,_,_,_,fields,_)) => {
           makeChildScope(from)
-          fields.foreach(f => curBlock.get.define(f.name, f.tname))
         }
         case Before(VarStmnt(name,_,tname,_)) => {
           if(curBlock.isEmpty) {
                throw new ScopeError(s"Definition of $name outside class body", from)
-           } else if (curBlock.get != curClass && !curBlock.get.define(name, tname)) {
+           } else if (curBlock.get != curClass && !curBlock.get.define(name, tname, from)) {
              // Already defined
-             throw new ScopeError(s"Duplicate definition of variable $name", from)
+             val source = curBlock.get.resolve(name).get._1
+             throw new ScopeError(s"Duplicate definition of variable $name (originally defined at: $source)", from)
            }
         }
         case Before(_: WhileStmnt) => {
