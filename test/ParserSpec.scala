@@ -333,6 +333,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     .parseFile().classes(0) should be ===
       ClassDefn(
         "A",
+        Seq(".DEFAULT"),
         NONE,
         Seq(typename("IA"), typename("IB")),
         Seq(), Seq(), Seq(), true)
@@ -359,9 +360,9 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           new ImportClass(typename("a")),
           new ImportPkg(Seq("b"))),
         Seq(
-          new ClassDefn("Hello", NONE, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq()),
+          new ClassDefn("Hello", Seq("look", "mom"), NONE, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq()),
           new ClassDefn(
-            "Jello", PUBLIC, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq(), true)))
+            "Jello", Seq("look", "mom"), PUBLIC, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq(), true)))
     }
   }
 

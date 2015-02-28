@@ -29,6 +29,7 @@ class RewriteSpec extends FlatSpec with ShouldMatchers {
       rewritten should be ===
         ClassDefn(
           "J1_1_Cast_NamedTypeAsVariable",
+          Seq(".DEFAULT"),
           Modifiers.PUBLIC,
           Seq(Typename(Seq("java", "lang", "Object"))),
           Seq(),

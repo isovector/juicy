@@ -40,7 +40,7 @@ object Hashtag360NoScoper {
         case After(a) => a.from
       }
       self match {
-        case Before(c@ClassDefn(_,_,_,_,fields,methods,_)) => {
+        case Before(c@ClassDefn(_,_,_,_,_,fields,methods,_)) => {
             if (!curBlock.isEmpty) {
                 throw new ScopeError("Nested classes forbidden", from)
             } else {

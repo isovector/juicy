@@ -176,6 +176,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
     new ClassDefn(
       name,
+      pkg,
       mods,
       extnds,
       impls,

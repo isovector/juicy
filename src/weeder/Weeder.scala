@@ -25,7 +25,7 @@ object Weeder {
       implicit val implContext = context
 
       before(self) match {
-        case me@ClassDefn(name, mods, extnds, impls, fields, rawmethods, isInterface) =>
+        case me@ClassDefn(name, pkg, mods, extnds, impls, fields, rawmethods, isInterface) =>
           val (cxrs, methods) = rawmethods.partition(_.isCxr)
 
           val basename = {

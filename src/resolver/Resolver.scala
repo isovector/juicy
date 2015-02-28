@@ -63,7 +63,7 @@ object Resolver {
 
     def defaultType(name: String) =
       types += Seq(name) -> ClassDefn(
-        name, Modifiers.PUBLIC, Seq(), Seq(), Seq(), Seq())
+        name, Seq(), Modifiers.PUBLIC, Seq(), Seq(), Seq(), Seq())
 
     defaultType("int")
     defaultType("char")
@@ -141,7 +141,7 @@ object Resolver {
           val pkgContents = pkgtree.getPackage(pkg)
           val contained = pkgContents.get(qname)
           if (contained.isDefined) {
-            if (outVal.isDefined && outVal != contained)
+            if (outVal.isDefined && !(outVal.get resolvesTo contained.get))
               throw AmbiguousResolveError(qname, from)
             outVal = contained
           }
@@ -159,7 +159,7 @@ object Resolver {
           case Before(classDefn: ClassDefn) =>
             val qname = Seq(classDefn.name)
             if (importedTypes.contains(qname) &&
-                importedTypes(qname) != classDefn) {
+                ! (importedTypes(qname) resolvesTo classDefn)) {
               throw AmbiguousResolveError(qname, classDefn.from)
             }
           case Before(tname@Typename(qname, _)) =>

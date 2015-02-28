@@ -131,6 +131,7 @@ object ClassDefn {
 
 case class ClassDefn(
   name: String,
+  pkg: QName,
   mods: Modifiers.Value,
   extnds: Seq[Typename],
   impls: Seq[Typename],
@@ -170,6 +171,7 @@ case class ClassDefn(
   override def equals(o: Any) = o match {
     case that: ClassDefn =>
        ( name               == that.name
+      && pkg                == that.pkg
       && mods               == that.mods
       && extnds             == that.extnds
       && impls              == that.impls
@@ -187,6 +189,7 @@ case class ClassDefn(
     rule(
       ClassDefn(
         name,
+        pkg,
         mods,
         extnds.map(_.rewrite.asInstanceOf[Typename]),
         impls.map(_.rewrite.asInstanceOf[Typename]),
@@ -194,6 +197,8 @@ case class ClassDefn(
         methods.map(_.rewrite.asInstanceOf[MethodDefn]),
         isInterface
       ))
+  def resolvesTo (other: ClassDefn) = 
+    name == other.name && pkg == other.pkg
 }
 
 case class ImportClass(
