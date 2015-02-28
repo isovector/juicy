@@ -210,7 +210,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       delimited(",".asToken) { withSource {
         val arg_tname = qualifiedName()
         val arg_name = unwrap(ensureIdentifier())
-        new VarStmnt(arg_name, Modifiers.NONE, arg_tname, None)
+        withSource { new VarStmnt(arg_name, Modifiers.NONE, arg_tname, None) }
       } }
     }.flatMap(xs => xs) // flatten Seq(Seq()) to Seq()
     ensure(")")
@@ -258,7 +258,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     val params = parseParams()
     val body =
       if (!check(";"))
-        Some(parseBlock())
+        Some( withSource { parseBlock() })
       else {
         next()
         None
@@ -356,7 +356,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def parseIf(): IfStmnt = withSource {
-    def toBlock(s: Statement): BlockStmnt = {
+    def toBlock(s: Statement): BlockStmnt = withSource {
       s match {
         case b: BlockStmnt => b
         case _: Statement  => new BlockStmnt(Seq(s))

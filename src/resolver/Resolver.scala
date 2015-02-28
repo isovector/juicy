@@ -34,6 +34,12 @@ object Resolver {
     val msg = "Some objects in the package tree have the same qualified name." +
               "This is likely due to having a class whose qualified name is a prefix of a package."
   }
+  
+  case class AmbiguousPackageClassError(pkg: String, from: SourceLocation)
+      extends CompilerError {
+    val msg = s"Overlapping definition of class and package with name $pkg"  
+      
+ }
 
   def qualify(name: String, context: Seq[Visitable]): QName = {
     context.reverse.flatMap { element =>
@@ -82,7 +88,7 @@ object Resolver {
         packages(pkg) += qname
       }
     }
-
+    
     // Build the package tree
     val pkgtree = PackageTree(
       packages.toSeq.map(_._1),
@@ -116,50 +122,61 @@ object Resolver {
         case impl@ImportPkg(qname) =>
           if (!pkgtree.tree.contains(qname))
             throw UnknownPackageError(qname, impl.from)
-
           if (!importedPkgs.contains(qname))
             importedPkgs += qname
       }
 
       val pkg = node.pkg
+      
+      def tryResolve(qname: QName, from: SourceLocation): Option[ClassDefn] = {
+        var outVal =
+          if (types.contains(qname))
+            types.get(qname)
+          else if (importedTypes.contains(qname))
+            importedTypes.get(qname)
+          else
+            None
+      
+        def tryResolveFromPackage(pkg: QName) = {
+          val pkgContents = pkgtree.getPackage(pkg)
+          val contained = pkgContents.get(qname)
+          if (contained.isDefined) {
+            if (outVal.isDefined && outVal != contained)
+              throw AmbiguousResolveError(qname, from)
+            outVal = contained
+          }
+        }
+        if (outVal.isEmpty)
+          tryResolveFromPackage(pkg)
+        if (outVal.isEmpty)
+          importedPkgs.foreach(tryResolveFromPackage)
+        return outVal
+      }
+      
       node.visit { (self, context) =>
         implicit val implContext = context
         self match {
           case Before(classDefn: ClassDefn) =>
             val qname = Seq(classDefn.name)
             if (importedTypes.contains(qname) &&
-                importedTypes(qname) != classDefn)
+                importedTypes(qname) != classDefn) {
+              println("FROM HERE")
               throw AmbiguousResolveError(qname, classDefn.from)
-
+            }
           case Before(tname@Typename(qname, _)) =>
-            tname.resolved =
-              if (types.contains(qname))
-                types.get(qname)
-              else if (importedTypes.contains(qname))
-                importedTypes.get(qname)
-              else
-                None
-
-
-            def tryResolveFromPackage(pkg: QName) = {
-              val pkgContents = pkgtree.getPackage(pkg)
-              val contained = pkgContents.get(qname)
-
-              if (contained.isDefined) {
-                if (!tname.resolved.isDefined || tname.resolved == contained)
-                  tname.resolved = contained
-                else throw AmbiguousResolveError(qname, tname.from)
+            if (!isIn[ImportPkg]() && !isIn[ImportClass]()) {
+              val prefixNames = tname.name.split('.').toList
+              (1 to prefixNames.length - 1) foreach { prefix =>
+                val resolved = tryResolve(prefixNames.take(prefix), tname.from)
+                if (resolved.isDefined) {
+                  println("OR HERE")
+                  throw AmbiguousResolveError(prefixNames.take(prefix), tname.from)
+                }
               }
             }
-
-            if (!tname.resolved.isDefined)
-              tryResolveFromPackage(pkg)
-            if (!tname.resolved.isDefined)
-              importedPkgs.foreach(tryResolveFromPackage)
-
+            tname.resolved = tryResolve(qname, tname.from)
             if (!tname.resolved.isDefined)
               throw UnresolvedTypeError(qname, tname.from)
-
           case _ =>
         }
       }.fold(

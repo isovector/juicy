@@ -8,67 +8,12 @@ import juicy.utils.visitor._
 
 case class ScopeError(msg: String, from: SourceLocation) extends CompilerError
 
-class BlockScope(val parent: Option[BlockScope] = None){
-  var children = List[BlockScope]()
-  if (parent.isDefined) {
-    parent.get.children ::= this
-  }
-  val variables = collection.mutable.Map[String, (Typename, SourceLocation)]()
-  def resolve(varname: String) : Option[(Typename, SourceLocation)] = {
-    if (variables contains varname) {
-      return Some(variables(varname))
-    } else if (parent.isEmpty) {
-       None
-    } else {
-      parent.get.resolve(varname)
-    }
-  }
-  def define(varname: String, tname: Typename, source: SourceLocation): Boolean = {
-    if (parent.isDefined && parent.get.resolveParent(varname)) {
-      false
-    } else if (variables contains varname) {
-      false
-    } else {
-      variables(varname) = (tname, source)
-      true
-    }
-  }
-  def resolveParent(varname: String): Boolean = {
-    if (variables contains varname) {
-      true
-    } else if (parent.isDefined){
-      parent.get.resolveParent(varname)
-    } else {
-      false
-    }
-  }
-}
-
-case class MethodSignature (name: String, fields: Seq[Typename], isCxr: Boolean)
-
-class ClassScope extends BlockScope {
-  val methods = collection.mutable.Set[MethodSignature]()
-  def defineMethod(name: String, fields: Seq[Typename], isCxr: Boolean): Boolean = {
-    val signature = MethodSignature(name, fields, isCxr)
-    if (methods contains signature) {
-        false
-    } else {
-        methods.add(signature)
-        true
-    }
-  }
-  override def resolveParent(varname: String) = false
-  def resolveMethod(name: String) = {
-    methods.filter(_.name == name)
-  }
-}
-
 object Hashtag360NoScoper {
 
   def check(which: Modifiers.Value, flag: Modifiers.Value) =
     (which & flag) == flag
 
-  def apply(node: Visitable): Boolean = {
+  def apply(node: Visitable): ClassScope = {
     var curBlock: Option[BlockScope] = None
     var curClass: ClassScope = null
 
@@ -108,7 +53,7 @@ object Hashtag360NoScoper {
                   }
                 )
                 methods.foreach(m => 
-                  if (!curClass.defineMethod(m.name, m.params.map(_.tname), m.isCxr))
+                  if (!curClass.defineMethod(m.name, m.params.map(_.tname)))
                  throw new ScopeError("Duplicate Method " + m.name + " with parameters " + m.params.mkString, from)
                )
             }
@@ -145,10 +90,17 @@ object Hashtag360NoScoper {
         }
         case After(_: ClassDefn) => {
           freeChildScope(from)
-          curClass = null
         }
         case After(_: MethodDefn) => {
           freeChildScope(from)
+        }
+        case _ =>
+      }
+      self match {
+        case Before(v) => {
+          if (curBlock.isDefined) {
+            v.setScope(curBlock.get)
+          }
         }
         case _ =>
       }
@@ -156,7 +108,7 @@ object Hashtag360NoScoper {
       l => {
         throw new VisitError(l)
       },
-      r => true
+      r => curClass
     )
   }
 }

@@ -1,6 +1,7 @@
 package juicy.utils
 
 import scala.reflect.ClassTag
+import juicy.source.scoper.BlockScope
 
 package object visitor {
 
@@ -46,7 +47,6 @@ object Visited {
   }
 }
 
-
 // Check the context to see if the current node is inside of a T
 def isIn[T : ClassTag]
     (whenFound: T => Boolean = { _: T => true })
@@ -79,6 +79,8 @@ case class Rewriter(rule: Visitable => Visitable) {
 trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
+  
+  var scope = new BlockScope()
   def from = originalToken.from
   val children: Seq[Visitable]
 
@@ -120,6 +122,9 @@ trait Visitable {
   }
 
   def rewrite(implicit rule: Rewriter): Visitable
+  def setScope (scope: BlockScope) = {
+    this.scope = scope
+  }
 }
 
 }
