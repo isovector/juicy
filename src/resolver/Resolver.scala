@@ -164,7 +164,7 @@ object Resolver {
               throw AmbiguousResolveError(qname, classDefn.from)
             }
           case Before(tname@Typename(qname, _)) =>
-            if (!isIn[ImportPkg]() && !isIn[ImportClass]()) {
+            if (!isIn[ImportClass]()) {
               val prefixNames = tname.name.split('.').toList
               (1 to prefixNames.length - 1) foreach { prefix =>
                 val resolved = tryResolve(prefixNames.take(prefix), tname.from)
