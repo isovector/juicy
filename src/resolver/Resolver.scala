@@ -160,7 +160,6 @@ object Resolver {
             val qname = Seq(classDefn.name)
             if (importedTypes.contains(qname) &&
                 importedTypes(qname) != classDefn) {
-              println("FROM HERE")
               throw AmbiguousResolveError(qname, classDefn.from)
             }
           case Before(tname@Typename(qname, _)) =>
@@ -169,7 +168,6 @@ object Resolver {
               (1 to prefixNames.length - 1) foreach { prefix =>
                 val resolved = tryResolve(prefixNames.take(prefix), tname.from)
                 if (resolved.isDefined) {
-                  println("OR HERE")
                   throw AmbiguousResolveError(prefixNames.take(prefix), tname.from)
                 }
               }
