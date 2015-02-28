@@ -112,7 +112,9 @@ object Hashtag360NoScoper {
                 curClass = new ClassScope()
                 curBlock = Some(curClass)
                 fields.foreach(f => curClass.define(f.name, f.tname))
-                methods.foreach(m => curClass.defineMethod(m.name, m.params.map(_.tname), m.isCxr))
+                methods.foreach(m => 
+                  if (!curClass.defineMethod(m.name, m.params.map(_.tname), m.isCxr))
+                 throw new ScopeError("Duplicate Method " + m.name + " with parameters " + m.params.mkString, from)
             }
         }
         case Before(MethodDefn(name,_,_,_,fields,_)) => {
