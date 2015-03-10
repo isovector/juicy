@@ -10,9 +10,6 @@ case class ScopeError(msg: String, from: SourceLocation) extends CompilerError
 
 object Hashtag360NoScoper {
 
-  def check(which: Modifiers.Value, flag: Modifiers.Value) =
-    (which & flag) == flag
-
   def apply(node: Visitable): ClassScope = {
     var curBlock: Option[BlockScope] = None
     var curClass: ClassScope = null

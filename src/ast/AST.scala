@@ -400,8 +400,16 @@ case class Id(name: String)         extends NullOp {
   var status: AmbiguousStatus.Value = AmbiguousStatus.AMBIGUOUS
 }
 
+case class Callee (expr: Expression) extends Expression {
+  val children = Seq(expr)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
+    Callee(expr.rewrite(rule, newContext).asInstanceOf[Expression])
+  }
+}
+
 case class Call(
-  method: Expression,
+  method: Callee,
   args: Seq[Expression]
 ) extends Expression {
   val children = args :+ method
@@ -410,7 +418,7 @@ case class Call(
     val newContext = this +: context
     rule(
       Call(
-        method.rewrite(rule, newContext).asInstanceOf[Expression],
+        method.rewrite(rule, newContext).asInstanceOf[Callee],
         args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context)
   }

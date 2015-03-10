@@ -168,7 +168,7 @@ object Weeder {
           }
 
         // A method or constructor must not contain explicit this() or super() calls.
-        case me@Call(ThisVal(), _) =>
+        case me@Call(Callee(ThisVal()), _) =>
             throw new WeederError(
               s"Can't explicitly call this()", me)
 

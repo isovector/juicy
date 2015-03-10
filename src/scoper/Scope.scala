@@ -56,5 +56,7 @@ class ClassScope extends BlockScope {
   def resolveMethod(name: String) = {
     methods.filter(_.name == name)
   }
+  def resolveExact(name: String, fields: Seq[Typename]) = methods.find(_ == Signature(name, fields))
+  
   override def enclosingClass() = Some(this)
 }

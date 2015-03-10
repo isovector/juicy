@@ -229,7 +229,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val expr = parser.parseStmnt().asInstanceOf[ExprStmnt].expr
     val call = expr.asInstanceOf[Call]
 
-    call.method should be === Member(Id("object"), Id("method"))
+    call.method should be === Callee(Member(Id("object"), Id("method")))
     call.args should have length 3
     call.args(0) should be === IntVal(1)
     call.args(1) should be === IntVal(2)
@@ -259,7 +259,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result should be ===
       Member(
-        Index(Id("a"), Call(Id("b"), Seq())),
+        Index(Id("a"), Call(Callee(Id("b")), Seq())),
         Id("c"))
   }
 
