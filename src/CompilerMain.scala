@@ -61,9 +61,10 @@ object CompilerMain {
 
   def build(asts: Seq[FileNode]) = {
     handleErrors {
-      HardlyKnower(Resolver(asts))
+      val pkgtree = Resolver(asts)
+      HardlyKnower(pkgtree)
       asts.foreach(Hashtag360NoScoper(_))
-      Sexuality(asts)
+      //Sexuality(asts, pkgtree)
     }
 
     CompilerTerminate(0)

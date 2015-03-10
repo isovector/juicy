@@ -1,5 +1,6 @@
 package juicy.source.ambiguous
 
+import juicy.source._
 import juicy.source.ast._
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
@@ -16,7 +17,7 @@ object AmbiguousStatus {
 object Sexuality {
   import AmbiguousStatus._
 
-  def apply(nodes: Seq[FileNode]): Seq[FileNode] = {
+  def apply(nodes: Seq[FileNode], pkgtree: PackageTree): Seq[FileNode] = {
     nodes.map { node =>
       val typeScope = node.typeScope
 
@@ -33,14 +34,11 @@ object Sexuality {
           None
       }
 
-      node.rewrite(Rewriter { (node: Visitable, context: Seq[Visitable]) =>
-        implicit val implContext = context
-        node match {
-
-    case id: Id =>
-      if (isIn[Member](_.lhs == id)) {
+      def disambiguate(id: Id, prefix: QName): Unit = {
         val name = id.name
-        val asType = unambiguousType(name)
+        val asType = unambiguousType(name) orElse
+          pkgtree.getType(prefix :+ name)
+
         id.status =
           if (id.scope.resolve(name).isDefined)
             SCOPE
@@ -50,22 +48,40 @@ object Sexuality {
             PACKAGE
       }
 
-      id
+      node.rewrite(Rewriter { (node: Visitable, context: Seq[Visitable]) =>
+        implicit val implContext = context
+        node match {
+
+  // ---------------------------------------------------------------------------
+
+  case id: Id =>
+    if (isIn[Member](_.lhs == id)) disambiguate(id, Seq())
+    id
 
 
-    case m: Member =>
-      val folded =
-        m.fold {
-          case id: Id     => Some(id)
-          case otherwise  => None
-        }
+  case m: Member =>
+    val folded =
+      m.fold {
+        case id: Id     => Some(id)
+        case otherwise  => None
+      }
 
-      if (!folded.contains(None)) {
-        val path = folded.flatten
-        if (path.last.status == TYPE) {
-          m
-        } else m
-      } else m
+    if (!folded.contains(None)) {
+      val totalFolded = folded.flatten
+      val rhs = totalFolded.last
+      val path = totalFolded.dropRight(1)
+
+
+      if (path.last.status == TYPE)
+        StaticMember(pkgtree.getType(path.map(_.name)).get, rhs)
+      else {
+        if (rhs.isInstanceOf[Id])
+          disambiguate(rhs.asInstanceOf[Id], path.map(_.name))
+        m
+      }
+    } else m
+
+  // ---------------------------------------------------------------------------
 
           case otherwise => otherwise
         }
