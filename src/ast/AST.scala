@@ -197,7 +197,7 @@ case class ClassDefn(
         methods.map(_.rewrite.asInstanceOf[MethodDefn]),
         isInterface
       ))
-  def resolvesTo (other: ClassDefn) = 
+  def resolvesTo (other: ClassDefn) =
     name == other.name && pkg == other.pkg
 }
 
@@ -507,6 +507,16 @@ case class Index(lhs: Expression, rhs: Expression) extends BinOp {
 
 case class Member(lhs: Expression, rhs: Expression) extends BinOp {
   def rewrite(implicit rule: Rewriter) = rewriter(Member.apply _)
+
+  def fold[T](rule: Expression => T): Seq[T] = {
+    def lifted(ghs: Expression): Seq[T] =
+      ghs match {
+        case member: Member => member.fold(rule)
+        case otherwise      => Seq(rule(otherwise))
+      }
+
+    lifted(lhs) ++ lifted(rhs)
+  }
 }
 
 case class Not(ghs: Expression) extends UnOp {
