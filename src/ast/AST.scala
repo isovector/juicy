@@ -40,12 +40,13 @@ trait BinOp extends Expression {
 
   protected def rewriter[T <: BinOp]
       (ctor: (Expression, Expression) => T)
-      (implicit rule: Rewriter) = {
+      (rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ctor(
-        lhs.rewrite.asInstanceOf[Expression],
-        rhs.rewrite.asInstanceOf[Expression]
-      ))
+        lhs.rewrite(rule, newContext).asInstanceOf[Expression],
+        rhs.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
   }
 
   val children = Seq(lhs, rhs)
@@ -56,11 +57,12 @@ trait UnOp extends Expression {
 
   protected def rewriter[T <: UnOp]
       (ctor: Expression => T)
-      (implicit rule: Rewriter) = {
+      (rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ctor(
-        ghs.rewrite.asInstanceOf[Expression]
-      ))
+        ghs.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
   }
 
   val children = Seq(ghs)
@@ -93,7 +95,7 @@ case class Typename (qname: QName, isArray: Boolean=false) extends Visitable {
 
   val children = Seq()
 
-  def rewrite(implicit rule: Rewriter) = this
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
 }
 
 case class FileNode(
@@ -102,14 +104,17 @@ case class FileNode(
   classes: Seq[ClassDefn]
 ) extends Visitable {
   val children = imports ++ classes
+  var typeScope: Option[Map[String, Seq[SuburbanClassDefn]]] = None
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       FileNode(
         pkg,
-        imports.map(_.rewrite.asInstanceOf[ImportStmnt]),
-        classes.map(_.rewrite.asInstanceOf[ClassDefn])
-      ))
+        imports.map(_.rewrite(rule, newContext).asInstanceOf[ImportStmnt]),
+        classes.map(_.rewrite(rule, newContext).asInstanceOf[ClassDefn])
+      ), context)
+  }
 }
 
 object ClassDefn {
@@ -185,19 +190,22 @@ case class ClassDefn(
 
   override def hashCode = name.hashCode + equalityComparitor.hashCode
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ClassDefn(
         name,
         pkg,
         mods,
-        extnds.map(_.rewrite.asInstanceOf[Typename]),
-        impls.map(_.rewrite.asInstanceOf[Typename]),
-        fields.map(_.rewrite.asInstanceOf[VarStmnt]),
-        methods.map(_.rewrite.asInstanceOf[MethodDefn]),
+        extnds.map(_.rewrite(rule, newContext).asInstanceOf[Typename]),
+        impls.map(_.rewrite(rule, newContext).asInstanceOf[Typename]),
+        fields.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
+        methods.map(_.rewrite(rule, newContext).asInstanceOf[MethodDefn]),
         isInterface
-      ))
-  def resolvesTo (other: ClassDefn) = 
+      ), context)
+  }
+
+  def resolvesTo (other: ClassDefn) =
     name == other.name && pkg == other.pkg
 }
 
@@ -206,11 +214,13 @@ case class ImportClass(
 ) extends ImportStmnt {
   val children = Seq(tname)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ImportClass(
-        tname.rewrite.asInstanceOf[Typename]
-      ))
+        tname.rewrite(rule, newContext).asInstanceOf[Typename]
+      ), context)
+  }
 }
 
 case class ImportPkg(
@@ -218,7 +228,7 @@ case class ImportPkg(
 ) extends ImportStmnt {
   val children = Seq()
 
-  def rewrite(implicit rule: Rewriter) = this
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
 }
 
 case class Signature(name: String, params: Seq[Typename])
@@ -238,16 +248,18 @@ case class MethodDefn(
   def ~==(other: MethodDefn): Boolean =
     signature == other.signature
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       MethodDefn(
         name,
         mods,
         isCxr,
-        tname.rewrite.asInstanceOf[Typename],
-        params.map(_.rewrite.asInstanceOf[VarStmnt]),
-        body.map(_.rewrite.asInstanceOf[Statement])
-      ))
+        tname.rewrite(rule, newContext).asInstanceOf[Typename],
+        params.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
+        body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
+      ), context)
+  }
 }
 
 case class VarStmnt(
@@ -258,14 +270,16 @@ case class VarStmnt(
 ) extends Statement {
   val children = tname +: value.toList
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       VarStmnt(
         name,
         mods,
-        tname.rewrite.asInstanceOf[Typename],
-        value.map(_.rewrite.asInstanceOf[Expression])
-      ))
+        tname.rewrite(rule, newContext).asInstanceOf[Typename],
+        value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
+      ), context)
+  }
 }
 
 case class IfStmnt(
@@ -275,13 +289,15 @@ case class IfStmnt(
 ) extends Statement {
   val children = Seq(cond, then) ++ otherwise.toList
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       IfStmnt(
-        cond.rewrite.asInstanceOf[Expression],
-        then.rewrite.asInstanceOf[BlockStmnt],
-        otherwise.map(_.rewrite.asInstanceOf[BlockStmnt])
-      ))
+        cond.rewrite(rule, newContext).asInstanceOf[Expression],
+        then.rewrite(rule, newContext).asInstanceOf[BlockStmnt],
+        otherwise.map(_.rewrite(rule, newContext).asInstanceOf[BlockStmnt])
+      ), context)
+  }
 }
 
 case class WhileStmnt(
@@ -290,12 +306,14 @@ case class WhileStmnt(
 ) extends Statement {
   val children = Seq(cond, body)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       WhileStmnt(
-        cond.rewrite.asInstanceOf[Expression],
-        body.rewrite.asInstanceOf[Statement]
-      ))
+        cond.rewrite(rule, newContext).asInstanceOf[Expression],
+        body.rewrite(rule, newContext).asInstanceOf[Statement]
+      ), context)
+  }
 }
 
 case class ForStmnt(
@@ -306,14 +324,16 @@ case class ForStmnt(
 ) extends Statement {
   val children = first.toList ++ cond.toList ++ after.toList ++ Seq(body)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ForStmnt(
-        first.map(_.rewrite.asInstanceOf[Statement]),
-        cond.map(_.rewrite.asInstanceOf[Expression]),
-        after.map(_.rewrite.asInstanceOf[Expression]),
-        body.rewrite.asInstanceOf[Statement]
-      ))
+        first.map(_.rewrite(rule, newContext).asInstanceOf[Statement]),
+        cond.map(_.rewrite(rule, newContext).asInstanceOf[Expression]),
+        after.map(_.rewrite(rule, newContext).asInstanceOf[Expression]),
+        body.rewrite(rule, newContext).asInstanceOf[Statement]
+      ), context)
+  }
 }
 
 case class BlockStmnt(
@@ -321,11 +341,13 @@ case class BlockStmnt(
 ) extends Statement {
   val children = body
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       BlockStmnt(
-        body.map(_.rewrite.asInstanceOf[Statement])
-      ))
+        body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
+      ), context)
+  }
 }
 
 case class ReturnStmnt(
@@ -333,11 +355,13 @@ case class ReturnStmnt(
 ) extends Statement {
   val children = Seq(value)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ReturnStmnt(
-        value.rewrite.asInstanceOf[Expression]
-      ))
+        value.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
+  }
 }
 
 case class ExprStmnt(
@@ -345,17 +369,19 @@ case class ExprStmnt(
 ) extends Statement {
   val children = Seq(expr)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       ExprStmnt(
-        expr.rewrite.asInstanceOf[Expression]
-      ))
+        expr.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
+  }
 }
 
 trait NullOp extends Expression {
   val children = Seq()
 
-  def rewrite(implicit rule: Rewriter) = rule(this)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = rule(this, context)
 }
 
 case class NullVal()                extends NullOp
@@ -373,12 +399,14 @@ case class Call(
 ) extends Expression {
   val children = args :+ method
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       Call(
-        method.rewrite.asInstanceOf[Expression],
-        args.map(_.rewrite.asInstanceOf[Expression])
-      ))
+        method.rewrite(rule, newContext).asInstanceOf[Expression],
+        args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
+      ), context)
+  }
 }
 
 case class Cast(
@@ -387,12 +415,14 @@ case class Cast(
 ) extends Expression {
   val children = Seq(tname, value)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       Cast(
-        tname.rewrite.asInstanceOf[Typename],
-        value.rewrite.asInstanceOf[Expression]
-      ))
+        tname.rewrite(rule, newContext).asInstanceOf[Typename],
+        value.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
+  }
 }
 
 case class NewType(
@@ -401,12 +431,14 @@ case class NewType(
 ) extends Expression {
   val children = tname +: args
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       NewType(
-        tname.rewrite.asInstanceOf[Typename],
-        args.map(_.rewrite.asInstanceOf[Expression])
-      ))
+        tname.rewrite(rule, newContext).asInstanceOf[Typename],
+        args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
+      ), context)
+  }
 }
 
 case class NewArray(
@@ -415,12 +447,14 @@ case class NewArray(
 ) extends Expression {
   val children = Seq(tname, size)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       NewArray(
-        tname.rewrite.asInstanceOf[Typename],
-        size.rewrite.asInstanceOf[Expression]
-      ))
+        tname.rewrite(rule, newContext).asInstanceOf[Typename],
+        size.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
+  }
 }
 
 case class InstanceOf(
@@ -429,90 +463,122 @@ case class InstanceOf(
 ) extends Expression {
   val children = Seq(lhs, tname)
 
-  def rewrite(implicit rule: Rewriter) =
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
     rule(
       InstanceOf(
-        lhs.rewrite.asInstanceOf[Expression],
-        tname.rewrite.asInstanceOf[Typename]
-      ))
+        lhs.rewrite(rule, newContext).asInstanceOf[Expression],
+        tname.rewrite(rule, newContext).asInstanceOf[Typename]
+      ), context)
+  }
 }
 
 case class Assignment(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Assignment.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Assignment.apply _)(rule, context)
 }
 
 case class LogicOr(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(LogicOr.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(LogicOr.apply _)(rule, context)
 }
 
 case class LogicAnd(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(LogicAnd.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(LogicAnd.apply _)(rule, context)
 }
 
 case class BitOr(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(BitOr.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(BitOr.apply _)(rule, context)
 }
 
 case class BitAnd(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(BitAnd.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(BitAnd.apply _)(rule, context)
 }
 
 case class Eq(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Eq.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Eq.apply _)(rule, context)
 }
 
 case class NEq(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(NEq.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(NEq.apply _)(rule, context)
 }
 
 case class LEq(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(LEq.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(LEq.apply _)(rule, context)
 }
 
 case class GEq(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(GEq.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(GEq.apply _)(rule, context)
 }
 
 case class LThan(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(LThan.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(LThan.apply _)(rule, context)
 }
 
 case class GThan(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(GThan.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(GThan.apply _)(rule, context)
 }
 
 case class Add(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Add.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Add.apply _)(rule, context)
 }
 
 case class Sub(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Sub.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Sub.apply _)(rule, context)
 }
 
 case class Mul(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Mul.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Mul.apply _)(rule, context)
 }
 
 case class Div(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Div.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Div.apply _)(rule, context)
 }
 
 case class Mod(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Mod.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Mod.apply _)(rule, context)
 }
 
 case class Index(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Index.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Index.apply _)(rule, context)
 }
 
 case class Member(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Member.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Member.apply _)(rule, context)
+
+  def fold[T](rule: Expression => T): Seq[T] = {
+    def lifted(ghs: Expression): Seq[T] =
+      ghs match {
+        case member: Member => member.fold(rule)
+        case otherwise      => Seq(rule(otherwise))
+      }
+
+    lifted(lhs) ++ lifted(rhs)
+  }
 }
 
 case class Not(ghs: Expression) extends UnOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Not.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Not.apply _)(rule, context)
 }
 
 case class Neg(ghs: Expression) extends UnOp {
-  def rewrite(implicit rule: Rewriter) = rewriter(Neg.apply _)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Neg.apply _)(rule, context)
 }

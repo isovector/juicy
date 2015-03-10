@@ -1,7 +1,7 @@
 package juicy.utils
 
-import scala.reflect.ClassTag
 import juicy.source.scoper.BlockScope
+import scala.reflect.ClassTag
 
 package object visitor {
 
@@ -14,7 +14,7 @@ case class Before(n: Visitable) extends VisitOrder
 case class After(n: Visitable) extends VisitOrder
 case class EmptyNode() extends Visitable {
   val children = Seq()
-  def rewrite(implicit rule: Rewriter) = this
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
 }
 
 def before(order: VisitOrder): Visitable =
@@ -71,15 +71,16 @@ def ancestor[T : ClassTag](implicit context: Seq[Visitable]): Option[T] = {
   None
 }
 
-case class Rewriter(rule: Visitable => Visitable) {
-  def apply(node: Visitable): Visitable = rule(node)
+case class Rewriter(rule: (Visitable, Seq[Visitable]) => Visitable) {
+  def apply(node: Visitable, context: Seq[Visitable]): Visitable =
+    rule(node, context)
 }
 
 
 trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
-  
+
   var scope = new BlockScope()
   def from = originalToken.from
   val children: Seq[Visitable]
@@ -121,7 +122,9 @@ trait Visitable {
     lifted((before /: childResults)(lifted), after)
   }
 
-  def rewrite(implicit rule: Rewriter): Visitable
+  def rewrite(rule: Rewriter): Visitable = rewrite(rule, Seq())
+  def rewrite(rule: Rewriter, context: Seq[Visitable]): Visitable
+
   def setScope (scope: BlockScope) = {
     this.scope = scope
   }

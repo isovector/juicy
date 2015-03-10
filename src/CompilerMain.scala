@@ -1,5 +1,6 @@
 package juicy.source
 
+import juicy.source.ambiguous.Sexuality
 import juicy.source.ast.FileNode
 import juicy.source.parser._
 import juicy.source.resolver._
@@ -62,6 +63,7 @@ object CompilerMain {
     handleErrors {
       HardlyKnower(Resolver(asts))
       asts.foreach(Hashtag360NoScoper(_))
+      Sexuality(asts)
     }
 
     CompilerTerminate(0)
