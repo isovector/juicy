@@ -32,8 +32,7 @@ object Sexuality {
           classImport.map(_.u)
         else if (possible.length == 1)
           Some(possible(0))
-        else // TODO: throw exception
-          throw AmbiguousResolveError(Seq(name), from)
+        else throw AmbiguousResolveError(Seq(name), from)
       }
 
       def disambiguate(id: Id, prefix: QName): Unit = {

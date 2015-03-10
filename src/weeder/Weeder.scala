@@ -206,33 +206,46 @@ object Weeder {
         }
 
         case me: ForStmnt => {
-            val startIsAssign = me.first match {
-                case None => true
-                case Some(VarStmnt(_, _, _, _)) => true
-                case Some(ExprStmnt(expr)) => expr match {
-                    case Assignment(_,_) => true
-                    case Call(_,_) => true
-                    case NewArray(_,_) => true
-                    case NewType(_,_) => true
-                    case _ => false
-                }
-                case _ => false
+          val startIsAssign = me.first match {
+            case None => true
+            case Some(VarStmnt(_, _, _, _)) => true
+            case Some(ExprStmnt(expr)) => expr match {
+              case Assignment(_,_) => true
+              case Call(_,_) => true
+              case NewArray(_,_) => true
+              case NewType(_,_) => true
+              case _ => false
             }
-            val lastIsAssign = me.after match {
-                case None => true
-                case Some(Assignment(_,_)) => true
-                case Some(Call(_,_)) => true
-                case Some(NewType(_,_)) => true
-                case Some(NewArray(_,_)) => true
-                case _ => false
-            }
+              case _ => false
+          }
 
-            if (!(startIsAssign && lastIsAssign)) {
-              throw new WeederError(
-                s"Init and Update in a for-statement must not be primary expressions",
-                me)
-            }
+          val lastIsAssign = me.after match {
+            case None => true
+            case Some(Assignment(_,_)) => true
+            case Some(Call(_,_)) => true
+            case Some(NewType(_,_)) => true
+            case Some(NewArray(_,_)) => true
+            case _ => false
+          }
+
+          if (!(startIsAssign && lastIsAssign)) {
+            throw new WeederError(
+              s"Init and Update in a for-statement must not be primary expressions",
+              me)
+          }
         }
+
+        case me@Call(lhs, _) => {
+          lhs match {
+            case _: Id     =>
+            case _: Member =>
+            case _         =>
+              throw WeederError(
+                "Only member accesses and ids may be called as functions",
+                me)
+          }
+        }
+
         case _ =>
       }
     }.fold(
