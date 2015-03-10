@@ -101,7 +101,6 @@ object Resolver {
       val importedTypes = new collection.mutable.HashMap[QName, ClassDefn]
       val importedPkgs = new collection.mutable.MutableList[QName]
 
-      // TODO: primitives
       importedPkgs += Seq("java", "lang")
 
       var typeScope = Map[String, Seq[SuburbanClassDefn]]()
@@ -148,60 +147,23 @@ object Resolver {
         }
       }
 
-      node.typeScope = Some(typeScope)
-
-      val pkg = node.pkg
-      def tryResolve(qname: QName, from: SourceLocation): Option[ClassDefn] = {
-        var outVal =
-          if (types.contains(qname))
-            types.get(qname)
-          else if (importedTypes.contains(qname))
-            importedTypes.get(qname)
-          else
-            None
-
-        def tryResolveFromPackage(pkg: QName) = {
-          val pkgContents = pkgtree.getPackage(pkg)
-          val contained = pkgContents.get(qname)
-          if (contained.isDefined) {
-            if (outVal.isDefined && !(outVal.get resolvesTo contained.get))
-              throw AmbiguousResolveError(qname, from)
-
-            outVal = contained
-          }
-        }
-
-        if (outVal.isEmpty)
-          tryResolveFromPackage(pkg)
-
-        if (outVal.isEmpty)
-          importedPkgs.foreach(tryResolveFromPackage)
-
-        return outVal
-      }
+      node.typeScope =
+        Some(
+          typeScope.map{ case (k, v) =>
+            k -> v.distinct })
 
       node.visit { (self, context) =>
         implicit val implContext = context
-        self match {
-          case Before(classDefn: ClassDefn) =>
+        before(self) match {
+          case classDefn: ClassDefn =>
             val qname = Seq(classDefn.name)
             if (importedTypes.contains(qname) &&
-                ! (importedTypes(qname) resolvesTo classDefn)) {
+                !(importedTypes(qname) resolvesTo classDefn)) {
               throw AmbiguousResolveError(qname, classDefn.from)
             }
 
-          case Before(tname@Typename(qname, _)) =>
-            if (!isIn[ImportClass]()) {
-              val prefixNames = tname.name.split('.').toList
-              (1 to prefixNames.length - 1) foreach { prefix =>
-                val resolved = tryResolve(prefixNames.take(prefix), tname.from)
-                if (resolved.isDefined) {
-                  throw AmbiguousResolveError(prefixNames.take(prefix), tname.from)
-                }
-              }
-            }
-
-            tname.resolved = tryResolve(qname, tname.from)
+          case tname@Typename(qname, _) =>
+            tname.resolved = node.resolve(qname, pkgtree, tname.from)
             if (!tname.resolved.isDefined)
               throw UnresolvedTypeError(qname, tname.from)
 

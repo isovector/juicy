@@ -1,6 +1,9 @@
 package juicy.source.ast
 
 import juicy.source.ambiguous.AmbiguousStatus
+import juicy.source.PackageTree
+import juicy.source.resolver.Resolver.AmbiguousResolveError
+import juicy.source.tokenizer.SourceLocation
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
@@ -118,6 +121,36 @@ case class FileNode(
         imports.map(_.rewrite(rule, newContext).asInstanceOf[ImportStmnt]),
         classes.map(_.rewrite(rule, newContext).asInstanceOf[ClassDefn])
       ), context)
+  }
+
+  // the most balls function of all time
+  def unambiguousType(name: String, from: SourceLocation): Option[ClassDefn] = {
+    val possible = typeScope.flatMap(_.get(name)).getOrElse { return None }
+    val classImport = possible.find(!_.fromPkg)
+
+    if (classImport.isDefined)
+      classImport.map(_.u)
+    else if (possible.length == 1)
+      Some(possible(0))
+    else
+      throw AmbiguousResolveError(Seq(name), from)
+  }
+
+  def resolve(
+      qname: QName,
+      pkgtree: PackageTree,
+      from: SourceLocation): Option[ClassDefn] = {
+
+    // fail self-package referencing classes
+    classes.foreach { classDef =>
+      if (qname.head == classDef.name && qname.length != 1)
+        throw AmbiguousResolveError(qname, from)
+    }
+
+    pkgtree
+      .getType(qname)
+      .orElse(unambiguousType(qname.head, from))
+      .orElse(pkgtree.getType(pkg ++ qname))
   }
 }
 
