@@ -195,7 +195,10 @@ object Weeder {
         case me: Typename => {
           if (me.qname == Seq("void"))
             context.head match {
-              case _: MethodDefn => // do nothing
+              case _: MethodDefn =>
+                if (me.isArray)
+                  throw new WeederError(
+                    s"Type `void` can't be an array ya dingus", me)
               case _             =>
                 throw new WeederError(
                   s"Type `void` may only be used as a function return type", me)

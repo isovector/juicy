@@ -140,6 +140,12 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
 
       public class Class {
         public Class() {}
+        public void[] fail() {
+        }
+      }
+
+      public class Class {
+        public Class() {}
         public void pass() { }
       }
       """)
@@ -150,7 +156,8 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
     Weeder(classes(1)) should be === false
     Weeder(classes(2)) should be === false
     Weeder(classes(3)) should be === false
-    Weeder(classes(4)) should be === true
+    Weeder(classes(4)) should be === false
+    Weeder(classes(5)) should be === true
   }
 
   it should "not allow final fields" in {
