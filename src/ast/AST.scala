@@ -1,5 +1,6 @@
 package juicy.source.ast
 
+import juicy.source.ambiguous.AmbiguousStatus
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
@@ -68,7 +69,7 @@ trait UnOp extends Expression {
   val children = Seq(ghs)
 }
 
-case class Typename (qname: QName, isArray: Boolean=false) extends Visitable {
+case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   var resolved: Option[ClassDefn] = None
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
@@ -387,11 +388,14 @@ trait NullOp extends Expression {
 case class NullVal()                extends NullOp
 case class ThisVal()                extends NullOp
 case class SuperVal()               extends NullOp
-case class Id(name: String)         extends NullOp
 case class IntVal(value: Int)       extends NullOp
 case class CharVal(value: Char)     extends NullOp
 case class BoolVal(value: Boolean)  extends NullOp
 case class StringVal(value: String) extends NullOp
+
+case class Id(name: String)         extends NullOp {
+  var status: AmbiguousStatus.Value = AmbiguousStatus.AMBIGUOUS
+}
 
 case class Call(
   method: Expression,
@@ -570,6 +574,19 @@ case class Member(lhs: Expression, rhs: Expression) extends BinOp {
       }
 
     lifted(lhs) ++ lifted(rhs)
+  }
+}
+
+case class StaticMember(lhs: ClassDefn, rhs: Expression) extends Expression {
+  val children = Seq(rhs)
+
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
+    rule(
+      StaticMember(
+        lhs.rewrite(rule, newContext).asInstanceOf[ClassDefn],
+        rhs.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
   }
 }
 
