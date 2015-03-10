@@ -102,6 +102,7 @@ case class FileNode(
   classes: Seq[ClassDefn]
 ) extends Visitable {
   val children = imports ++ classes
+  var importTable: Option[Map[QName, ClassDefn]] = None
 
   def rewrite(implicit rule: Rewriter) =
     rule(

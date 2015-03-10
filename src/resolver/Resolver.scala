@@ -34,11 +34,11 @@ object Resolver {
     val msg = "Some objects in the package tree have the same qualified name." +
               "This is likely due to having a class whose qualified name is a prefix of a package."
   }
-  
+
   case class AmbiguousPackageClassError(pkg: String, from: SourceLocation)
       extends CompilerError {
-    val msg = s"Overlapping definition of class and package with name $pkg"  
-      
+    val msg = s"Overlapping definition of class and package with name $pkg"
+
  }
 
   def qualify(name: String, context: Seq[Visitable]): QName = {
@@ -88,7 +88,7 @@ object Resolver {
         packages(pkg) += qname
       }
     }
-    
+
     // Build the package tree
     val pkgtree = PackageTree(
       packages.toSeq.map(_._1),
@@ -127,7 +127,7 @@ object Resolver {
       }
 
       val pkg = node.pkg
-      
+
       def tryResolve(qname: QName, from: SourceLocation): Option[ClassDefn] = {
         var outVal =
           if (types.contains(qname))
@@ -136,23 +136,28 @@ object Resolver {
             importedTypes.get(qname)
           else
             None
-      
+
         def tryResolveFromPackage(pkg: QName) = {
           val pkgContents = pkgtree.getPackage(pkg)
           val contained = pkgContents.get(qname)
           if (contained.isDefined) {
             if (outVal.isDefined && !(outVal.get resolvesTo contained.get))
               throw AmbiguousResolveError(qname, from)
+
             outVal = contained
           }
         }
+
         if (outVal.isEmpty)
           tryResolveFromPackage(pkg)
+
         if (outVal.isEmpty)
           importedPkgs.foreach(tryResolveFromPackage)
+
         return outVal
       }
-      
+
+      var importTable = Map[QName, ClassDefn]()
       node.visit { (self, context) =>
         implicit val implContext = context
         self match {
@@ -162,6 +167,7 @@ object Resolver {
                 ! (importedTypes(qname) resolvesTo classDefn)) {
               throw AmbiguousResolveError(qname, classDefn.from)
             }
+
           case Before(tname@Typename(qname, _)) =>
             if (!isIn[ImportClass]()) {
               val prefixNames = tname.name.split('.').toList
@@ -172,15 +178,21 @@ object Resolver {
                 }
               }
             }
+
             tname.resolved = tryResolve(qname, tname.from)
             if (!tname.resolved.isDefined)
               throw UnresolvedTypeError(qname, tname.from)
+            else
+              importTable += qname -> tname.resolved.get
+
           case _ =>
         }
       }.fold(
         l => throw VisitError(l),
         r => r
       )
+
+      node.importTable = Some(importTable)
     }
 
     pkgtree
