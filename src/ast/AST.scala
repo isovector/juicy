@@ -565,9 +565,17 @@ case class Index(lhs: Expression, rhs: Expression) extends BinOp {
     rewriter(Index.apply _)(rule, context)
 }
 
-case class Member(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(Member.apply _)(rule, context)
+case class Member(lhs: Expression, rhs: Id) extends Expression {
+  val children = Seq(lhs, rhs)
+
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
+    rule(
+      Member(
+        lhs.rewrite(rule, newContext).asInstanceOf[Expression],
+        rhs.rewrite(rule, newContext).asInstanceOf[Id]
+      ), context)
+  }
 
   def fold[T](rule: Expression => T): Seq[T] = {
     def lifted(ghs: Expression): Seq[T] =
