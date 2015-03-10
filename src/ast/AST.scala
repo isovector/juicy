@@ -104,7 +104,7 @@ case class FileNode(
   classes: Seq[ClassDefn]
 ) extends Visitable {
   val children = imports ++ classes
-  var typeScope: Option[Map[String, Seq[ClassDefn]]] = None
+  var typeScope: Option[Map[String, Seq[SuburbanClassDefn]]] = None
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context

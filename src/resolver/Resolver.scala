@@ -104,10 +104,11 @@ object Resolver {
       // TODO: primitives
       importedPkgs += Seq("java", "lang")
 
-      var typeScope = Map[String, Seq[ClassDefn]]()
-      def addTypeToScope(name: String, classDef: ClassDefn) = {
+      var typeScope = Map[String, Seq[SuburbanClassDefn]]()
+      def addTypeToScope(name: String, classDef: ClassDefn, fromPkg: Boolean) = {
         typeScope += name -> (
-          typeScope.get(name).getOrElse(Seq()) :+ classDef
+          typeScope.get(name).getOrElse(Seq()) :+
+            SuburbanClassDefn(classDef, fromPkg)
         )
       }
 
@@ -134,7 +135,7 @@ object Resolver {
 
       // build type scope table
       importedTypes.foreach { case (qname, classDef) =>
-        addTypeToScope(qname.last, classDef)
+        addTypeToScope(qname.last, classDef, false)
       }
 
       importedPkgs.foreach { pkg =>
@@ -143,7 +144,7 @@ object Resolver {
           .toSeq
           .map(_._2)
           .foreach { classDef =>
-            addTypeToScope(classDef.name, classDef)
+            addTypeToScope(classDef.name, classDef, true)
         }
       }
 
