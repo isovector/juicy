@@ -24,7 +24,7 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   def failTestDirectory(directory: File) = {
     val dirName = directory.toString
     val name = directory.getName
-    s"compiler should fail $name" in {
+    s"compiler should fail $dirName" in {
       try {
         CompilerMain.build(
           CompilerMain.parseFiles(allFilenames(directory)) ++ stdlib)
@@ -36,7 +36,7 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   def failTestFile(f: File) = {
     val fname = f.toString
     val name = f.getName
-    s"compiler should fail $name" in {
+    s"compiler should fail $fname" in {
       try {
         CompilerMain.build(
           CompilerMain.parseFiles(Seq(fname)) ++ stdlib)
@@ -48,7 +48,7 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   def succeedTestDirectory(directory: File) = {
     val dirName = directory.toString
     val name = directory.getName
-    s"compiler should not fail $name" in {
+    s"compiler should not fail $dirName" in {
       try {
         CompilerMain.build(
           CompilerMain.parseFiles(allFilenames(directory)) ++ stdlib)
@@ -60,7 +60,7 @@ class MarmoTest extends FreeSpec with ShouldMatchers {
   def succeedTestFile(f: File) = {
     val fname = f.toString
     val name = f.getName
-    s"compiler should not fail $name" in {
+    s"compiler should not fail $fname" in {
       try {
         CompilerMain.build(
           CompilerMain.parseFiles(Seq(fname)) ++ stdlib)
