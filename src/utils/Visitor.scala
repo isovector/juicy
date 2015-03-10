@@ -81,7 +81,9 @@ trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
 
-  var scope = new BlockScope()
+  var scope: BlockScope = null
+  def classScope = scope.enclosingClass
+  
   def from = originalToken.from
   val children: Seq[Visitable]
 
@@ -125,9 +127,6 @@ trait Visitable {
   def rewrite(rule: Rewriter): Visitable = rewrite(rule, Seq())
   def rewrite(rule: Rewriter, context: Seq[Visitable]): Visitable
 
-  def setScope (scope: BlockScope) = {
-    this.scope = scope
-  }
 }
 
 }

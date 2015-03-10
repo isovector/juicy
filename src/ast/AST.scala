@@ -30,7 +30,10 @@ object Modifiers {
   }
 }
 
-trait Expression extends Visitable
+trait Expression extends Visitable {
+  var exprType: Option[Typename] = None
+  def hasType = exprType.isDefined
+}
 trait Statement extends Visitable
 trait Definition extends Visitable
 trait ImportStmnt extends Statement
