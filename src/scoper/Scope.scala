@@ -8,8 +8,8 @@ class BlockScope (val parent: Option[BlockScope]=None) {
   if (parent.isDefined) {
     parent.get.children ::= this
   }
-  val variables = collection.mutable.Map[String, (Typename, SourceLocation)]()
-  def resolve(varname: String) : Option[(Typename, SourceLocation)] = {
+  val variables = collection.mutable.Map[String, Typename]()
+  def resolve(varname: String) : Option[Typename] = {
     if (variables contains varname) {
       return Some(variables(varname))
     } else if (parent.isEmpty) {
@@ -18,16 +18,17 @@ class BlockScope (val parent: Option[BlockScope]=None) {
       parent.get.resolve(varname)
     }
   }
-  def define(varname: String, tname: Typename, source: SourceLocation): Boolean = {
+  def define(varname: String, tname: Typename): Boolean = {
     if (parent.isDefined && parent.get.resolveParent(varname)) {
       false
     } else if (variables contains varname) {
       false
     } else {
-      variables(varname) = (tname, source)
+      variables(varname) = tname
       true
     }
   }
+  
   def resolveParent(varname: String): Boolean = {
     if (variables contains varname) {
       true

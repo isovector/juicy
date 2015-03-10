@@ -47,8 +47,8 @@ object Hashtag360NoScoper {
                 curClass = new ClassScope()
                 curBlock = Some(curClass)
                 fields.foreach(f => 
-                  if(!curClass.define(f.name, f.tname, from)) {
-                    val source = curClass.resolve(f.name).get._1
+                  if(!curClass.define(f.name, f.tname)) {
+                    val source = curClass.resolve(f.name).get.from
                     throw new ScopeError(s"Duplicate field $f.name (originally defined at: $source)", from)
                   }
                 )
@@ -64,9 +64,9 @@ object Hashtag360NoScoper {
         case Before(VarStmnt(name,_,tname,_)) => {
           if(curBlock.isEmpty) {
                throw new ScopeError(s"Definition of $name outside class body", from)
-           } else if (curBlock.get != curClass && !curBlock.get.define(name, tname, from)) {
+           } else if (curBlock.get != curClass && !curBlock.get.define(name, tname)) {
              // Already defined
-             val source = curBlock.get.resolve(name).get._1
+             val source = curBlock.get.resolve(name).get.from
              throw new ScopeError(s"Duplicate definition of variable $name (originally defined at: $source)", from)
            }
         }
@@ -99,7 +99,7 @@ object Hashtag360NoScoper {
       self match {
         case Before(v) => {
           if (curBlock.isDefined) {
-            v.setScope(curBlock.get)
+            v.scope = curBlock.get
           }
         }
         case _ =>
