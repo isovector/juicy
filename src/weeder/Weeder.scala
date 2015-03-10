@@ -174,7 +174,7 @@ object Weeder {
 
         case me@SuperVal() =>
           if (isIn[Call](call =>
-              context.contains(call.method) || me == call.method))
+              context.contains(call.method) || Callee(me) == call.method))
             throw new WeederError(
               s"Can't explicitly call methods on super()", me)
 

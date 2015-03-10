@@ -41,7 +41,7 @@ object Checker {
         case m@Member(left, right) =>
           val scope = scopeMap.get(left)
           if (scope.isDefined) {
-            if (isIn[Callee]()) {
+            if (context.head == Callee(m)) {
         
             } else {
                 right match {
