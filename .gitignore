@@ -10,3 +10,8 @@
 .lib-src
 tags
 ctags
+.sbtserver/
+project/.sbtserver
+project/.sbtserver.lock
+project/play-fork-run.sbt
+project/sbt-ui.sbt

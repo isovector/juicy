@@ -12,3 +12,6 @@ scalaSource in Test := baseDirectory.value / "test"
 
 testOptions in Test += Tests.Argument("-oI")
 
+
+
+fork in run := true

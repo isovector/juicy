@@ -37,6 +37,7 @@ class BlockScope (val parent: Option[BlockScope]=None) {
       false
     }
   }
+  def enclosingClass(): Option[ClassScope] = if (parent.isDefined) parent.get.enclosingClass else None
 }
 
 class ClassScope extends BlockScope {
@@ -54,4 +55,5 @@ class ClassScope extends BlockScope {
   def resolveMethod(name: String) = {
     methods.filter(_.name == name)
   }
+  override def enclosingClass() = Some(this)
 }
