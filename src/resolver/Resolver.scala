@@ -104,6 +104,13 @@ object Resolver {
       // TODO: primitives
       importedPkgs += Seq("java", "lang")
 
+      var typeScope = Map[String, Seq[ClassDefn]]()
+      def addTypeToScope(name: String, classDef: ClassDefn) = {
+        typeScope += name -> (
+          typeScope.get(name).getOrElse(Seq()) :+ classDef
+        )
+      }
+
       node.imports.foreach {
         case impl@ImportClass(tname) =>
           val qname = tname.qname
@@ -111,8 +118,7 @@ object Resolver {
           val name = Seq(qname.last)
 
           if (resolved.isDefined)
-            if (
-                !importedTypes.contains(name) ||
+            if (!importedTypes.contains(name) ||
                 importedTypes(name) == resolved.get)
               importedTypes += name -> resolved.get
             else throw OverlappingTypeError(qname, impl.from)
@@ -126,8 +132,24 @@ object Resolver {
             importedPkgs += qname
       }
 
-      val pkg = node.pkg
+      // build type scope table
+      importedTypes.foreach { case (qname, classDef) =>
+        addTypeToScope(qname.last, classDef)
+      }
 
+      importedPkgs.foreach { pkg =>
+        pkgtree
+          .getPackage(pkg)
+          .toSeq
+          .map(_._2)
+          .foreach { classDef =>
+            addTypeToScope(classDef.name, classDef)
+        }
+      }
+
+      node.typeScope = Some(typeScope)
+
+      val pkg = node.pkg
       def tryResolve(qname: QName, from: SourceLocation): Option[ClassDefn] = {
         var outVal =
           if (types.contains(qname))
@@ -157,7 +179,6 @@ object Resolver {
         return outVal
       }
 
-      var importTable = Map[QName, ClassDefn]()
       node.visit { (self, context) =>
         implicit val implContext = context
         self match {
@@ -182,8 +203,6 @@ object Resolver {
             tname.resolved = tryResolve(qname, tname.from)
             if (!tname.resolved.isDefined)
               throw UnresolvedTypeError(qname, tname.from)
-            else
-              importTable += qname -> tname.resolved.get
 
           case _ =>
         }
@@ -191,8 +210,6 @@ object Resolver {
         l => throw VisitError(l),
         r => r
       )
-
-      node.importTable = Some(importTable)
     }
 
     pkgtree
