@@ -163,9 +163,11 @@ object Resolver {
             }
 
           case tname@Typename(qname, _) =>
-            tname.resolved = node.resolve(qname, pkgtree, tname.from)
-            if (!tname.resolved.isDefined)
-              throw UnresolvedTypeError(qname, tname.from)
+            if (!isIn[ImportClass]()) {
+              tname.resolved = node.resolve(qname, pkgtree, tname.from)
+              if (!tname.resolved.isDefined)
+                throw UnresolvedTypeError(qname, tname.from)
+            }
 
           case _ =>
         }

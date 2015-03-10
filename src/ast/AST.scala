@@ -147,10 +147,22 @@ case class FileNode(
         throw AmbiguousResolveError(qname, from)
     }
 
-    pkgtree
-      .getType(qname)
-      .orElse(unambiguousType(qname.head, from))
-      .orElse(pkgtree.getType(pkg ++ qname))
+    val qnameOpt = pkgtree.getType(qname)
+    val ambigOpt = unambiguousType(qname.head, from)
+    val inPkgOpt = pkgtree.getType(pkg :+ qname.head)
+
+    // Resolving to multiple of the above is only ok if one is fully qualified
+    // and its prefix doesn't collide due to the current package. Or something.
+    // This makes it pass tests and Sanjay said it was probably a good idea
+    if (qnameOpt.isDefined && (ambigOpt.isDefined || inPkgOpt.isDefined)) {
+      val which = ambigOpt.getOrElse(inPkgOpt.get)
+      if (which.pkg == pkg)
+        throw AmbiguousResolveError(qname, from)
+    }
+
+    qnameOpt
+      .orElse(ambigOpt)
+      .orElse(inPkgOpt)
   }
 }
 
