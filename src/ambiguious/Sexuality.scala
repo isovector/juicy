@@ -2,6 +2,8 @@ package juicy.source.ambiguous
 
 import juicy.source._
 import juicy.source.ast._
+import juicy.source.resolver.Resolver.AmbiguousResolveError
+import juicy.source.tokenizer.SourceLocation
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
@@ -22,8 +24,8 @@ object Sexuality {
       val typeScope = node.typeScope
 
       // the most balls function of all time
-      def unambiguousType(name: String): Option[ClassDefn] = {
-        val possible = typeScope.get.get(name).getOrElse { return None }
+      def unambiguousType(name: String, from: SourceLocation): Option[ClassDefn] = {
+        val possible = typeScope.flatMap(_.get(name)).getOrElse { return None }
         val classImport = possible.find(!_.fromPkg)
 
         if (classImport.isDefined)
@@ -31,12 +33,12 @@ object Sexuality {
         else if (possible.length == 1)
           Some(possible(0))
         else // TODO: throw exception
-          None
+          throw AmbiguousResolveError(Seq(name), from)
       }
 
       def disambiguate(id: Id, prefix: QName): Unit = {
         val name = id.name
-        val asType = unambiguousType(name) orElse
+        val asType = unambiguousType(name, id.from) orElse
           pkgtree.getType(prefix :+ name)
 
         id.status =
@@ -70,13 +72,16 @@ object Sexuality {
       val totalFolded = folded.flatten
       val rhs = totalFolded.last
       val path = totalFolded.dropRight(1)
+      val qname = path.map(_.name)
 
-
-      if (path.last.status == TYPE)
-        StaticMember(pkgtree.getType(path.map(_.name)).get, rhs)
+      if (path.last.status == TYPE) {
+        val classDefn = pkgtree.getType(qname) orElse
+          unambiguousType(qname.last, m.from)
+        StaticMember(classDefn.get, rhs)
+      }
       else {
         if (rhs.isInstanceOf[Id])
-          disambiguate(rhs.asInstanceOf[Id], path.map(_.name))
+          disambiguate(rhs.asInstanceOf[Id], qname)
         m
       }
     } else m
