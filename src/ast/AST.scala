@@ -130,9 +130,9 @@ case class FileNode(
     val classImport = possible.find(!_.fromPkg)
 
     if (classImport.isDefined)
-      classImport.map(_.u)
+      classImport.map(_.u).map(_.asInstanceOf[ClassDefn])
     else if (possible.length == 1)
-      Some(possible(0))
+      Some(possible(0).u.asInstanceOf[ClassDefn])
     else
       throw AmbiguousResolveError(Seq(name), from)
   }
@@ -140,7 +140,7 @@ case class FileNode(
   def resolve(
       qname: QName,
       pkgtree: PackageTree,
-      from: SourceLocation): Option[ClassDefn] = {
+      from: SourceLocation): Option[TypeDefn] = {
 
     // fail self-package referencing classes
     classes.foreach { classDef =>

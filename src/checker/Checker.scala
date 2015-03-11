@@ -42,7 +42,6 @@ object Checker {
             if (tn.isEmpty) {
               errors :+= undefined(i)
             } else {
-              println(s"define scope for $i.name")
               i.exprType = tn
             }
           }
@@ -57,9 +56,7 @@ object Checker {
                     val tn = scope.map(_.enclosingClass).flatMap(_.resolve(rname))
                     
                     if (tn.isEmpty) {
-                      println(s"Could not find symbol $rname in scope $left")
-                      scope.get.printVariables()
-                      //errors :+= undefined(ri)
+                      errors :+= undefined(ri)
                     } else {
                       m.exprType = tn
                     }
