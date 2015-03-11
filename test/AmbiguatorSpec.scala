@@ -50,7 +50,7 @@ class AmbiguatorSpec extends FlatSpec with ShouldMatchers {
         Call(
           Callee(
             StaticMember(
-              pkgtree.getType(Seq("java", "lang", "Object")).get,
+              pkgtree.getType(Seq("java", "lang", "Object")).get.asInstanceOf[ClassDefn],
               Id("call")
           )),
           Seq()

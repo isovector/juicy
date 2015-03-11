@@ -2,6 +2,7 @@ package juicy.source
 
 import juicy.source.ambiguous.Sexuality
 import juicy.source.ast.FileNode
+import juicy.source.checker.Checker
 import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.scoper._
@@ -64,7 +65,8 @@ object CompilerMain {
       val pkgtree = Resolver(asts)
       HardlyKnower(pkgtree)
       asts.foreach(Hashtag360NoScoper(_))
-      //Sexuality(asts, pkgtree)
+      Sexuality(asts, pkgtree)
+      asts.foreach(Checker(_, pkgtree))
     }
 
     CompilerTerminate(0)

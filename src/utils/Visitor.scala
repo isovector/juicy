@@ -1,6 +1,6 @@
 package juicy.utils
 
-import juicy.source.scoper.BlockScope
+import juicy.source.scoper.Scope
 import scala.reflect.ClassTag
 
 package object visitor {
@@ -81,8 +81,8 @@ trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
 
-  var scope: BlockScope = null
-  def classScope = scope.enclosingClass
+  var scope: Option[Scope] = None
+  def classScope = scope.get.enclosingClass
   
   def from = originalToken.from
   val children: Seq[Visitable]

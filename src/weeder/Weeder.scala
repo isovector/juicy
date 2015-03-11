@@ -237,8 +237,8 @@ object Weeder {
 
         case me@Call(lhs, _) => {
           lhs match {
-            case _: Id     =>
-            case _: Member =>
+            case Callee(Id(_))     =>
+            case Callee(Member(_,_)) =>
             case _         =>
               throw WeederError(
                 "Only member accesses and ids may be called as functions",

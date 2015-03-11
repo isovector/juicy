@@ -3,23 +3,30 @@ import juicy.source.ast.Signature
 import juicy.source.ast.Typename
 import juicy.source.tokenizer.SourceLocation
 
-class BlockScope (val parent: Option[BlockScope]=None) {
-  var children = List[BlockScope]()
-  if (parent.isDefined) {
-    parent.get.children ::= this
-  }
+abstract class Scope {
+  val parent: Scope
+  
   val variables = collection.mutable.Map[String, Typename]()
+  var children = Seq[Scope]()
+  
   def resolve(varname: String) : Option[Typename] = {
     if (variables contains varname) {
       return Some(variables(varname))
-    } else if (parent.isEmpty) {
-       None
     } else {
-      parent.get.resolve(varname)
+      parent.resolve(varname)
     }
   }
+  
+  def resolveParent(varname: String): Boolean = {
+    if (variables contains varname) {
+      true
+    } else {
+      parent.resolveParent(varname)
+    }
+  }
+  
   def define(varname: String, tname: Typename): Boolean = {
-    if (parent.isDefined && parent.get.resolveParent(varname)) {
+    if (parent.resolveParent(varname)) {
       false
     } else if (variables contains varname) {
       false
@@ -28,35 +35,38 @@ class BlockScope (val parent: Option[BlockScope]=None) {
       true
     }
   }
+  def enclosingClass(): ClassScope
   
-  def resolveParent(varname: String): Boolean = {
-    if (variables contains varname) {
-      true
-    } else if (parent.isDefined){
-      parent.get.resolveParent(varname)
-    } else {
-      false
-    }
+  def printVariables(indent: Int = 0): Unit = {
+    variables.foreach {kv => println(" " * indent + kv) }
+    printParent(indent + 1)
   }
-  def enclosingClass(): Option[ClassScope] = if (parent.isDefined) parent.get.enclosingClass else None
+  
+  def printParent(id: Int) = parent.printVariables(id)
 }
 
-class ClassScope extends BlockScope {
-  val methods = collection.mutable.Set[Signature]()
-  def defineMethod(name: String, fields: Seq[Typename]): Boolean = {
+class BlockScope (val parent: Scope) extends Scope {
+  parent.children :+= this
+  def enclosingClass() = parent.enclosingClass
+}
+
+class ClassScope extends Scope {
+  val parent = this
+  
+  val methods = collection.mutable.Map[Signature, Typename]()
+  def defineMethod(name: String, fields: Seq[Typename], ret: Typename): Boolean = {
     val signature = Signature(name, fields)
     if (methods contains signature) {
         false
     } else {
-        methods.add(signature)
+        methods(signature) = ret
         true
     }
   }
+  override def resolve(varname: String) = variables.get(varname)
   override def resolveParent(varname: String) = false
-  def resolveMethod(name: String) = {
-    methods.filter(_.name == name)
-  }
-  def resolveExact(name: String, fields: Seq[Typename]) = methods.find(_ == Signature(name, fields))
+  def resolveMethod(name: String, fields: Seq[Typename]) = methods.get(Signature(name, fields))
   
-  override def enclosingClass() = Some(this)
+  override def enclosingClass() = this
+  override def printParent(indent: Int) = {}
 }

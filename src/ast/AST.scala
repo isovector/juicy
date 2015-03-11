@@ -36,6 +36,7 @@ object Modifiers {
 trait Expression extends Visitable {
   var exprType: Option[Typename] = None
   def hasType = exprType.isDefined
+  def typeScope = exprType.flatMap(_.resolved).map(_.classScope)
 }
 trait Statement extends Visitable
 trait Definition extends Visitable
@@ -76,7 +77,7 @@ trait UnOp extends Expression {
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
-  var resolved: Option[ClassDefn] = None
+  var resolved: Option[TypeDefn] = None
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
   val isPrimitive =
@@ -181,6 +182,20 @@ object ClassDefn {
     c
     enableIncr = true
   }
+  def filterClassDefns(l: Seq[TypeDefn]): Seq[ClassDefn] = {
+    l.filter(t => t match {
+      case c: ClassDefn => true
+      case _: TypeDefn => false
+    }).map(_.asInstanceOf[ClassDefn])
+  }
+}
+
+trait TypeDefn extends Definition {
+  val name: String
+  val pkg: QName
+  val methods: Seq[MethodDefn]
+  val allMethods: Seq[MethodDefn]
+  val fields: Seq[VarStmnt]
 }
 
 case class ClassDefn(
@@ -192,13 +207,13 @@ case class ClassDefn(
   fields: Seq[VarStmnt],
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
-) extends Definition {
+) extends TypeDefn {
   val equalityComparitor = ClassDefn.getNextEqualityComparitor
 
   val children = extnds ++ impls ++ fields ++ methods
 
   val isClass = !isInterface
-
+  
   lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
     val parentMethods =
       extnds.flatMap(_.resolved.get.allMethods).filter(!_.isCxr)
@@ -209,10 +224,11 @@ case class ClassDefn(
 
     (methods ++ keeps, hides)
   }
-
+  
+  
   lazy val allInterfaces: Seq[ClassDefn] = {
-    val resolvedExtnds = extnds.map(_.resolved.get)
-    val resolvedImpls = impls.map(_.resolved.get)
+    val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
+    val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
 
      ( resolvedExtnds
     ++ resolvedImpls
@@ -256,6 +272,29 @@ case class ClassDefn(
 
   def resolvesTo (other: ClassDefn) =
     name == other.name && pkg == other.pkg
+}
+
+case class PrimitiveDefn(name: String) extends TypeDefn {
+  val pkg = Seq()
+  val children = Seq()
+  val fields = Seq()
+  val methods = Seq()
+  val allMethods = Seq()
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    rule(this, context)
+  }
+}
+
+case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
+  val name = elemType.name + "[]"
+  val pkg = elemType.pkg
+  val fields = Seq(VarStmnt("length", Modifiers.PUBLIC, Typename(Seq("java", "lang", "int")), None))
+  val children = Seq()
+  val methods = Seq()
+  val allMethods = Seq()
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    rule(ArrayDefn(elemType.rewrite(rule, this +: context).asInstanceOf[TypeDefn]), context)
+  }
 }
 
 case class ImportClass(
