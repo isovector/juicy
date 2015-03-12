@@ -22,31 +22,23 @@ object Checker {
   }
     
   def undefined (v: Expression) = CheckerError(s"Undefined symbol $v", v.from)
-  def unsupported(op: String, from: SourceLocation, tnames:Typename*) = 
-    CheckerError(s"Unsupported $op for types $tnames", from)
-
+  def unsupported(op: String, from: SourceLocation, tnames:Typename*) = {
+    val ts = tnames.mkString(", ")
+    val s = if (tnames.length == 1) "" else "s"
+    CheckerError(s"Unsupported $op for type$s $ts", from)
+  }
   def apply(node: FileNode, pkgTree: PackageTree): Unit = {
     var errors = Seq[CompilerError]()
-    /*
-    var scopeMap = Map[Visitable, ClassScope]()
-
-    def addSubScope(v: Visitable, tn: Typename) = {
-      scopeMap += (v -> tn.resolved.flatMap(_.scope)
-                          .getOrElse(new ClassScope())
-                          .enclosingClass)
-    }
-
-    scopeMap += (ThisVal() -> node.classScope)
-    */
-    val numerics = Map(
-      (pkgTree.getType(Seq("int")).get -> NumericType.INT),
-      (pkgTree.getType(Seq("java", "lang", "Integer")).get -> NumericType.INT),
-      (pkgTree.getType(Seq("short")) -> NumericType.SHORT),
-      (pkgTree.getType(Seq("java", "lang", "Short")) -> NumericType.SHORT),
-      (pkgTree.getType(Seq("byte")) -> NumericType.BYTE),
-      (pkgTree.getType(Seq("java", "lang", "Byte")) -> NumericType.BYTE),
-      (pkgTree.getType(Seq("char")) -> NumericType.CHAR),
-      (pkgTree.getType(Seq("java", "lang", "Char")) -> NumericType.CHAR)
+    
+    val numerics = Map[Typename, NumericType.value](
+      (pkgTree.getTypename(Seq("int")).get -> NumericType.INT),
+      (pkgTree.getTypename(Seq("java", "lang", "Integer")).get -> NumericType.INT),
+      (pkgTree.getTypename(Seq("short")).get -> NumericType.SHORT),
+      (pkgTree.getTypename(Seq("java", "lang", "Short")).get -> NumericType.SHORT),
+      (pkgTree.getTypename(Seq("byte")).get -> NumericType.BYTE),
+      (pkgTree.getTypename(Seq("java", "lang", "Byte")).get -> NumericType.BYTE),
+      (pkgTree.getTypename(Seq("char")).get -> NumericType.CHAR),
+      (pkgTree.getTypename(Seq("java", "lang", "Character")).get -> NumericType.CHAR)
     )
     
     val bools = Set(pkgTree.getTypename(Seq("boolean")).get, 
@@ -86,7 +78,7 @@ object Checker {
         case i: Id =>
           val isVariable = context.head match {
             case Member(_, r) if r == i => false
-            case StaticMember(_,_) => false
+            case sm: StaticMember => false
             case Callee(f) if f == i => false
             case v: VarStmnt => false
             case _ => true
@@ -119,7 +111,7 @@ object Checker {
         case c@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
             case id: Id => (Some(node.classes(0)), id.name, false)
-            case StaticMember(cls, right) => (Some(cls), right.name, true)
+            case StaticMember(cls, right) => println("DEFO GETS HERE"); (Some(cls), right.name, true)
             case Member(left, right) => (left.exprType.flatMap(_.resolved), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
@@ -209,6 +201,8 @@ object Checker {
           } else if ((bools contains and.lhs.exprType.get) && (bools contains and.rhs.exprType.get)) {
             val res = (and.lhs, and.rhs) match {
               case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value && b2.value)
+              case (b1: BoolVal, b2) if b1.value => b2
+              case (b1, b2: BoolVal) if b2.value => b1
               case _ => and
             }
             res.exprType = pkgTree.getTypename(Seq("bool"))
