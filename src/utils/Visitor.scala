@@ -75,6 +75,7 @@ case class Rewriter(rule: (Visitable, Seq[Visitable]) => Visitable) {
   def apply(node: Visitable, context: Seq[Visitable]): Visitable = {
     val result = rule(node, context)
     result.originalToken = node.originalToken
+    result.scope = node.scope
     result
   }
 }
