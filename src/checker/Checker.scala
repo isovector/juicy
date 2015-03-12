@@ -41,6 +41,20 @@ object Checker {
       (pkgTree.getTypename(Seq("java", "lang", "Character")).get -> NumericType.CHAR)
     )
     
+    def isWidening(lhs: Typename, rhs: Typename): Boolean = {
+      val lhsT = numerics(lhs)
+      val rhsT = numerics(rhs)
+      if (lhsT == rhsT) {
+        true
+      } else if (lhsT == NumericType.INT) {
+        true
+      } else if (lhsT == NumericType.SHORT && rhsT == NumericType.BYTE) {
+        true
+      } else {
+        false
+      }
+    }
+    
     val bools = Set(pkgTree.getTypename(Seq("boolean")).get, 
       pkgTree.getTypename(Seq("java", "lang", "Boolean")).get)
     
@@ -91,6 +105,22 @@ object Checker {
     val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
     val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
     val NullType = NullDefn().makeTypename
+    
+    
+    def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
+      println(lhs, rhs)
+      if (lhs == rhs) {
+        true
+      } else if ((numerics contains lhs) && (numerics contains rhs)) {
+        isWidening(lhs, rhs)
+      } else if (rhs == NullType && lhs.resolved.get.nullable) {
+        true
+      } else if (rhs.resolved.get isSubtypeOf lhs.resolved.get) {
+        true
+      } else {
+        false
+      }
+    }
     
     val newFile = node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
@@ -364,6 +394,25 @@ object Checker {
             errors :+= unsupported("unary-!", n.from, n.ghs.exprType.get)
             n
           }
+        case ass: Assignment =>
+          println(ass.lhs.exprType, ass.rhs.exprType, ass.from)
+          if (ass.lhs.exprType.isEmpty || ass.rhs.exprType.isEmpty) {
+            ass
+          } else if (isAssignable(ass.lhs.exprType.get, ass.rhs.exprType.get)) {
+            ass.exprType = ass.lhs.exprType
+            ass
+          } else {
+            errors :+= unsupported("assignment", ass.from, ass.lhs.exprType.get, ass.rhs.exprType.get)
+            ass
+          }
+        case v: VarStmnt =>
+          if (v.value.isDefined && v.value.map(_.exprType).isDefined) {
+            val vtype = v.scope.get.resolve(v.name).get
+            if (!isAssignable(vtype, v.value.flatMap(_.exprType).get)) {
+              errors :+= unsupported("assignment", v.from, vtype, v.value.flatMap(_.exprType).get)
+            }
+          }
+          v
         case _ => self
       }
     }).asInstanceOf[FileNode]
