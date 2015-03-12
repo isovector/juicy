@@ -98,16 +98,21 @@ trait TypeDefn extends Definition {
   }
 
   lazy val allInterfaces: Seq[ClassDefn] = {
+    superTypes.filter(_.isInterface)
+  }
+
+  lazy val superTypes: Seq[ClassDefn] = {
     val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
     val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
 
      ( resolvedExtnds
     ++ resolvedImpls
-    ++ resolvedExtnds.flatMap(_.allInterfaces)
-    ++ resolvedImpls.flatMap(_.allInterfaces)
+    ++ resolvedExtnds.flatMap(_.superTypes)
+    ++ resolvedImpls.flatMap(_.superTypes)
      )
-      .filter(_.isInterface)
   }
+
+  def isSubtypeOf (other: TypeDefn) = superTypes contains other
 
   def getArrayOf(pkgtree: PackageTree): ArrayDefn = {
     val arr = ArrayDefn(this)

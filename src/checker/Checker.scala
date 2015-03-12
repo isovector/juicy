@@ -89,6 +89,7 @@ object Checker {
       }
     }
     val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
+    val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
     
     val newFile = node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
@@ -186,8 +187,21 @@ object Checker {
             eq
           } else if ((numerics contains eq.lhs.exprType.get) && (numerics contains eq.rhs.exprType.get)) {
             doComp(eq, (a, b) => a == b, "==")
+          } else if (eq.lhs.exprType.get == eq.rhs.exprType.get) {
+            val expr = (eq.lhs, eq.rhs) match {
+              case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
+              case _ => eq
+            }
+            expr.exprType = Some(BoolTypename)
+            expr
+          } else if ((eq.lhs.exprType.flatMap(_.resolved).get) isSubtypeOf (eq.rhs.exprType.flatMap(_.resolved).get)) {
+            eq.exprType = Some(BoolTypename)
+            eq
+          } else if ((eq.rhs.exprType.flatMap(_.resolved).get) isSubtypeOf (eq.lhs.exprType.flatMap(_.resolved).get)) {
+            eq.exprType = Some(BoolTypename)
+            eq
           } else {
-            // TODO: polymorphism shit
+            errors :+= unsupported("==", eq.from, eq.lhs.exprType.get, eq.rhs.exprType.get)
             eq
           }
         }
@@ -195,11 +209,64 @@ object Checker {
           if (!neq.lhs.hasType || !neq.rhs.hasType) {
             neq
           } else if ((numerics contains neq.lhs.exprType.get) && (numerics contains neq.rhs.exprType.get)) {
-            doComp(neq, (a, b) => a == b, "==")
+            doComp(neq, (a, b) => a != b, "!=")
+          } else if (neq.lhs.exprType.get == neq.rhs.exprType.get) {
+            val expr = (neq.lhs, neq.rhs) match {
+              case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
+              case _ => neq
+            }
+            expr.exprType = Some(BoolTypename)
+            expr
+          } else if ((neq.lhs.exprType.flatMap(_.resolved).get) isSubtypeOf (neq.rhs.exprType.flatMap(_.resolved).get)) {
+            neq.exprType = Some(BoolTypename)
+            neq
+          } else if ((neq.rhs.exprType.flatMap(_.resolved).get) isSubtypeOf (neq.lhs.exprType.flatMap(_.resolved).get)) {
+            neq.exprType = Some(BoolTypename)
+            neq
           } else {
-            // TODO: polymorphism shit
+            errors :+= unsupported("!=", neq.from, neq.lhs.exprType.get, neq.rhs.exprType.get)
             neq
           }
+        }
+        case inst: InstanceOf => {
+          if (!inst.lhs.hasType) {
+            inst
+          } else if (inst.lhs.exprType.flatMap(_.resolved).get isSubtypeOf inst.tname.resolved.get){
+             val expr = BoolVal(true)
+             expr.exprType = Some(BoolTypename)
+             expr
+          } else if (inst.tname.resolved.get isSubtypeOf inst.lhs.exprType.flatMap(_.resolved).get) {
+            inst.exprType = Some(BoolTypename)
+            inst
+          } else {
+            errors :+= unsupported("instanceof", inst.from, inst.lhs.exprType.get, inst.tname)
+            inst
+          }
+        }
+        case nt: NewType => {
+          nt.exprType = Some(nt.tname)
+          val args = nt.args.map(_.exprType)
+          if(args.filter(_.isEmpty).isEmpty) {
+            val defArgs = args.map(_.get)
+            val cxrs = nt.tname.resolved.get.methods.filter(_.isCxr).map(_.signature).filter(_.params == defArgs)
+            if (cxrs.isEmpty) {
+              val arglist = defArgs.mkString(",")
+              val t = nt.tname
+              errors :+= CheckerError(s"No constructor for type $t with parameters $arglist", nt.from)
+            }
+          }
+          nt
+        }
+        case narr: NewArray => {
+          if (narr.size.exprType.isEmpty) {
+            // Already invalid
+          } else if (numerics contains narr.size.exprType.get) {
+            narr.exprType = narr.tname.resolved.map(_.getArrayOf(pkgTree).makeTypename)
+          } else {
+            val t = narr.size.exprType.get.name
+            errors :+= CheckerError(s"Array size cannot be of type $t", narr.from)
+          }
+          narr
         }
         case geq: GEq => doComp(geq, (a,b) => a >= b, ">=")
         case gt: GThan => doComp(gt, (a,b) => a > b, ">")
