@@ -81,9 +81,33 @@ trait UnOp extends Expression {
 trait TypeDefn extends Definition {
   val name: String
   val pkg: QName
+  val extnds: Seq[Typename]
+  val impls: Seq[Typename]
   val methods: Seq[MethodDefn]
-  val allMethods: Seq[MethodDefn]
   val fields: Seq[VarStmnt]
+
+  lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
+    val parentMethods =
+      extnds.flatMap(_.resolved.get.allMethods).filter(!_.isCxr)
+    val sigs = methods.map(_.signature)
+    val (hides, keeps) = parentMethods.partition { parMeth =>
+      sigs.contains(parMeth.signature)
+    }
+
+    (methods ++ keeps, hides)
+  }
+
+  lazy val allInterfaces: Seq[ClassDefn] = {
+    val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
+    val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
+
+     ( resolvedExtnds
+    ++ resolvedImpls
+    ++ resolvedExtnds.flatMap(_.allInterfaces)
+    ++ resolvedImpls.flatMap(_.allInterfaces)
+     )
+      .filter(_.isInterface)
+  }
 
   def getArrayOf(pkgtree: PackageTree): ArrayDefn = {
     val arr = ArrayDefn(this)
@@ -93,6 +117,7 @@ trait TypeDefn extends Definition {
     arr.scope.get.define("length", intType)
     arr
   }
+
   def makeTypename() = {
      val t = Typename(pkg ++ Seq(name), false)
      t.resolved = Some(this)
@@ -203,6 +228,7 @@ object ClassDefn {
     c
     enableIncr = true
   }
+
   def filterClassDefns(l: Seq[TypeDefn]): Seq[ClassDefn] = {
     l.filter(t => t match {
       case c: ClassDefn => true
@@ -226,31 +252,6 @@ case class ClassDefn(
   val children = extnds ++ impls ++ fields ++ methods
 
   val isClass = !isInterface
-
-  lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
-    val parentMethods =
-      extnds.flatMap(_.resolved.get.allMethods).filter(!_.isCxr)
-    val sigs = methods.map(_.signature)
-    val (hides, keeps) = parentMethods.partition { parMeth =>
-      sigs.contains(parMeth.signature)
-    }
-
-    (methods ++ keeps, hides)
-  }
-
-
-  lazy val allInterfaces: Seq[ClassDefn] = {
-    val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
-    val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
-
-     ( resolvedExtnds
-    ++ resolvedImpls
-    ++ resolvedExtnds.flatMap(_.allInterfaces)
-    ++ resolvedImpls.flatMap(_.allInterfaces)
-     )
-      .filter(_.isInterface)
-  }
-
   override def equals(o: Any) = o match {
     case that: ClassDefn =>
        ( name               == that.name
@@ -290,9 +291,12 @@ case class ClassDefn(
 case class PrimitiveDefn(name: String) extends TypeDefn {
   val pkg = Seq()
   val children = Seq()
-  val fields = Seq()
+
+  val extnds = Seq()
+  val impls = Seq()
+
   val methods = Seq()
-  val allMethods = Seq()
+  val fields = Seq()
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     transfer(rule(this, context))
@@ -302,19 +306,28 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
   val name = elemType.name + "[]"
   val pkg = elemType.pkg
+
+  val extnds = Seq()
+
+  val impls = Seq(
+    Typename(Seq("java", "lang", "Cloneable")),
+    Typename(Seq("java", "io", "Serializable"))
+  )
+
   val fields =
     Seq(
       VarStmnt(
         "length",
-        Modifiers.PUBLIC,
+        Modifiers.PUBLIC + Modifiers.FINAL,
         Typename(Seq("java", "lang", "int")), None))
+
   val children = Seq()
   val methods = Seq()
-  val allMethods = Seq()
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     transfer(rule(this, context))
   }
+
   override def makeTypename() = {
      val t = Typename(elemType.pkg ++ Seq(elemType.name), true)
      t.resolved = Some(this)

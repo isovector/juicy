@@ -18,8 +18,13 @@ object ResolverSpec {
     }
     """, """
     package java.lang;
-    class String {
-    }
+    class String { }
+    """, """
+    package java.lang;
+    interface Cloneable { }
+    """, """
+    package java.io;
+    interface Serializable { }
     """)
 }
 
@@ -195,6 +200,16 @@ class ResolverSpec extends FlatSpec with ShouldMatchers {
         }
         """)
     }
+  }
+
+  it should "successfully resolve arrays" in {
+    val ast = parse("""
+      class A {
+        public A() {
+          int[] a = 5;
+        }
+      }
+      """)
   }
 
   // ---------- BEGIN KNOWER TESTS -------------

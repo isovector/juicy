@@ -173,9 +173,19 @@ object Resolver {
             if (!tname.resolved.isDefined)
               throw UnresolvedTypeError(qname, tname.from)
 
-            if (tname.isArray)
+            if (tname.isArray) {
               tname.resolved =
                 tname.resolved.map(_.getArrayOf(pkgtree))
+
+              // resolve array's interfaces
+              tname.resolved.get.impls.map { itname =>
+                val iqname = itname.qname
+                itname.resolved =
+                  node.resolve(iqname, pkgtree, itname.from)
+                if (!itname.resolved.isDefined)
+                  throw UnresolvedTypeError(iqname, itname.from)
+              }
+            }
 
           case _ =>
         }
