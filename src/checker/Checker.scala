@@ -25,7 +25,7 @@ object Checker {
   def unsupported(op: String, from: SourceLocation, tnames:Typename*) = 
     CheckerError(s"Unsupported $op for types $tnames", from)
 
-  def apply(node: Visitable, pkgTree: PackageTree): Unit = {
+  def apply(node: FileNode, pkgTree: PackageTree): Unit = {
     var errors = Seq[CompilerError]()
     /*
     var scopeMap = Map[Visitable, ClassScope]()
@@ -86,6 +86,7 @@ object Checker {
         case i: Id =>
           val isVariable = context.head match {
             case Member(_, r) if r == i => false
+            case StaticMember(_,_) => false
             case Callee(f) if f == i => false
             case v: VarStmnt => false
             case _ => true
@@ -116,19 +117,22 @@ object Checker {
           }
           m
         case c@Call(method, fields) =>
-          val (scope, ident) = method.expr match {
-            case id: Id => (Some(node.classScope), id.name)
-            case StaticMember(cls, right) => (cls, right.name)
-            case Member(left, right) => (left.typeScope, right.name)
+          val (cls, ident, isStatic) = method.expr match {
+            case id: Id => (Some(node.classes(0)), id.name, false)
+            case StaticMember(cls, right) => (Some(cls), right.name, true)
+            case Member(left, right) => (left.exprType.flatMap(_.resolved), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
-          if (scope.isDefined) {
+          if (cls.isDefined) {
             if(fields.filter(!_.hasType).isEmpty) {
-              val tn = scope.get.resolveMethod(ident, fields.map(_.exprType.get))
+              val sig = Signature(ident, fields.map(_.exprType.get))
+              val tn = cls.get.allMethods.filter(_.signature == sig)
               if (tn.isEmpty) {
                 errors :+= undefined(c)
+              } else if(isStatic && (tn(0).mods & Modifiers.STATIC) == 0) {
+                errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
               } else {
-                c.exprType = tn
+                c.exprType = Some(tn(0).tname)
               }
             }
           }
@@ -226,6 +230,20 @@ object Checker {
           } else {
             errors :+= unsupported("||", or.from, or.lhs.exprType.get, or.rhs.exprType.get)
             or
+          }
+        case n: Not =>
+          if (n.ghs.exprType.isEmpty) {
+            n
+          } else if (bools contains n.ghs.exprType.get) {
+            val newVal = n.ghs match {
+              case b: BoolVal => BoolVal(!b.value)
+              case _ => n
+            }
+            newVal.exprType = pkgTree.getTypename(Seq("bool"))
+            newVal
+          } else {
+            errors :+= unsupported("unary-!", n.from, n.ghs.exprType.get)
+            n
           }
         case _ => self
       }
