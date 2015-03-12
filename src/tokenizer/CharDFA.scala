@@ -38,7 +38,6 @@ object CharDFA {
            Some(esc.toChar)
         }
         case _ => {
-          println("Invalid escape:" + stream.cur.toInt)
           None
         }
       }

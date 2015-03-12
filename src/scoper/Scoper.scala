@@ -10,27 +10,16 @@ case class ScopeError(msg: String, from: SourceLocation) extends CompilerError
 
 object Hashtag360NoScoper {
 
-  def check(which: Modifiers.Value, flag: Modifiers.Value) =
-    (which & flag) == flag
-
   def apply(node: Visitable): ClassScope = {
-    var curBlock: Option[BlockScope] = None
-    var curClass: ClassScope = null
+    val curClass = new ClassScope()
+    var curBlock: Scope = curClass
 
-    def makeChildScope(from: SourceLocation) = {
-      if (curBlock.isEmpty) {
-        throw new ScopeError("Invalid scoping", from)
-      } else {
-        curBlock = Some(new BlockScope(curBlock))
-      }
+    def makeChildScope() = {
+      curBlock = new BlockScope(curBlock)
     }
 
-    def freeChildScope(from: SourceLocation) = {
-      if (curBlock.isEmpty) {
-        throw new ScopeError("Somehow outside a non-existent scope", from)
-      } else {
-        curBlock = curBlock.get.parent
-      }
+    def freeChildScope() = {
+      curBlock = curBlock.parent
     }
 
     node.visit { (self, context) =>
@@ -41,66 +30,56 @@ object Hashtag360NoScoper {
       }
       self match {
         case Before(c@ClassDefn(_,_,_,_,_,fields,methods,_)) => {
-            if (!curBlock.isEmpty) {
-                throw new ScopeError("Nested classes forbidden", from)
-            } else {
-                curClass = new ClassScope()
-                curBlock = Some(curClass)
-                fields.foreach(f => 
-                  if(!curClass.define(f.name, f.tname)) {
-                    val source = curClass.resolve(f.name).get.from
-                    throw new ScopeError(s"Duplicate field $f.name (originally defined at: $source)", from)
-                  }
-                )
-                methods.foreach(m => 
-                  if (!curClass.defineMethod(m.name, m.params.map(_.tname)))
-                 throw new ScopeError("Duplicate Method " + m.name + " with parameters " + m.params.mkString, from)
-               )
-            }
+            fields.foreach(f => 
+              if(!curClass.define(f.name, f.tname)) {
+                val source = curClass.resolve(f.name).get.from
+                throw new ScopeError(s"Duplicate field $f.name (originally defined at: $source)", from)
+              }
+            )
+            methods.foreach(m => 
+              if (!curClass.defineMethod(m.name, m.params.map(_.tname), m.tname))
+             throw new ScopeError("Duplicate Method " + m.name + " with parameters " + m.params.mkString, from)
+           )
         }
         case Before(MethodDefn(name,_,_,_,fields,_)) => {
-          makeChildScope(from)
+          makeChildScope()
         }
         case Before(VarStmnt(name,_,tname,_)) => {
-          if(curBlock.isEmpty) {
-               throw new ScopeError(s"Definition of $name outside class body", from)
-           } else if (curBlock.get != curClass && !curBlock.get.define(name, tname)) {
+          if (curBlock != curClass && !curBlock.define(name, tname)) {
              // Already defined
-             val source = curBlock.get.resolve(name).get.from
+             val source = curBlock.resolve(name).get.from
              throw new ScopeError(s"Duplicate definition of variable $name (originally defined at: $source)", from)
            }
         }
         case Before(_: WhileStmnt) => {
-          makeChildScope(from)
+          makeChildScope()
         }
         case After(_: WhileStmnt) => {
-          freeChildScope(from)
+          freeChildScope()
         }
         case Before(_: ForStmnt) => {
-          makeChildScope(from)
+          makeChildScope()
         }
         case After(_:ForStmnt) => {
-          freeChildScope(from)
+          freeChildScope()
         }
         case Before(_: BlockStmnt) => {
-          makeChildScope(from)
+          makeChildScope()
         }
         case After(_: BlockStmnt) => {
-          freeChildScope(from)
+          freeChildScope()
         }
         case After(_: ClassDefn) => {
-          freeChildScope(from)
+          freeChildScope()
         }
         case After(_: MethodDefn) => {
-          freeChildScope(from)
+          freeChildScope()
         }
         case _ =>
       }
       self match {
         case Before(v) => {
-          if (curBlock.isDefined) {
-            v.scope = curBlock.get
-          }
+          v.scope = Some(curBlock)
         }
         case _ =>
       }

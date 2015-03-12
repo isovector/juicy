@@ -48,10 +48,11 @@ class AmbiguatorSpec extends FlatSpec with ShouldMatchers {
     val access =
       Member(
         Call(
-          StaticMember(
-            pkgtree.getType(Seq("java", "lang", "Object")).get,
-            Id("call")
-          ),
+          Callee(
+            StaticMember(
+              pkgtree.getType(Seq("java", "lang", "Object")).get.asInstanceOf[ClassDefn],
+              Id("call")
+          )),
           Seq()
         ),
         Id("member")

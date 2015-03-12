@@ -1,6 +1,6 @@
 package juicy.utils
 
-import juicy.source.ast.ClassDefn
+import juicy.source.ast.TypeDefn
 import juicy.source.tokenizer.SourceLocation
 import juicy.utils.visitor._
 
@@ -45,7 +45,7 @@ object Implicits {
 
   implicit def boolToRich(underlying: Boolean) = new RichBool(underlying)
 
-  case class SuburbanClassDefn(u: ClassDefn, fromPkg: Boolean)
+  case class SuburbanClassDefn(u: TypeDefn, fromPkg: Boolean)
   implicit def subToDomClass(u: SuburbanClassDefn) = u.u
 }
 

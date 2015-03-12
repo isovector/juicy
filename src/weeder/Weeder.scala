@@ -168,13 +168,13 @@ object Weeder {
           }
 
         // A method or constructor must not contain explicit this() or super() calls.
-        case me@Call(ThisVal(), _) =>
+        case me@Call(Callee(ThisVal()), _) =>
             throw new WeederError(
               s"Can't explicitly call this()", me)
 
         case me@SuperVal() =>
           if (isIn[Call](call =>
-              context.contains(call.method) || me == call.method))
+              context.contains(call.method) || Callee(me) == call.method))
             throw new WeederError(
               s"Can't explicitly call methods on super()", me)
 
@@ -237,8 +237,8 @@ object Weeder {
 
         case me@Call(lhs, _) => {
           lhs match {
-            case _: Id     =>
-            case _: Member =>
+            case Callee(Id(_))     =>
+            case Callee(Member(_,_)) =>
             case _         =>
               throw WeederError(
                 "Only member accesses and ids may be called as functions",

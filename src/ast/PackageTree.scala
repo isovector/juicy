@@ -3,7 +3,7 @@ package juicy.source
 import juicy.source.ast._
 import juicy.utils.Implicits._
 
-case class PackageTree(rawPkgs: Seq[QName], classes: Map[QName, ClassDefn]) {
+case class PackageTree(rawPkgs: Seq[QName], classes: Map[QName, TypeDefn]) {
   private def prefixes(pkg: QName): Seq[QName] = {
     (Seq[QName](Seq()) /: pkg){ (acc, next) =>
       acc :+ (acc.last :+ next)
@@ -13,11 +13,11 @@ case class PackageTree(rawPkgs: Seq[QName], classes: Map[QName, ClassDefn]) {
   // Flat list of all packages
   val pkgs = rawPkgs.flatMap(prefixes).distinct
 
-  val tree: Map[QName, Option[ClassDefn]] =
+  val tree: Map[QName, Option[TypeDefn]] =
     pkgs.map(_ -> None).toMap ++
     classes.map(c => c._1 -> Some(c._2))
 
-  def getPackage(pkg: QName): Map[QName, ClassDefn] = {
+  def getPackage(pkg: QName): Map[QName, TypeDefn] = {
     val len = pkg.length
     tree
       .filter(_._1.take(len) == pkg)  // same prefix
@@ -35,7 +35,7 @@ case class PackageTree(rawPkgs: Seq[QName], classes: Map[QName, ClassDefn]) {
     }
   }
 
-  def getType(qname: QName): Option[ClassDefn] = {
+  def getType(qname: QName): Option[TypeDefn] = {
     tree.get(qname) match {
       case Some(Some(c)) => Some(c)
       case _             => None
