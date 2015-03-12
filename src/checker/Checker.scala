@@ -27,7 +27,7 @@ object Checker {
     val s = if (tnames.length == 1) "" else "s"
     CheckerError(s"Unsupported $op for type$s $ts", from)
   }
-  def apply(node: FileNode, pkgTree: PackageTree): Unit = {
+  def apply(node: FileNode, pkgTree: PackageTree): FileNode = {
     var errors = Seq[CompilerError]()
     
     val numerics = Map[Typename, NumericType.value](
@@ -72,7 +72,7 @@ object Checker {
     }
     val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
     
-    node.rewrite(Rewriter {(self, context) =>
+    val newFile = node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
       self match {
         case i: Id =>
@@ -87,6 +87,7 @@ object Checker {
             val name = i.name
             val tn = i.scope.get.resolve(name)
             if (tn.isEmpty) {
+              println(context.take(5).mkString(":"))
               errors :+= undefined(i)
             } else {
               i.exprType = tn
@@ -112,15 +113,20 @@ object Checker {
           val (cls, ident, isStatic) = method.expr match {
             case id: Id => (Some(node.classes(0)), id.name, false)
             case StaticMember(cls, right) => println("DEFO GETS HERE"); (Some(cls), right.name, true)
-            case Member(left, right) => (left.exprType.flatMap(_.resolved), right.name, false)
+            case Member(left, right) => println("GETS HERE"); (left.exprType.flatMap(_.resolved), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
           if (cls.isDefined) {
             if(fields.filter(!_.hasType).isEmpty) {
-              val sig = Signature(ident, fields.map(_.exprType.get))
+              val argtypes = fields.map(_.exprType.get)
+              val sig = Signature(ident, argtypes)
               val tn = cls.get.allMethods.filter(_.signature == sig)
               if (tn.isEmpty) {
-                errors :+= undefined(c)
+                val at = argtypes.mkString(",")
+                println(s"No method $ident defined for parameters: $at")
+                println(cls.get.allMethods.map(_.signature))
+                println(sig)
+                errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
               } else if(isStatic && (tn(0).mods & Modifiers.STATIC) == 0) {
                 errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
               } else {
@@ -241,9 +247,10 @@ object Checker {
           }
         case _ => self
       }
-    })
+    }).asInstanceOf[FileNode]
     if (!errors.isEmpty) {
       throw new VisitError(errors)
     }
+    newFile
   }
 }
