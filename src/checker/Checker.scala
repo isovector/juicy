@@ -56,7 +56,7 @@ object Checker {
       if (expr.exprType.isDefined) {
         val newExpr = (expr.lhs, expr.rhs) match {
           case (l: IntVal, r: IntVal) => IntVal(fold(l.value, r.value))
-          case (l: CharVal, r: CharVal) => CharVal(fold(l.value, r.value).toChar)
+          case (l: CharVal, r: CharVal) => IntVal(fold(l.value, r.value))
           case (l: IntVal, r: CharVal) => IntVal(fold(l.value, r.value))
           case (l: CharVal, r: IntVal) => IntVal(fold(l.value, r.value))
           case _ => expr
@@ -67,6 +67,24 @@ object Checker {
         if (expr.lhs.exprType.isDefined && expr.rhs.exprType.isDefined) {
           errors :+= unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get)
         }
+        expr
+      }
+    }
+    def doComp(expr: BinOp, fold: (Int, Int) => Boolean, symbol: String): Expression = {
+      if (expr.lhs.exprType.isEmpty || expr.rhs.exprType.isEmpty) {
+        expr
+      } else if ((numerics contains expr.lhs.exprType.get) && (numerics contains expr.rhs.exprType.get)) {
+        val newExpr = (expr.lhs, expr.rhs) match {
+          case (l: CharVal, r: CharVal) => BoolVal(fold(l.value, r.value))
+          case (l: CharVal, r: IntVal) => BoolVal(fold(l.value, r.value))
+          case (l: IntVal, r: CharVal) => BoolVal(fold(l.value, r.value))
+          case (l: IntVal, r: IntVal) => BoolVal(fold(l.value, r.value))
+          case _ => expr
+        }
+        newExpr.exprType = pkgTree.getTypename(Seq("bool"))
+        newExpr
+      } else {
+        errors :+= unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get)
         expr
       }
     }
@@ -163,6 +181,30 @@ object Checker {
             n
           }
         }
+        case eq: Eq => {
+          if (!eq.lhs.hasType || !eq.rhs.hasType) {
+            eq
+          } else if ((numerics contains eq.lhs.exprType.get) && (numerics contains eq.rhs.exprType.get)) {
+            doComp(eq, (a, b) => a == b, "==")
+          } else {
+            // TODO: polymorphism shit
+            eq
+          }
+        }
+        case neq: NEq => {
+          if (!neq.lhs.hasType || !neq.rhs.hasType) {
+            neq
+          } else if ((numerics contains neq.lhs.exprType.get) && (numerics contains neq.rhs.exprType.get)) {
+            doComp(neq, (a, b) => a == b, "==")
+          } else {
+            // TODO: polymorphism shit
+            neq
+          }
+        }
+        case geq: GEq => doComp(geq, (a,b) => a >= b, ">=")
+        case gt: GThan => doComp(gt, (a,b) => a > b, ">")
+        case leq: LEq => doComp(leq, (a,b) => a <= b, "<=")
+        case lt: LThan => doComp(lt, (a,b) => a < b, "<")
         case m: Mul => doNumeric(m, (a, b) => a * b, "*")
         case d: Div => doNumeric(d, (a,b) => a / b, "/")
         case s: Sub => doNumeric(s, (a,b) => a - b, "-")
