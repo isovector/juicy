@@ -89,10 +89,14 @@ trait TypeDefn extends Definition {
     val arr = ArrayDefn(this)
     arr.scope = Some(new ClassScope())
 
-    val intType  = Typename(Seq("int"))
-    intType.resolved = pkgtree.getType(Seq("int"))
+    val intType  = pkgtree.getTypename(Seq("int")).get
     arr.scope.get.define("length", intType)
     arr
+  }
+  def makeTypename() = {
+     val t = Typename(pkg ++ Seq(name), false)
+     t.resolved = Some(this)
+     t
   }
 }
 
@@ -310,6 +314,11 @@ case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     transfer(rule(this, context))
+  }
+  override def makeTypename() = {
+     val t = Typename(elemType.pkg ++ Seq(elemType.name), true)
+     t.resolved = Some(this)
+     t
   }
 }
 

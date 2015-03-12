@@ -41,6 +41,20 @@ case class PackageTree(rawPkgs: Seq[QName], classes: Map[QName, TypeDefn]) {
       case _             => None
     }
   }
+  def getTypename(qname: QName): Option[Typename] = {
+    tree.get(qname) match {
+      case Some(Some(c)) => {
+        val isArray = c match {
+          case a: ArrayDefn => true
+          case _ => false
+        }
+        val t = Typename(qname, isArray)
+        t.resolved = Some(c)
+        Some(t)
+      }
+      case _ => None
+    }
+  }
 
   // A tree is valid if its size is equal to the sum of its components
   // Otherwise, there must be an intersection between pkgs and classes
