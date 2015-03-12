@@ -3,6 +3,7 @@ package juicy.source.ast
 import juicy.source.ambiguous.AmbiguousStatus
 import juicy.source.PackageTree
 import juicy.source.resolver.Resolver.AmbiguousResolveError
+import juicy.source.scoper.ClassScope
 import juicy.source.tokenizer.SourceLocation
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
@@ -38,6 +39,7 @@ trait Expression extends Visitable {
   def hasType = exprType.isDefined
   def typeScope = exprType.flatMap(_.resolved).map(_.classScope)
 }
+
 trait Statement extends Visitable
 trait Definition extends Visitable
 trait ImportStmnt extends Statement
@@ -76,6 +78,24 @@ trait UnOp extends Expression {
   val children = Seq(ghs)
 }
 
+trait TypeDefn extends Definition {
+  val name: String
+  val pkg: QName
+  val methods: Seq[MethodDefn]
+  val allMethods: Seq[MethodDefn]
+  val fields: Seq[VarStmnt]
+
+  def getArrayOf(pkgtree: PackageTree): ArrayDefn = {
+    val arr = ArrayDefn(this)
+    arr.scope = Some(new ClassScope())
+
+    val intType  = Typename(Seq("int"))
+    intType.resolved = pkgtree.getType(Seq("int"))
+    arr.scope.get.define("length", intType)
+    arr
+  }
+}
+
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   var resolved: Option[TypeDefn] = None
   val name = qname.mkString(".")
@@ -85,15 +105,12 @@ case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   override def toString() = s"$name$brackets"
 
   override def equals(o: Any) = o match {
-    case that: Typename =>
-      if (resolved.isDefined)
-        resolved == that.resolved
-      else
-         ( qname == that.qname
-        && isArray == that.isArray
-         )
-
-    case _              => false
+    case that: Typename if resolved.isDefined =>
+      resolved == that.resolved
+    case that: Typename if resolved.isEmpty   =>
+      qname == that.qname && isArray == that.isArray
+    case _                                    =>
+      false
   }
 
   override def hashCode = resolved match {
@@ -190,14 +207,6 @@ object ClassDefn {
   }
 }
 
-trait TypeDefn extends Definition {
-  val name: String
-  val pkg: QName
-  val methods: Seq[MethodDefn]
-  val allMethods: Seq[MethodDefn]
-  val fields: Seq[VarStmnt]
-}
-
 case class ClassDefn(
   name: String,
   pkg: QName,
@@ -213,7 +222,7 @@ case class ClassDefn(
   val children = extnds ++ impls ++ fields ++ methods
 
   val isClass = !isInterface
-  
+
   lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
     val parentMethods =
       extnds.flatMap(_.resolved.get.allMethods).filter(!_.isCxr)
@@ -224,8 +233,8 @@ case class ClassDefn(
 
     (methods ++ keeps, hides)
   }
-  
-  
+
+
   lazy val allInterfaces: Seq[ClassDefn] = {
     val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
     val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
@@ -270,7 +279,7 @@ case class ClassDefn(
       ), context)
   }
 
-  def resolvesTo (other: ClassDefn) =
+  def resolvesTo(other: ClassDefn) =
     name == other.name && pkg == other.pkg
 }
 
@@ -280,6 +289,7 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   val fields = Seq()
   val methods = Seq()
   val allMethods = Seq()
+
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     rule(this, context)
   }
@@ -288,12 +298,18 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
   val name = elemType.name + "[]"
   val pkg = elemType.pkg
-  val fields = Seq(VarStmnt("length", Modifiers.PUBLIC, Typename(Seq("java", "lang", "int")), None))
+  val fields =
+    Seq(
+      VarStmnt(
+        "length",
+        Modifiers.PUBLIC,
+        Typename(Seq("java", "lang", "int")), None))
   val children = Seq()
   val methods = Seq()
   val allMethods = Seq()
+
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
-    rule(ArrayDefn(elemType.rewrite(rule, this +: context).asInstanceOf[TypeDefn]), context)
+    rule(this, context)
   }
 }
 
@@ -320,6 +336,7 @@ case class ImportPkg(
 }
 
 case class Signature(name: String, params: Seq[Typename])
+
 case class MethodDefn(
   name: String,
   mods: Modifiers.Value,
@@ -484,11 +501,16 @@ case class Id(name: String)         extends NullOp {
   var status: AmbiguousStatus.Value = AmbiguousStatus.AMBIGUOUS
 }
 
-case class Callee (expr: Expression) extends Expression {
+case class Callee(
+  expr: Expression
+) extends Expression {
   val children = Seq(expr)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    Callee(expr.rewrite(rule, newContext).asInstanceOf[Expression])
+    rule(
+      Callee(
+        expr.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context)
   }
 }
 

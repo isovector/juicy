@@ -72,8 +72,11 @@ def ancestor[T : ClassTag](implicit context: Seq[Visitable]): Option[T] = {
 }
 
 case class Rewriter(rule: (Visitable, Seq[Visitable]) => Visitable) {
-  def apply(node: Visitable, context: Seq[Visitable]): Visitable =
-    rule(node, context)
+  def apply(node: Visitable, context: Seq[Visitable]): Visitable = {
+    val result = rule(node, context)
+    result.originalToken = node.originalToken
+    result
+  }
 }
 
 
@@ -83,7 +86,7 @@ trait Visitable {
 
   var scope: Option[Scope] = None
   def classScope = scope.get.enclosingClass
-  
+
   def from = originalToken.from
   val children: Seq[Visitable]
 

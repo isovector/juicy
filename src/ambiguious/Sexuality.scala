@@ -22,26 +22,12 @@ object Sexuality {
 
   def apply(nodes: Seq[FileNode], pkgtree: PackageTree): Seq[FileNode] = {
     nodes.map { node =>
-      val typeScope = node.typeScope
-
-      // the most balls function of all time
-      def unambiguousType(name: String, from: SourceLocation): Option[TypeDefn] = {
-        val possible = typeScope.flatMap(_.get(name)).getOrElse { return None }
-        val classImport = possible.find(!_.fromPkg)
-
-        if (classImport.isDefined)
-          classImport.map(_.u)
-        else if (possible.length == 1)
-          Some(possible(0))
-        else throw AmbiguousResolveError(Seq(name), from)
-      }
-
       def disambiguate(id: Id, prefix: QName): Unit = {
         val name = id.name
         val asType = node.resolve(prefix :+ name, pkgtree, id.from)
 
         id.status =
-          if (id.scope.get.resolve(name).isDefined)
+          if (id.scope.flatMap(_.resolve(name)).isDefined)
             SCOPE
           else if (asType.isDefined)
             TYPE
@@ -56,7 +42,8 @@ object Sexuality {
   // ---------------------------------------------------------------------------
 
   case id: Id =>
-    if (isIn[Member](_.lhs == id)) disambiguate(id, Seq())
+    if (isIn[Member](_.lhs == id))
+      disambiguate(id, Seq())
     id
 
 
@@ -74,17 +61,13 @@ object Sexuality {
       val qname = path.map(_.name)
 
       if (path.last.status == TYPE) {
-        val classDefn = pkgtree.getType(qname) orElse
-        node.unambiguousType(qname.last, m.from)
-        if (classDefn.isEmpty) {
-          println(qname.mkString("."))
-        }
-        classDefn.get match {
-           case cd: ClassDefn => StaticMember(cd, rhs)
-           case t: TypeDefn => throw PrimitiveReferenceError(t, m.from)
-        }
-      }
-      else {
+        val classDefn = node.resolve(qname, pkgtree, m.from).get
+
+        if (!classDefn.isInstanceOf[ClassDefn])
+          throw PrimitiveReferenceError(classDefn, m.from)
+
+        StaticMember(classDefn.asInstanceOf[ClassDefn], rhs)
+      } else {
         if (rhs.isInstanceOf[Id])
           disambiguate(rhs.asInstanceOf[Id], qname)
         m
@@ -99,4 +82,3 @@ object Sexuality {
     }
   }
 }
-

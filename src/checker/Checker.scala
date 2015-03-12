@@ -1,11 +1,11 @@
 package juicy.source.checker
 
-import juicy.source.ast._
 import juicy.source._
-import juicy.utils.visitor._
+import juicy.source.ast._
+import juicy.source.scoper._
 import juicy.source.tokenizer._
 import juicy.utils._
-import juicy.source.scoper._
+import juicy.utils.visitor._
 
 case class CheckerError (msg: String, from: SourceLocation) extends CompilerError
 
@@ -17,16 +17,16 @@ object Checker {
     var errors = Seq[CompilerError]()
     /*
     var scopeMap = Map[Visitable, ClassScope]()
-    
+
     def addSubScope(v: Visitable, tn: Typename) = {
       scopeMap += (v -> tn.resolved.flatMap(_.scope)
                           .getOrElse(new ClassScope())
                           .enclosingClass)
     }
-    
+
     scopeMap += (ThisVal() -> node.classScope)
     */
-    node.rewrite(Rewriter {(self, context) => 
+    node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
       self match {
         case i: Id =>
@@ -54,7 +54,7 @@ object Checker {
                   case ri: Id =>
                     val rname = ri.name
                     val tn = scope.map(_.enclosingClass).flatMap(_.resolve(rname))
-                    
+
                     if (tn.isEmpty) {
                       errors :+= undefined(ri)
                     } else {

@@ -30,7 +30,7 @@ class AmbiguatorSpec extends FlatSpec with ShouldMatchers {
       class X {
         public X() {
           java.lang.Object.call().member = 5;
-          Object.call().member = true;
+          Object.call();
         }
       }
       """
@@ -46,7 +46,6 @@ class AmbiguatorSpec extends FlatSpec with ShouldMatchers {
         .body
 
     val access =
-      Member(
         Call(
           Callee(
             StaticMember(
@@ -54,24 +53,21 @@ class AmbiguatorSpec extends FlatSpec with ShouldMatchers {
               Id("call")
           )),
           Seq()
-        ),
-        Id("member")
-      )
+        )
 
     stmnts(0)
       .asInstanceOf[ExprStmnt]
       .expr should be ===
         Assignment(
-          access,
+          Member(
+            access,
+            Id("member")
+          ),
           IntVal(5)
-        );
+        )
 
     stmnts(1)
       .asInstanceOf[ExprStmnt]
-      .expr should be ===
-        Assignment(
-          access,
-          BoolVal(true)
-        );
+      .expr should be === access
   }
 }

@@ -66,7 +66,7 @@ object CompilerMain {
       HardlyKnower(pkgtree)
       asts.foreach(Hashtag360NoScoper(_))
       Sexuality(asts, pkgtree)
-      asts.foreach(Checker(_, pkgtree))
+        .foreach(Checker(_, pkgtree))
     }
 
     CompilerTerminate(0)

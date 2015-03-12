@@ -4,7 +4,6 @@ import juicy.source.ast._
 import juicy.source.PackageTree
 import juicy.source.tokenizer.SourceLocation
 import juicy.utils.CompilerError
-import juicy.source.scoper.ClassScope
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
 
@@ -24,13 +23,14 @@ object Resolver {
     val msg = "Unknown package `" + pkg.mkString(".") +  "`"
   }
 
+  case class PrimitiveReferenceError(t: TypeDefn, from: SourceLocation)
+      extends CompilerError {
+    val msg = "Invalid use of primitive type " + t.name + " in a reference context"
+  }
+
   case class AmbiguousResolveError(qname: QName, from: SourceLocation)
       extends CompilerError {
     val msg = "Unqualified type `" + qname.mkString(".") +  "` resolves ambiguously."
-  }
-
-  case class PrimitiveReferenceError(t: TypeDefn, from: SourceLocation) extends CompilerError {
-    val msg = "Invalid use of primitive type " + t.name + " in a reference context"
   }
 
   case class OverlappingPackagesError()
@@ -102,13 +102,13 @@ object Resolver {
       throw OverlappingPackagesError()
 
     nodes.foreach { node =>
-      val importedTypes = new collection.mutable.HashMap[QName, TypeDefn]
+      val importedTypes = new collection.mutable.HashMap[QName, ClassDefn]
       val importedPkgs = new collection.mutable.MutableList[QName]
 
       importedPkgs += Seq("java", "lang")
 
       var typeScope = Map[String, Seq[SuburbanClassDefn]]()
-      def addTypeToScope(name: String, classDef: TypeDefn, fromPkg: Boolean) = {
+      def addTypeToScope(name: String, classDef: ClassDefn, fromPkg: Boolean) = {
         typeScope += name -> (
           typeScope.get(name).getOrElse(Seq()) :+
             SuburbanClassDefn(classDef, fromPkg)
@@ -121,10 +121,10 @@ object Resolver {
           val resolved = pkgtree.getType(qname)
           val name = Seq(qname.last)
 
-          if (resolved.isDefined)
+          if (resolved.isDefined && resolved.get.isInstanceOf[ClassDefn])
             if (!importedTypes.contains(name) ||
                 importedTypes(name) == resolved.get)
-              importedTypes += name -> resolved.get
+              importedTypes += name -> resolved.get.asInstanceOf[ClassDefn]
             else throw OverlappingTypeError(qname, impl.from)
           else
             throw UnresolvedTypeError(qname, impl.from)
@@ -146,6 +146,8 @@ object Resolver {
           .getPackage(pkg)
           .toSeq
           .map(_._2)
+          .filter(_.isInstanceOf[ClassDefn])
+          .map(_.asInstanceOf[ClassDefn])
           .foreach { classDef =>
             addTypeToScope(classDef.name, classDef, true)
         }
@@ -156,72 +158,25 @@ object Resolver {
           typeScope.map{ case (k, v) =>
             k -> v.distinct })
 
-      def resolveToSame(t1: TypeDefn, t2: TypeDefn) = (t1, t2) match {
-        case (c1: ClassDefn, c2: ClassDefn) => c1 resolvesTo c2
-        case _ => false
-      }
-
-      val pkg = node.pkg
-      def tryResolve(qname: QName, from: SourceLocation): Option[TypeDefn] = {
-        var outVal =
-          if (types.contains(qname))
-            types.get(qname)
-          else if (importedTypes.contains(qname))
-            importedTypes.get(qname)
-          else
-            None
-
-        def tryResolveFromPackage(pkg: QName) = {
-          val pkgContents = pkgtree.getPackage(pkg)
-          val contained = pkgContents.get(qname)
-          if (contained.isDefined) {
-            if (outVal.isDefined && !(resolveToSame(outVal.get, contained.get)))
-              throw AmbiguousResolveError(qname, from)
-
-            outVal = contained
-          }
-        }
-
-        if (outVal.isEmpty)
-          tryResolveFromPackage(pkg)
-
-        if (outVal.isEmpty)
-          importedPkgs.foreach(tryResolveFromPackage)
-
-        return outVal
-      }
-
       node.visit { (self, context) =>
         implicit val implContext = context
         before(self) match {
           case classDefn: ClassDefn =>
             val qname = Seq(classDefn.name)
             if (importedTypes.contains(qname) &&
-                ! (resolveToSame(importedTypes(qname), classDefn))) {
+                !(importedTypes(qname) resolvesTo classDefn)) {
               throw AmbiguousResolveError(qname, classDefn.from)
             }
 
-          case tname@Typename(qname, _) =>
-            if (!isIn[ImportClass]()) {
-              tname.resolved = {
-                val res = tryResolve(qname, tname.from)
-                if (res.isEmpty) {
-                  throw UnresolvedTypeError(qname, tname.from)
-                }
-                if (tname.isArray) {
-                  val arr = ArrayDefn(res.get)
-                  arr.scope = Some(new ClassScope())
-                  val intName = Typename(Seq("int"))
-                  intName.resolved = types.get(Seq("int"))
-                  arr.scope.get.define("length", intName)
-                  Some(arr)
-                } else {
-                  res
-                }
-              }
-              if (!tname.resolved.isDefined)
-                throw UnresolvedTypeError(qname, tname.from)
-            }
+          case tname@Typename(qname, _) if !isIn[ImportClass]() =>
+            tname.resolved = node.resolve(qname, pkgtree, tname.from)
+            if (!tname.resolved.isDefined)
+              throw UnresolvedTypeError(qname, tname.from)
+
+            if (tname.isArray)
+              tname.resolved =
+                tname.resolved.map(_.getArrayOf(pkgtree))
+
           case _ =>
         }
       }.fold(
@@ -233,5 +188,4 @@ object Resolver {
     pkgtree
   }
 }
-
 

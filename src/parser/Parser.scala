@@ -494,24 +494,24 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     var lhs = parseTerminal()
     while (check("(") || check("[") || check(".")) {
       if (check("(")) {
-        lhs = new Call(new Callee(lhs), parseArgs)
+        lhs = withSource(Call(new Callee(lhs), parseArgs))
       } else if (check("[")) {
         next()
         val index = parseExpr()
         ensure("]")
 
-        lhs = new Index(lhs, index)
+        lhs = withSource(Index(lhs, index))
       } else if (check(".")) {
         next()
-        val member = withSource(new Id(unwrap(ensureIdentifier())))
+        val member = withSource(Id(unwrap(ensureIdentifier())))
 
-        lhs = new Member(lhs, member)
+        lhs = withSource(Member(lhs, member))
       }
     }
 
     lhs
   }
-  
+
   // Innermost expression parser
   def parseTerminal(): Expression = withSource {
     cur match {
