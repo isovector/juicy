@@ -90,6 +90,7 @@ object Checker {
     }
     val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
     val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
+    val NullType = NullDefn().makeTypename
     
     val newFile = node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
@@ -131,8 +132,8 @@ object Checker {
         case c@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
             case id: Id => (Some(node.classes(0)), id.name, false)
-            case StaticMember(cls, right) => println("DEFO GETS HERE"); (Some(cls), right.name, true)
-            case Member(left, right) => println("GETS HERE"); (left.exprType.flatMap(_.resolved), right.name, false)
+            case StaticMember(cls, right) => (Some(cls), right.name, true)
+            case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
           if (cls.isDefined) {
@@ -158,14 +159,17 @@ object Checker {
           i.exprType = pkgTree.getTypename(Seq("int"))
           i
         case b: BoolVal =>
-          b.exprType = pkgTree.getTypename(Seq("boolean"))
+          b.exprType = Some(BoolTypename)
           b
         case c: CharVal =>
           c.exprType = pkgTree.getTypename(Seq("char"))
           c
         case s: StringVal =>
-          s.exprType = pkgTree.getTypename(Seq("java", "lang", "string"))
+          s.exprType = Some(StringTypename)
           s
+        case n: NullVal =>
+          n.exprType = Some(NullType)
+          n
         case n: Neg => {
           if (n.ghs.exprType.isEmpty) {
             n
@@ -190,6 +194,7 @@ object Checker {
           } else if (eq.lhs.exprType.get == eq.rhs.exprType.get) {
             val expr = (eq.lhs, eq.rhs) match {
               case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
+              case (l, r) if l.exprType.get == NullType => BoolVal(true)
               case _ => eq
             }
             expr.exprType = Some(BoolTypename)
@@ -213,10 +218,15 @@ object Checker {
           } else if (neq.lhs.exprType.get == neq.rhs.exprType.get) {
             val expr = (neq.lhs, neq.rhs) match {
               case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
+              case (l, r) if (l.exprType.get == NullType) => BoolVal(false)
               case _ => neq
             }
             expr.exprType = Some(BoolTypename)
             expr
+          } else if ((neq.lhs.exprType.get == NullType && neq.rhs.exprType.flatMap(_.resolved).get.nullable) 
+              || (neq.rhs.exprType.get == NullType && neq.lhs.exprType.flatMap(_.resolved).get.nullable)) {
+            neq.exprType = Some(BoolTypename)
+            neq
           } else if ((neq.lhs.exprType.flatMap(_.resolved).get) isSubtypeOf (neq.rhs.exprType.flatMap(_.resolved).get)) {
             neq.exprType = Some(BoolTypename)
             neq

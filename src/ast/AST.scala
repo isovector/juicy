@@ -85,6 +85,8 @@ trait TypeDefn extends Definition {
   val impls: Seq[Typename]
   val methods: Seq[MethodDefn]
   val fields: Seq[VarStmnt]
+  
+  val nullable = true
 
   lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
     val parentMethods =
@@ -303,6 +305,8 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   val methods = Seq()
   val fields = Seq()
 
+  override val nullable = false
+
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     transfer(rule(this, context))
   }
@@ -337,6 +341,22 @@ case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
      val t = Typename(elemType.pkg ++ Seq(elemType.name), true)
      t.resolved = Some(this)
      t
+  }
+}
+
+case class NullDefn() extends TypeDefn {
+  val name = "null"
+  val pkg = Seq()
+  val extnds = Seq()
+  val children = Seq()
+  val fields = Seq()
+  val impls = Seq()
+  val methods = Seq()
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = transfer(rule(this, context))
+  override def makeTypename() = {
+    val t = Typename(Seq("null"), false)
+    t.resolved = Some(this)
+    t
   }
 }
 
@@ -737,7 +757,7 @@ case class StaticMember(lhs: ClassDefn, rhs: Id) extends Expression {
     val newContext = this +: context
     transfer(rule(
       StaticMember(
-        lhs,
+        lhs.rewrite(rule, newContext).asInstanceOf[ClassDefn],
         rhs.rewrite(rule, newContext).asInstanceOf[Id]
       ), context))
   }
