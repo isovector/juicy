@@ -52,11 +52,11 @@ trait BinOp extends Expression {
       (ctor: (Expression, Expression) => T)
       (rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ctor(
         lhs.rewrite(rule, newContext).asInstanceOf[Expression],
         rhs.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 
   val children = Seq(lhs, rhs)
@@ -69,10 +69,10 @@ trait UnOp extends Expression {
       (ctor: Expression => T)
       (rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ctor(
         ghs.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 
   val children = Seq(ghs)
@@ -133,12 +133,12 @@ case class FileNode(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       FileNode(
         pkg,
         imports.map(_.rewrite(rule, newContext).asInstanceOf[ImportStmnt]),
         classes.map(_.rewrite(rule, newContext).asInstanceOf[ClassDefn])
-      ), context)
+      ), context))
   }
 
   // the most balls function of all time
@@ -266,7 +266,7 @@ case class ClassDefn(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ClassDefn(
         name,
         pkg,
@@ -276,7 +276,7 @@ case class ClassDefn(
         fields.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
         methods.map(_.rewrite(rule, newContext).asInstanceOf[MethodDefn]),
         isInterface
-      ), context)
+      ), context))
   }
 
   def resolvesTo(other: ClassDefn) =
@@ -291,7 +291,7 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   val allMethods = Seq()
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
-    rule(this, context)
+    transfer(rule(this, context))
   }
 }
 
@@ -309,7 +309,7 @@ case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
   val allMethods = Seq()
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
-    rule(this, context)
+    transfer(rule(this, context))
   }
 }
 
@@ -320,10 +320,10 @@ case class ImportClass(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ImportClass(
         tname.rewrite(rule, newContext).asInstanceOf[Typename]
-      ), context)
+      ), context))
   }
 }
 
@@ -355,7 +355,7 @@ case class MethodDefn(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       MethodDefn(
         name,
         mods,
@@ -363,7 +363,7 @@ case class MethodDefn(
         tname.rewrite(rule, newContext).asInstanceOf[Typename],
         params.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
         body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
-      ), context)
+      ), context))
   }
 }
 
@@ -377,13 +377,13 @@ case class VarStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       VarStmnt(
         name,
         mods,
         tname.rewrite(rule, newContext).asInstanceOf[Typename],
         value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
-      ), context)
+      ), context))
   }
 }
 
@@ -396,12 +396,12 @@ case class IfStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       IfStmnt(
         cond.rewrite(rule, newContext).asInstanceOf[Expression],
         then.rewrite(rule, newContext).asInstanceOf[BlockStmnt],
         otherwise.map(_.rewrite(rule, newContext).asInstanceOf[BlockStmnt])
-      ), context)
+      ), context))
   }
 }
 
@@ -413,11 +413,11 @@ case class WhileStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       WhileStmnt(
         cond.rewrite(rule, newContext).asInstanceOf[Expression],
         body.rewrite(rule, newContext).asInstanceOf[Statement]
-      ), context)
+      ), context))
   }
 }
 
@@ -431,13 +431,13 @@ case class ForStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ForStmnt(
         first.map(_.rewrite(rule, newContext).asInstanceOf[Statement]),
         cond.map(_.rewrite(rule, newContext).asInstanceOf[Expression]),
         after.map(_.rewrite(rule, newContext).asInstanceOf[Expression]),
         body.rewrite(rule, newContext).asInstanceOf[Statement]
-      ), context)
+      ), context))
   }
 }
 
@@ -448,10 +448,10 @@ case class BlockStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       BlockStmnt(
         body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
-      ), context)
+      ), context))
   }
 }
 
@@ -462,10 +462,10 @@ case class ReturnStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ReturnStmnt(
         value.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 }
 
@@ -476,17 +476,18 @@ case class ExprStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       ExprStmnt(
         expr.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 }
 
 trait NullOp extends Expression {
   val children = Seq()
 
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = rule(this, context)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    transfer(rule(this, context))
 }
 
 case class NullVal()                extends NullOp
@@ -507,10 +508,10 @@ case class Callee(
   val children = Seq(expr)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       Callee(
         expr.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 }
 
@@ -522,11 +523,11 @@ case class Call(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       Call(
         method.rewrite(rule, newContext).asInstanceOf[Callee],
         args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
-      ), context)
+      ), context))
   }
 }
 
@@ -538,11 +539,11 @@ case class Cast(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       Cast(
         tname.rewrite(rule, newContext).asInstanceOf[Typename],
         value.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 }
 
@@ -554,11 +555,11 @@ case class NewType(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       NewType(
         tname.rewrite(rule, newContext).asInstanceOf[Typename],
         args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
-      ), context)
+      ), context))
   }
 }
 
@@ -570,11 +571,11 @@ case class NewArray(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       NewArray(
         tname.rewrite(rule, newContext).asInstanceOf[Typename],
         size.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+      ), context))
   }
 }
 
@@ -586,11 +587,11 @@ case class InstanceOf(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       InstanceOf(
         lhs.rewrite(rule, newContext).asInstanceOf[Expression],
         tname.rewrite(rule, newContext).asInstanceOf[Typename]
-      ), context)
+      ), context))
   }
 }
 
@@ -684,11 +685,11 @@ case class Member(lhs: Expression, rhs: Id) extends Expression {
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       Member(
         lhs.rewrite(rule, newContext).asInstanceOf[Expression],
         rhs.rewrite(rule, newContext).asInstanceOf[Id]
-      ), context)
+      ), context))
   }
 
   def fold[T](rule: Expression => T): Seq[T] = {
@@ -702,16 +703,16 @@ case class Member(lhs: Expression, rhs: Id) extends Expression {
   }
 }
 
-case class StaticMember(lhs: ClassDefn, rhs: Expression) extends Expression {
+case class StaticMember(lhs: ClassDefn, rhs: Id) extends Expression {
   val children = Seq(rhs)
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    rule(
+    transfer(rule(
       StaticMember(
         lhs.rewrite(rule, newContext).asInstanceOf[ClassDefn],
-        rhs.rewrite(rule, newContext).asInstanceOf[Expression]
-      ), context)
+        rhs.rewrite(rule, newContext).asInstanceOf[Id]
+      ), context))
   }
 }
 

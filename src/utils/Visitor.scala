@@ -71,16 +71,6 @@ def ancestor[T : ClassTag](implicit context: Seq[Visitable]): Option[T] = {
   None
 }
 
-case class Rewriter(rule: (Visitable, Seq[Visitable]) => Visitable) {
-  def apply(node: Visitable, context: Seq[Visitable]): Visitable = {
-    val result = rule(node, context)
-    result.originalToken = node.originalToken
-    result.scope = node.scope
-    result
-  }
-}
-
-
 trait Visitable {
   import juicy.source.tokenizer._
   var originalToken: Token = new Token.Invalid()
@@ -131,6 +121,20 @@ trait Visitable {
   def rewrite(rule: Rewriter): Visitable = rewrite(rule, Seq())
   def rewrite(rule: Rewriter, context: Seq[Visitable]): Visitable
 
+  def transfer(dst: Visitable): Visitable = {
+    dst.scope         = scope
+    dst.originalToken = originalToken
+    dst
+  }
+}
+
+case class Rewriter(rule: (Visitable, Seq[Visitable]) => Visitable) {
+  def apply(node: Visitable, context: Seq[Visitable]): Visitable = {
+    val result = rule(node, context)
+    result.originalToken = node.originalToken
+    result.scope = node.scope
+    result
+  }
 }
 
 }
