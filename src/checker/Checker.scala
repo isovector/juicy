@@ -107,7 +107,6 @@ object Checker {
             val name = i.name
             val tn = i.scope.get.resolve(name)
             if (tn.isEmpty) {
-              println(context.take(5).mkString(":"))
               errors :+= undefined(i)
             } else {
               i.exprType = tn
@@ -143,9 +142,6 @@ object Checker {
               val tn = cls.get.allMethods.filter(_.signature == sig)
               if (tn.isEmpty) {
                 val at = argtypes.mkString(",")
-                println(s"No method $ident defined for parameters: $at")
-                println(cls.get.allMethods.map(_.signature))
-                println(sig)
                 errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
               } else if(isStatic && (tn(0).mods & Modifiers.STATIC) == 0) {
                 errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)

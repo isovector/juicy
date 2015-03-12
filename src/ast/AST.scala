@@ -734,7 +734,7 @@ case class Member(lhs: Expression, rhs: Id) extends Expression {
     val newContext = this +: context
     transfer(rule(
       Member(
-        lhs.rewrite(rule, newContext).asInstanceOf[Expression],
+        lhs,
         rhs.rewrite(rule, newContext).asInstanceOf[Id]
       ), context))
   }
