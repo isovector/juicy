@@ -195,6 +195,10 @@ object Checker {
             }
             expr.exprType = Some(BoolTypename)
             expr
+          } else if ((eq.lhs.exprType.get == NullType && eq.rhs.exprType.flatMap(_.resolved).get.nullable) 
+              || (eq.rhs.exprType.get == NullType && eq.lhs.exprType.flatMap(_.resolved).get.nullable)) {
+            eq.exprType = Some(BoolTypename)
+            eq
           } else if ((eq.lhs.exprType.flatMap(_.resolved).get) isSubtypeOf (eq.rhs.exprType.flatMap(_.resolved).get)) {
             eq.exprType = Some(BoolTypename)
             eq
