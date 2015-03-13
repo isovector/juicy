@@ -93,9 +93,9 @@ trait TypeDefn extends Definition {
 
   val nullable = true
 
-  lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
+  lazy val (inheritedMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
     val parentMethods =
-      extnds.flatMap(_.resolved.get.allMethods).filter(!_.isCxr)
+      extnds.flatMap(_.resolved.get.inheritedMethods).filter(!_.isCxr)
     val sigs = methods.map(_.signature)
     val (hides, keeps) = parentMethods.partition { parMeth =>
       sigs.contains(parMeth.signature)
@@ -108,12 +108,12 @@ trait TypeDefn extends Definition {
     superTypes.filter(_.isInterface)
   }
 
-  lazy val callableMethods: Seq[MethodDefn] = {
+  lazy val allMethods: Seq[MethodDefn] = {
     val interfaceMethods =
       allInterfaces.flatMap(_.methods)
-    val sigs = allMethods.map(_.signature)
+    val sigs = inheritedMethods.map(_.signature)
 
-    allMethods ++ interfaceMethods.filterNot(sigs contains _.signature)
+    inheritedMethods ++ interfaceMethods.filterNot(sigs contains _.signature)
   }
 
   lazy val superTypes: Seq[ClassDefn] = {

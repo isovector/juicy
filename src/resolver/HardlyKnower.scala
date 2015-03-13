@@ -82,8 +82,8 @@ object HardlyKnower {
             }
 
             c.allInterfaces.foreach { impl =>
-              impl.allMethods.foreach { method =>
-                val matched = t.allMethods.find(_ ~== method)
+              impl.inheritedMethods.foreach { method =>
+                val matched = t.inheritedMethods.find(_ ~== method)
                 if (matched.isDefined) {
                   val matching = matched.get
                   val sameMethod = matching == method
@@ -136,7 +136,7 @@ object HardlyKnower {
 
             c.hidesMethods.foreach { hidden =>
               val name = hidden.name
-              val hider = t.allMethods.find(_.name == name).get
+              val hider = t.inheritedMethods.find(_.name == name).get
 
               val hideMods = hider.mods
               val hiddenMods = hidden.mods
@@ -164,7 +164,7 @@ object HardlyKnower {
 
             if (!c.isInterface && !check(c.mods, ABSTRACT)) {
               // Ensure no methods are abstract
-              c.allMethods.foreach { method =>
+              c.inheritedMethods.foreach { method =>
                 throwIf(s"Non-abstract class `$name` contains abstract methods") {
                   check(method.mods, ABSTRACT)
                 }
