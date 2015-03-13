@@ -26,7 +26,7 @@ object Sexuality {
         val name = id.name
 
         id.status =
-          if (id.scope.flatMap(_.resolve(name)).isDefined)
+          if (prefix == Seq() && id.scope.flatMap(_.resolve(name)).isDefined)
             SCOPE
           else {
             val asType =
