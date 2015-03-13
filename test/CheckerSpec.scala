@@ -1,9 +1,9 @@
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 
-import juicy.source.ambiguous._
 import juicy.source.ast._
 import juicy.source.checker._
+import juicy.source.disambiguator._
 import juicy.source.PackageTree
 import juicy.source.parser._
 import juicy.source.resolver._
@@ -70,7 +70,7 @@ object CheckerSpec {
     val pkgtree = Resolver(files)
     HardlyKnower(pkgtree)
     files.foreach(Hashtag360NoScoper(_))
-    Sexuality(files, pkgtree).map(Checker(_, pkgtree))
+    Disambiguator(files, pkgtree).map(Checker(_, pkgtree))
   }
 }
 class CheckerSpec extends FlatSpec with ShouldMatchers {

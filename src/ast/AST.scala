@@ -1,6 +1,6 @@
 package juicy.source.ast
 
-import juicy.source.ambiguous.AmbiguousStatus
+import juicy.source.disambiguator.AmbiguousStatus
 import juicy.source.PackageTree
 import juicy.source.resolver.Resolver.AmbiguousResolveError
 import juicy.source.scoper.ClassScope

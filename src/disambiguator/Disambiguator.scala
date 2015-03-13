@@ -1,4 +1,4 @@
-package juicy.source.ambiguous
+package juicy.source.disambiguator
 
 import juicy.source._
 import juicy.source.ast._
@@ -17,7 +17,7 @@ object AmbiguousStatus {
   val TYPE      = 3
 }
 
-object Sexuality {
+object Disambiguator {
   import AmbiguousStatus._
 
   def apply(nodes: Seq[FileNode], pkgtree: PackageTree): Seq[FileNode] = {
