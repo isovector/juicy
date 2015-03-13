@@ -157,7 +157,19 @@ object Checker {
             val varScope =  (Seq(i.scope.get) ++ node.classes(0).superTypes.map(_.classScope)).find(_.resolve(name) != None)
             if (varScope.isEmpty) {
               errors :+= undefined(i, node.classes(0).makeTypename)
-            } else {
+            } else if (isIn[MethodDefn]()) {
+              val isStatic = checkMod(ancestor[MethodDefn].map(_.mods).get, Modifiers.STATIC)
+              val nonStaticVar = {
+                if (i.scope == varScope) {
+                  !i.scope.get.isLocalScope(name) && node.classes(0).fields.find(f => f.name == name && checkMod(f.mods, Modifiers.STATIC)).isEmpty
+                } else {
+                  node.classes(0).superTypes.find(s => s.fields.find(
+                        f => f.name == name && !checkMod(f.mods, Modifiers.STATIC)).isDefined).isDefined
+                }
+              }
+              if (isStatic && nonStaticVar) {
+                errors :+= CheckerError(s"Reference to instance variable $name in static context", i.from)
+              }
               i.exprType = varScope.flatMap(_.resolve(name))
             }
           }
@@ -193,27 +205,27 @@ object Checker {
             if(fields.filter(!_.hasType).isEmpty) {
               val argtypes = fields.map(_.exprType.get)
               val sig = Signature(ident, argtypes)
-              val tn = cls.get.allMethods.filter(_.signature == sig)
+              val tn = cls.get.allMethods.find(_.signature == sig)
               if (tn.isEmpty) {
                 val at = argtypes.mkString(",")
                 errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
               } else {
                 if(isStatic.isDefined) {
-                  if (isStatic.get && !checkMod(tn(0).mods, Modifiers.STATIC)) {
+                  if (isStatic.get && !checkMod(tn.get.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
-                  } else if (!isStatic.get && checkMod(tn(0).mods, Modifiers.STATIC)) {
+                  } else if (!isStatic.get && checkMod(tn.get.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
                   }
                 }
-                if (checkMod(tn(0).mods, Modifiers.PROTECTED)) {
-                  if (checkMod(tn(0).mods, Modifiers.STATIC) && !hasProtectedAccess(node.classes(0), cls.get)) {
+                if (checkMod(tn.get.mods, Modifiers.PROTECTED)) {
+                  if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(node.classes(0), cls.get)) {
                     errors :+= protectedAccess(ident, node.classes(0).makeTypename, cls.get.makeTypename)
                   }
-                  else if (!checkMod(tn(0).mods, Modifiers.STATIC) && !hasProtectedInstanceAccess(node.classes(0), cls.get)) {
+                  else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedInstanceAccess(node.classes(0), cls.get)) {
                     errors :+= protectedAccess(ident, node.classes(0).makeTypename, cls.get.makeTypename)
                   }
                 }
-                c.exprType = Some(tn(0).tname)
+                c.exprType = Some(tn.get.tname)
               }
             }
           }

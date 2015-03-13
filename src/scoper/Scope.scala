@@ -43,6 +43,9 @@ abstract class Scope {
   }
   
   def printParent(id: Int) = parent.printVariables(id)
+  def isLocalScope(id: String): Boolean = {
+    (variables contains id) || parent.isLocalScope(id)
+  }
 }
 
 class BlockScope (val parent: Scope) extends Scope {
@@ -69,4 +72,5 @@ class ClassScope extends Scope {
   
   override def enclosingClass() = this
   override def printParent(indent: Int) = {}
+  override def isLocalScope(id: String) = false
 }
