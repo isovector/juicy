@@ -279,7 +279,7 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       """)
 
     Weeder(parser.parseStmnt()) should be === false
-    Weeder(parser.parseStmnt()) should be === false
+    Weeder(parser.parseStmnt()) should be === true
     Weeder(parser.parseStmnt()) should be === true
   }
 

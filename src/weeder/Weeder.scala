@@ -188,7 +188,7 @@ object Weeder {
               s"Cannont instantiate primitive type `$tname`", me)
 
         case me@InstanceOf(_, tname) =>
-          if (tname.isPrimitive)
+          if (tname.isPrimitive && !tname.isArray)
             throw new WeederError(
               s"Instanceof a primitive `$tname` will always fail", me)
 
