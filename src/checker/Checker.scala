@@ -20,8 +20,12 @@ object Checker {
     final val CHAR = 3
     
   }
-    
-  def undefined (v: Expression) = CheckerError(s"Undefined symbol $v", v.from)
+  def undefined (v: Id, t: Typename) = {
+    val tn = t.name
+    val in = v.name
+    CheckerError(s"Undefined symbol $in for type $tn", v.from)
+  }
+  
   def unsupported(op: String, from: SourceLocation, tnames:Typename*) = {
     val ts = tnames.mkString(", ")
     val s = if (tnames.length == 1) "" else "s"
@@ -122,7 +126,6 @@ object Checker {
       } else if (rhs.resolved.get isSubtypeOf lhs.resolved.get) {
         true
       } else {
-        println(rhs.resolved.get.superTypes)
         false
       }
     }
@@ -140,28 +143,31 @@ object Checker {
           }
           if (isVariable) {
             val name = i.name
-            val tn = i.scope.get.resolve(name)
-            if (tn.isEmpty) {
-              errors :+= undefined(i)
+            val varScope =  (Seq(i.scope.get) ++ node.classes(0).superTypes.map(_.classScope)).find(_.resolve(name) != None)
+            if (varScope.isEmpty) {
+              errors :+= undefined(i, node.classes(0).makeTypename)
             } else {
-              i.exprType = tn
+              i.exprType = varScope.flatMap(_.resolve(name))
             }
           }
           i
         case m@Member(left, right) =>
-          val scope = left.typeScope
-          if (scope.isDefined) {
-            if (context.head != Callee(m)) {
+           val isInCall = context.head match {
+             case c: Callee => true
+             case _ => false
+           }
+            if (!isInCall && left.hasType) {
                 val rname = right.name
-                val tn = scope.map(_.enclosingClass).flatMap(_.resolve(rname))
-
-                if (tn.isEmpty) {
-                  errors :+= undefined(right)
+                val curType = left.exprType.flatMap(_.resolved).get
+                val definedIn = (curType +: curType.superTypes).find(_.classScope.resolve(rname) != None)
+                if (definedIn.isEmpty) {
+                  println(right, left.exprType.get)
+                  println(context.head)
+                  errors :+= undefined(right, left.exprType.get)
                 } else {
-                  m.exprType = tn
+                  m.exprType = definedIn.get.classScope.resolve(rname)
                 }
             }
-          }
           m
         case c@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
@@ -483,9 +489,10 @@ object Checker {
         case c: Callee => c
         case sm: StaticMember =>
           if (context.head != Callee(sm)) {
-            val eqIds = sm.lhs.fields.filter(_.name == sm.rhs.name)
+            val eqIds = (sm.lhs +: sm.lhs.superTypes)
+                            .flatMap(s => s.fields.filter(f => f.name == sm.rhs.name && (f.mods & Modifiers.STATIC) != 0))
             if (eqIds.isEmpty) {
-              errors :+= undefined(sm.rhs)
+              errors :+= undefined(sm.rhs, sm.lhs.makeTypename)
             } else if ((eqIds(0).mods & Modifiers.STATIC) == 0) {
               val name = sm.rhs.name
               errors :+= CheckerError(s"Accessing non-static member $name from static context", sm.from)
