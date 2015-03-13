@@ -1,6 +1,7 @@
 package juicy.source.resolver
 
 import juicy.source.ast._
+import juicy.source.scoper.ClassScope
 import juicy.source.PackageTree
 import juicy.source.tokenizer.SourceLocation
 import juicy.utils.CompilerError
@@ -66,9 +67,10 @@ object Resolver {
       if (!packages.contains(pkg))
         packages += pkg -> new collection.mutable.MutableList[QName]()
 
-    def defaultType(name: String) =
+    def defaultType(name: String) = {
       types += Seq(name) -> PrimitiveDefn(name)
-
+      types(Seq(name)).scope = Some(new ClassScope())
+    }
     defaultType("int")
     defaultType("char")
     defaultType("boolean")

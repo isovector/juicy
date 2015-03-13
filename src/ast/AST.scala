@@ -135,6 +135,9 @@ trait TypeDefn extends Definition {
      t.resolved = Some(this)
      t
   }
+  
+  def resolvesTo(other: TypeDefn) =
+    name == other.name && pkg == other.pkg
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
@@ -259,7 +262,6 @@ case class ClassDefn(
   methods: Seq[MethodDefn],
   isInterface: Boolean = false
 ) extends TypeDefn {
-  val equalityComparitor = ClassDefn.getNextEqualityComparitor
 
   val children = extnds ++ impls ++ fields ++ methods
 
@@ -274,12 +276,11 @@ case class ClassDefn(
       && fields             == that.fields
       && methods            == that.methods
       && isInterface        == that.isInterface
-      && equalityComparitor == that.equalityComparitor
        )
     case _               => false
   }
 
-  override def hashCode = name.hashCode + equalityComparitor.hashCode
+  override def hashCode = name.hashCode + pkg.hashCode
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
@@ -296,8 +297,6 @@ case class ClassDefn(
       ), context))
   }
 
-  def resolvesTo(other: ClassDefn) =
-    name == other.name && pkg == other.pkg
 }
 
 case class PrimitiveDefn(name: String) extends TypeDefn {

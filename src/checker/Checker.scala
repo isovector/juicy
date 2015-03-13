@@ -109,12 +109,12 @@ object Checker {
     
     
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
-      if (lhs == rhs) {
+      if (lhs.resolved.get resolvesTo rhs.resolved.get) {
         true
-      } else if (lhs.isArray || rhs.isArray) {
-        lhs.isArray && rhs.isArray &&
-          lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType) == 
-            rhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType)
+      } else if (lhs.isArray && rhs.isArray) {
+         val elemL = lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).map(_.makeTypename).get
+         val elemR = rhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).map(_.makeTypename).get
+         isAssignable(elemL, elemR)
       } else if ((numerics contains lhs) && (numerics contains rhs)) {
         isWidening(lhs, rhs)
       } else if (rhs == NullType && lhs.resolved.get.nullable) {
@@ -122,6 +122,7 @@ object Checker {
       } else if (rhs.resolved.get isSubtypeOf lhs.resolved.get) {
         true
       } else {
+        println(rhs.resolved.get.superTypes)
         false
       }
     }
@@ -134,7 +135,7 @@ object Checker {
             case Member(_, r) if r == i => false
             case sm: StaticMember => false
             case Callee(f) if f == i => false
-            case v: VarStmnt => false
+            case v: VarStmnt => true
             case _ => true
           }
           if (isVariable) {
@@ -164,9 +165,9 @@ object Checker {
           m
         case c@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
-            case id: Id => (Some(node.classes(0)), id.name, false)
-            case StaticMember(cls, right) => (Some(cls), right.name, true)
-            case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, false)
+            case id: Id => (Some(node.classes(0)), id.name, None)
+            case StaticMember(cls, right) => (Some(cls), right.name, Some(true))
+            case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, Some(false))
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
           if (cls.isDefined) {
@@ -177,8 +178,12 @@ object Checker {
               if (tn.isEmpty) {
                 val at = argtypes.mkString(",")
                 errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
-              } else if(isStatic && (tn(0).mods & Modifiers.STATIC) == 0) {
-                errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
+              } else if(isStatic.isDefined) {
+                if (isStatic.get && (tn(0).mods & Modifiers.STATIC) == 0) {
+                  errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
+                } else if (!isStatic.get && (tn(0).mods & Modifiers.STATIC) != 0) {
+                  errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
+                }
               } else {
                 c.exprType = Some(tn(0).tname)
               }
@@ -446,26 +451,7 @@ object Checker {
           if (c.value.exprType.isDefined) {
             val castType = c.tname
             val exprType = c.value.exprType.get
-            if (castType == exprType) {
-              c.value
-            } else if ((numerics contains castType) && (numerics contains exprType)) {
-              val newExpr = c.value match {
-                case i: IntVal => i
-                case c: CharVal => IntVal(c.value)
-                case _ => c
-              }
-              newExpr.exprType = Some(castType)
-              newExpr
-            } else if (exprType == NullType) {
-              if (castType.resolved.get.nullable) {
-                c.exprType = Some(castType)
-              } else {
-                val et = exprType.qname.mkString(".")
-                errors :+= CheckerError(s"Invalid null cast to type $et", c.from)
-              }
-              c
-            } else if ((castType.resolved.get isSubtypeOf exprType.resolved.get) || 
-                (exprType.resolved.get isSubtypeOf exprType.resolved.get)) {
+            if (isAssignable(castType, exprType) || isAssignable(exprType, castType)) {
               c.exprType = Some(castType)
               c
             } else {
@@ -476,14 +462,46 @@ object Checker {
             c
           }
         case r: ReturnStmnt =>
-          val retType = ancestor[MethodDefn].map(_.tname).get
+          val methodType = ancestor[MethodDefn].map(_.tname).flatMap(_.resolved).map(_.makeTypename).get
           if (r.value.isDefined) {
-            val retType = ancestor[MethodDefn].map(_.tname).get
-            if(retType == VoidType || !isAssignable(retType, r.value.exprType.get)) {
-              
+            if (methodType == VoidType) {
+              errors :+= CheckerError("Void method cannot return value", r.from)
+            } else if (r.value.flatMap(_.exprType).isDefined) {
+              val retType = r.value.flatMap(_.exprType).get
+              if(!isAssignable(methodType, retType)) {
+                println(ancestor[MethodDefn].map(m => (m.name, m.params)).get)
+                val rt = retType.qname.mkString(".")
+                val mt = methodType.qname.mkString(".")
+                errors :+= CheckerError(s"Return type $rt cannot be converted to expected type $mt", r.from)
+              }
             }
+          } else if (methodType != VoidType) {
+            errors :+= CheckerError(s"Non-void method must return a value", r.from)
           }
           r
+        case c: Callee => c
+        case sm: StaticMember =>
+          if (context.head != Callee(sm)) {
+            val eqIds = sm.lhs.fields.filter(_.name == sm.rhs.name)
+            if (eqIds.isEmpty) {
+              errors :+= undefined(sm.rhs)
+            } else if ((eqIds(0).mods & Modifiers.STATIC) == 0) {
+              val name = sm.rhs.name
+              errors :+= CheckerError(s"Accessing non-static member $name from static context", sm.from)
+            } else {
+              sm.exprType = Some(eqIds(0).tname)
+            }
+          }
+          sm
+        case t: ThisVal => 
+          if (isIn[MethodDefn]() && (ancestor[MethodDefn].map(_.mods).get & Modifiers.STATIC) != 0) {
+            errors :+= CheckerError(s"Reference to `this` in static context", t.from)
+          }
+          t.exprType = ancestor[ClassDefn].map(_.makeTypename)
+          t
+        case ex: Expression => 
+          errors :+= CheckerError(s"Did not typecheck expression $ex", ex.from)
+          ex
         case _ => self
       }
     }).asInstanceOf[FileNode]
