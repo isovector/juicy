@@ -53,7 +53,7 @@ object Sexuality {
   case m: Member =>
     val folded =
       m.fold {
-        case id: Id if Seq(PACKAGE, TYPE) contains id.status => Some(id)
+        case id: Id if id.status != SCOPE => Some(id)
         case _ => None
       }
 
