@@ -12,6 +12,6 @@ scalaSource in Test := baseDirectory.value / "test"
 
 testOptions in Test += Tests.Argument("-oI")
 
-
+parallelExecution in Test := false
 
 fork in run := true

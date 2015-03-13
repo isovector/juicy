@@ -3,16 +3,18 @@ import org.scalatest.matchers.ShouldMatchers
 
 import juicy.source.ambiguous._
 import juicy.source.ast._
+import juicy.source.checker._
 import juicy.source.PackageTree
 import juicy.source.parser._
 import juicy.source.resolver._
 import juicy.source.scoper._
 import juicy.source.tokenizer._
-import juicy.source.checker._
 import juicy.utils.CompilerError
 import juicy.utils.visitor.VisitError
 
 object CheckerSpec {
+  juicy.source.weeder.Weeder.debug.checkFileName = true
+
   val stdlib = Seq("""
     package java.lang;
     class Object {
