@@ -124,7 +124,7 @@ object Checker {
     }
 
     def hasProtectedAccess(t1: TypeDefn, t2: TypeDefn): Boolean = {
-      return ((t1 resolvesTo thisCls) && (t1 isSubtypeOf t2)) || (t1 resolvesTo t2) || (t1.pkg == t2.pkg)
+      return ((t1 resolvesTo thisCls) && (t2 isSubtypeOf t1)) || (t1 resolvesTo t2) || (t1.pkg == t2.pkg)
     }
 
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
@@ -193,7 +193,7 @@ object Checker {
                   errors :+= undefined(right, left.exprType.get)
                 } else {
                   val field = definedIn.get.fields.filter(_.name == rname)(0)
-                  if (checkMod(field.mods, Modifiers.PROTECTED) && !(hasProtectedAccess(thisCls, curType) || (curType isSubtypeOf  thisCls))) {
+                  if (checkMod(field.mods, Modifiers.PROTECTED) && !(hasProtectedAccess(thisCls, curType) && !(thisCls isSubtypeOf  curType))) {
                     errors :+= protectedAccess(right.name, thisType, curType.makeTypename)
                   } else if (checkMod(field.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Static Symbol $rname accessed from nonstatic context", m.from)
@@ -231,11 +231,11 @@ object Checker {
                 } else if (!isStatic && checkMod(tn.get.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
                 }
-                if (checkMod(tn.get.mods, Modifiers.PROTECTED)) {
-                  if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
+                if (checkMod(tn.get.mods, Modifiers.PROTECTED) && !(thisCls resolvesTo cls.get)) {
+                  if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get) && !(thisCls isSubtypeOf declCls.get)) {
                     errors :+= protectedAccess(ident, thisType, cls.get.makeTypename)
                   }
-                  else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
+                  else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get) && !(thisCls isSubtypeOf cls.get)) {
                     errors :+= protectedAccess(ident, thisType, declCls.get.makeTypename)
                   }
                 }
@@ -502,13 +502,9 @@ object Checker {
           v
         case i: IfStmnt =>
           if (i.cond.exprType.isEmpty) {
-              i
+            i
           } else if (bools contains i.cond.exprType.get) {
-            i.cond match {
-               case BoolVal(false) => i.otherwise.getOrElse(BlockStmnt(Seq()))
-               case BoolVal(true) => i.then
-               case _ => i
-            }
+            i
           } else {
             val t = i.cond.exprType.map(_.qname.mkString(".")).get
             errors :+= CheckerError(s"Branch Condition must be a boolean, received $t", i.from)
@@ -570,7 +566,7 @@ object Checker {
             } else if (!checkMod(eqId.get.mods, Modifiers.STATIC)) {
               val name = sm.rhs.name
               errors :+= CheckerError(s"Accessing non-static member $name from static context", sm.from)
-            } else if (checkMod(eqId.get.mods, Modifiers.PROTECTED) && !hasProtectedAccess(thisCls, eqCls.get)) {
+            } else if (!(thisCls isSubtypeOf sm.lhs) && checkMod(eqId.get.mods, Modifiers.PROTECTED) && !hasProtectedAccess(thisCls, eqCls.get)) {
               errors :+= protectedAccess(sm.rhs.name, thisType, sm.lhs.makeTypename)
             } else {
               sm.exprType = eqId.map(_.tname)
