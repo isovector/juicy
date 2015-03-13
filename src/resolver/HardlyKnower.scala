@@ -33,28 +33,28 @@ object HardlyKnower {
                   case _ => true
                 })
               }
-    
+
               throwIf(s"Class `$name` implements a class or primitive") {
                 resolve(c.impls).exists(im => im match {
                   case cx: ClassDefn => cx.isClass
                   case _ => true
                 })
               }
-    
+
               throwIf(s"Class `$name` extends a final class") {
                 resolve(c.extnds).exists(x => x match {
                   case cx: ClassDefn => check(cx.mods, FINAL)
                   case _ => false
                 })
               }
-              
+
               throwIf(
                   s"Class `$name` implements an interface multiple times") {
                 val impls = resolve(c.impls)
-    
+
                 impls.distinct != impls
               }
-    
+
               throwIf(
                   s"Class `$name` extends a type without a default constructor") {
                 !c.extnds.isEmpty &&
@@ -72,81 +72,96 @@ object HardlyKnower {
                   case _ => true
                 })
               }
-    
+
               throwIf(
                   s"Interface `$name` extends an interface multiple times") {
                 val extnds = resolve(c.extnds)
-    
+
                 extnds.distinct != extnds
               }
             }
-    
-            throwIf(s"Class `$name` does not implement what it promises") {
-              // Go through each implements, and
-              c.allInterfaces.exists { impl =>
-                impl.allMethods.exists { method =>
-                  // Ensure the type has a method with the same signature
-                  // This block returns whether or not the method IS constrained
-                  !(t.allMethods.find(_ ~== method) match {
-                    case Some(matching) =>
-                      // And that this isn't the SAME method (by comparing
-                      // inherited members), and that it's accessible
-                      (matching == method || !check(matching.mods, PROTECTED)) &&
-                      (matching.tname == method.tname)
-    
-                    // Abstract classes don't need to implement the whole interface
-                    case _ => check(c.mods, ABSTRACT)
-                  })
+
+            c.allInterfaces.foreach { impl =>
+              impl.allMethods.foreach { method =>
+                val matched = t.allMethods.find(_ ~== method)
+                if (matched.isDefined) {
+                  val matching = matched.get
+                  val sameMethod = matching == method
+                  val sameTname = matching.tname == method.tname
+                  val myMethod = c.methods contains matching
+                  val lessAccessible = check(matching.mods, PROTECTED)
+
+                  val myName = s"$name.${method.name}"
+                  val iName = s"${impl.name}.${method.name}"
+
+                  if (!sameTname) {
+                    throw KnowerError(
+                      s"`$myName` replaces `$iName` with a different type", t)
+                  }
+
+                  if (!sameMethod && myMethod && lessAccessible) {
+                    throw KnowerError(
+                      s"`$myName` is less visible than inherited `$iName`", t)
+                  }
+
+                  if (!sameMethod && !myMethod && lessAccessible &&
+                    !check(matching.mods, ABSTRACT)) {
+                    throw KnowerError(
+                      s"Class `$name` inherits method which is less visible than `${iName}`", t)
+                  }
+                } else if(!check(c.mods, ABSTRACT)) {
+                  throw KnowerError(
+                    s"Class `$name` is missing method `${method.name}`", t)
                 }
               }
             }
-    
+
             throwIf(s"Class `$name` implements mutually-exlusive interfaces") {
               val methodsBySignatures =
                 c.allInterfaces
                   .flatMap(_.methods)
                   .groupBy(_.signature)
-    
+
               methodsBySignatures.exists { case (_, methods) =>
                 val returnType = methods.head.tname
                 methods.exists(_.tname != returnType)
               }
             }
-    
+
             throwIf(s"Class `$name` has non-unique methods") {
               val methods = c.methods.map(_.signature)
               methods != methods.distinct
             }
-    
-    
+
+
             c.hidesMethods.foreach { hidden =>
               val name = hidden.name
               val hider = t.allMethods.find(_.name == name).get
-    
+
               val hideMods = hider.mods
               val hiddenMods = hidden.mods
-    
+
               throwIf(s"Non-static method `$name` hides a static method") {
                 !check(hideMods, STATIC) && check(hiddenMods, STATIC)
               }
-    
+
               throwIf(s"Static method `$name` hides a non-static method") {
                 check(hideMods, STATIC) && !check(hiddenMods, STATIC)
               }
-    
+
               throwIf(s"Protected method `$name` hides a public method") {
                 check(hideMods, PROTECTED) && check(hiddenMods, PUBLIC)
               }
-    
+
               throwIf(s"Method `$name` hides a final method") {
                 check(hiddenMods, FINAL)
               }
-    
+
               throwIf(s"Method `$name` hides a method with a different return type") {
                 hider.tname != hidden.tname
               }
             }
-    
+
             if (!c.isInterface && !check(c.mods, ABSTRACT)) {
               // Ensure no methods are abstract
               c.allMethods.foreach { method =>
