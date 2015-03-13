@@ -20,11 +20,22 @@ object Checker {
     final val CHAR = 3
     
   }
+  def checkMod(flags: Modifiers.Value, flag: Modifiers.Value) = (flags & flag) == flag
   def undefined (v: Id, t: Typename) = {
     val tn = t.name
     val in = v.name
     CheckerError(s"Undefined symbol $in for type $tn", v.from)
   }
+  def protectedAccess (v: String, t1: Typename, t2: Typename) = {
+    val tn1 = t1.name
+    val tn2 = t2.name
+    CheckerError(s"Type $tn1 does not have access to symbol $v in type $tn2", t2.from)
+  }
+  
+  def hasProtectedAccess(t1: TypeDefn, t2: TypeDefn): Boolean = {
+    return (t1 resolvesTo t2) || (t1 isSubtypeOf t2) || (t2 isSubtypeOf t1) || (t1.pkg == t2.pkg)
+  }
+  def hasProtectedInstanceAccess(t1: TypeDefn, t2: TypeDefn) = (t1 resolvesTo t2) || t1.pkg == t2.pkg || (t2 isSubtypeOf t1)
   
   def unsupported(op: String, from: SourceLocation, tnames:Typename*) = {
     val ts = tnames.mkString(", ")
@@ -161,10 +172,12 @@ object Checker {
                 val curType = left.exprType.flatMap(_.resolved).get
                 val definedIn = (curType +: curType.superTypes).find(_.classScope.resolve(rname) != None)
                 if (definedIn.isEmpty) {
-                  println(right, left.exprType.get)
-                  println(context.head)
                   errors :+= undefined(right, left.exprType.get)
                 } else {
+                  val field = definedIn.get.fields.filter(_.name == rname)(0)
+                  if (checkMod(field.mods, Modifiers.PROTECTED) && !hasProtectedInstanceAccess(node.classes(0), curType)) {
+                    errors :+= protectedAccess(right.name, node.classes(0).makeTypename, curType.makeTypename)
+                  }
                   m.exprType = definedIn.get.classScope.resolve(rname)
                 }
             }
@@ -184,13 +197,22 @@ object Checker {
               if (tn.isEmpty) {
                 val at = argtypes.mkString(",")
                 errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
-              } else if(isStatic.isDefined) {
-                if (isStatic.get && (tn(0).mods & Modifiers.STATIC) == 0) {
-                  errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
-                } else if (!isStatic.get && (tn(0).mods & Modifiers.STATIC) != 0) {
-                  errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
-                }
               } else {
+                if(isStatic.isDefined) {
+                  if (isStatic.get && !checkMod(tn(0).mods, Modifiers.STATIC)) {
+                    errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
+                  } else if (!isStatic.get && checkMod(tn(0).mods, Modifiers.STATIC)) {
+                    errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
+                  }
+                }
+                if (checkMod(tn(0).mods, Modifiers.PROTECTED)) {
+                  if (checkMod(tn(0).mods, Modifiers.STATIC) && !hasProtectedAccess(node.classes(0), cls.get)) {
+                    errors :+= protectedAccess(ident, node.classes(0).makeTypename, cls.get.makeTypename)
+                  }
+                  else if (!checkMod(tn(0).mods, Modifiers.STATIC) && !hasProtectedInstanceAccess(node.classes(0), cls.get)) {
+                    errors :+= protectedAccess(ident, node.classes(0).makeTypename, cls.get.makeTypename)
+                  }
+                }
                 c.exprType = Some(tn(0).tname)
               }
             }
@@ -489,15 +511,18 @@ object Checker {
         case c: Callee => c
         case sm: StaticMember =>
           if (context.head != Callee(sm)) {
-            val eqIds = (sm.lhs +: sm.lhs.superTypes)
-                            .flatMap(s => s.fields.filter(f => f.name == sm.rhs.name && (f.mods & Modifiers.STATIC) != 0))
-            if (eqIds.isEmpty) {
+            val eqCls = (sm.lhs +: sm.lhs.superTypes)
+                            .find(s => !s.fields.filter(f => f.name == sm.rhs.name && checkMod(f.mods, Modifiers.STATIC)).isEmpty)
+            val eqId = eqCls.flatMap(c => c.fields.find(_.name == sm.rhs.name))
+            if (eqId.isEmpty) {
               errors :+= undefined(sm.rhs, sm.lhs.makeTypename)
-            } else if ((eqIds(0).mods & Modifiers.STATIC) == 0) {
+            } else if (!checkMod(eqId.get.mods, Modifiers.STATIC)) {
               val name = sm.rhs.name
               errors :+= CheckerError(s"Accessing non-static member $name from static context", sm.from)
+            } else if (checkMod(eqId.get.mods, Modifiers.PROTECTED) && !hasProtectedAccess(node.classes(0), eqCls.get)) {
+              errors :+= protectedAccess(sm.rhs.name, node.classes(0).makeTypename, sm.lhs.makeTypename)
             } else {
-              sm.exprType = Some(eqIds(0).tname)
+              sm.exprType = eqId.map(_.tname)
             }
           }
           sm
