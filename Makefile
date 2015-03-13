@@ -11,4 +11,4 @@ clean:
 	rm joosc
 
 marmoset:
-	zip -r juicy.zip * -x "*target*" -x "*.swp" -x "joosc-test*" -x "stdlib*" -x "docs*" -x "test*" -x joosc
+	zip -r juicy.zip * -x "*target*" -x "*.swp" -x "joosc-test*" -x "stdlib*" -x "docs*" -x "test*" -x joosc -x "marmotest*"
