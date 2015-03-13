@@ -145,7 +145,7 @@ trait TypeDefn extends Definition {
     }
   }
 
-  def isSubtypeOf (other: TypeDefn) = superTypes contains other
+  def isSubtypeOf (other: TypeDefn) = (this resolvesTo other) || (superTypes contains other)
 
   def getArrayOf(pkgtree: PackageTree): ArrayDefn = {
     val arr = ArrayDefn(this)
