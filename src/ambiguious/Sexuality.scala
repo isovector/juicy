@@ -24,15 +24,18 @@ object Sexuality {
     nodes.map { node =>
       def disambiguate(id: Id, prefix: QName): Unit = {
         val name = id.name
-        val asType = node.resolve(prefix :+ name, pkgtree, id.from)
 
         id.status =
           if (id.scope.flatMap(_.resolve(name)).isDefined)
             SCOPE
-          else if (asType.isDefined)
-            TYPE
-          else
-            PACKAGE
+          else {
+            val asType =
+              node.resolve(prefix :+ name, pkgtree, id.from)
+            if (asType.isDefined)
+              TYPE
+            else
+              PACKAGE
+          }
       }
 
       node.rewrite(Rewriter { (newNode: Visitable, context: Seq[Visitable]) =>
@@ -50,8 +53,8 @@ object Sexuality {
   case m: Member =>
     val folded =
       m.fold {
-        case id: Id     => Some(id)
-        case otherwise  => None
+        case id: Id if Seq(PACKAGE, TYPE) contains id.status => Some(id)
+        case _ => None
       }
 
     if (!folded.contains(None)) {
