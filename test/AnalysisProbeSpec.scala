@@ -3,10 +3,12 @@ import org.scalatest.matchers.ShouldMatchers
 
 import juicy.source.analysis.AnalysisProbe
 import juicy.source.analysis.AnalysisProbe.MethodReturnError
+import juicy.source.analysis.AnalysisProbe.UninitVarError
 import juicy.source.analysis.AnalysisProbe.UnreachableError
 import juicy.source.ast._
 import juicy.source.parser.Parser
 import juicy.source.tokenizer.TokenStream
+import juicy.utils.visitor.VisitError
 
 class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
   def reachable(src: String) = {
@@ -21,6 +23,8 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
       reachable(src)
     }
   }
+
+  def init(src: String) = reachable(src)
 
   def returns(src: String) = {
     val file =
@@ -37,20 +41,20 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
 
   "Analysis probe" should "pass serial statements" in {
     reachable("""
-      a;
-      b;
-      c;
-      d;
+      a();
+      b();
+      c();
+      d();
       """)
   }
 
   it should "fail serial statements after a return" in {
     unreachable("""
       return;
-      a;
-      b;
-      c;
-      d;
+      a();
+      b();
+      c();
+      d();
       """)
   }
 
@@ -64,7 +68,7 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
   it should "get through while(true) with a return" in {
     reachable("""
       while (true) return;
-      stmnt;
+      stmnt();
       """)
   }
 
@@ -72,7 +76,7 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
     reachable("""
       if (true) return;
       else;
-      stmnt;
+      stmnt();
       """)
   }
 
@@ -80,28 +84,28 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
     unreachable("""
       if (true) return;
       else return;
-      stmnt;
+      stmnt();
       """)
   }
 
   it should "have stupid rules for if" in {
     reachable("""
       if (true) return;
-      reachable;
+      stmnt();
       """)
   }
 
   it should "fail to get through for(;;);" in {
     unreachable("""
       for (;;);
-      stmnt;
+      stmnt();
       """)
   }
 
   it should "fail to get through for(;true;);" in {
     unreachable("""
       for (;true;);
-      stmnt;
+      stmnt();
       """)
   }
 
@@ -120,28 +124,25 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
   it should "pass for(;false;);" in {
     reachable("""
       for (;false;);
-      stmnt;
+      stmnt();
       """)
   }
 
-  it should "fold over blocks (pass)" in {
+  it should "fold over blocks" in {
     reachable("""
-      { a; b; }
-      { c; d; }
-      stmnt;
-      """)
-  }
-
-  it should "fold over blocks (fail)" in {
-    unreachable("""
-      { a; b; return; }
-      { c; d; }
-      stmnt;
+      { a(); b(); }
+      { c(); d(); }
+      stmnt();
       """)
     unreachable("""
-      { a; b; }
-      { c; d; return; }
-      stmnt;
+      { a(); b(); return; }
+      { c(); d(); }
+      stmnt();
+      """)
+    unreachable("""
+      { a(); b(); }
+      { c(); d(); return; }
+      stmnt();
       """)
   }
 
@@ -175,4 +176,83 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
       )
   }
 
+  it should "fail uninit var usage" in {
+    intercept[VisitError] {
+      init(
+        """
+        Type x = null;
+        test(x);
+        """
+      )
+    }
+  }
+
+  it should "fail uninit var usage with null assign" in {
+    intercept[VisitError] {
+      init(
+        """
+        Type x = null;
+        x = null;
+        test(x);
+        """
+      )
+    }
+  }
+
+  it should "fail var init with self assign" in {
+    intercept[UninitVarError] {
+      init(
+        """
+        Type x = x;
+        """
+      )
+    }
+  }
+
+  it should "fail uninit var usage with self assign" in {
+    intercept[VisitError] {
+      init(
+        """
+        Type x = null;
+        x = x;
+        test(x);
+        """
+      )
+    }
+  }
+
+  it should "pass uninit var usage with non-null assign" in {
+    init(
+      """
+      Type x = null;
+      x = 5;
+      test(x);
+      """
+      )
+  }
+
+  it should "require all code paths to non-null assign" in {
+    init(
+      """
+      Type x = null;
+      if (true)
+        x = 5;
+      else
+        x = 5;
+      test(x);
+      """
+    )
+
+    intercept[VisitError] {
+      init(
+        """
+        Type x = null;
+        if (true)
+          x = 5;
+        else;
+        test(x);
+        """
+      )
+    }
+  }
 }

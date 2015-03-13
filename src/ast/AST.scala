@@ -551,12 +551,14 @@ case class StringVal(value: String) extends NullOp
 
 case class Id(name: String)         extends NullOp {
   var status: AmbiguousStatus.Value = AmbiguousStatus.AMBIGUOUS
+  var isVar: Boolean                = true
 }
 
 case class Callee(
   expr: Expression
 ) extends Expression {
   val children = Seq(expr)
+
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
     transfer(rule(
@@ -578,6 +580,33 @@ case class Call(
       Call(
         method.rewrite(rule, newContext).asInstanceOf[Callee],
         args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
+      ), context))
+  }
+}
+
+case class Assignee(
+  expr: Expression
+) extends Expression {
+  val children = Seq(expr)
+
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
+    transfer(rule(
+      Assignee(
+        expr.rewrite(rule, newContext).asInstanceOf[Expression]
+      ), context))
+  }
+}
+
+case class Assignment(lhs: Assignee, rhs: Expression) extends Expression {
+  val children = Seq(lhs, rhs)
+
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newContext = this +: context
+    transfer(rule(
+      Assignment(
+        lhs.rewrite(rule, newContext).asInstanceOf[Assignee],
+        rhs.rewrite(rule, newContext).asInstanceOf[Expression]
       ), context))
   }
 }
@@ -644,11 +673,6 @@ case class InstanceOf(
         tname.rewrite(rule, newContext).asInstanceOf[Typename]
       ), context))
   }
-}
-
-case class Assignment(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(Assignment.apply _)(rule, context)
 }
 
 case class LogicOr(lhs: Expression, rhs: Expression) extends BinOp {

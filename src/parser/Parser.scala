@@ -305,6 +305,10 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         val tname = qualifiedName()
         val name = unwrap(ensureIdentifier())
         val value = parseInitializer()
+
+        if (value.isEmpty)
+          throw Expected("Expected a default value for variable")
+
         ensure(";")
 
         tokens.unsetBacktrace()
@@ -422,7 +426,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
     if (check("=")) {
       next()
-      new Assignment(lhs, parseExpr())
+      new Assignment(Assignee(lhs), parseExpr())
     } else lhs
   }
 

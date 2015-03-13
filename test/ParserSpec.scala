@@ -163,14 +163,16 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     def coerce(expr: Expression) = expr.asInstanceOf[BinOp]
 
     val parser = mkParser("1 + 2 * 5 = true")
-    val result = coerce(parser.parseExpr())
-
-    result.rhs should be === BoolVal(true)
-    coerce(result.lhs).lhs should be === IntVal(1)
-
-    val mul = coerce(coerce(result.lhs).rhs)
-    mul.lhs should be === IntVal(2)
-    mul.rhs should be === IntVal(5)
+    parser.parseExpr() should be ===
+      Assignment(
+        Assignee(
+          Add(
+            IntVal(1),
+            Mul(IntVal(2), IntVal(5))
+          )
+        ),
+        BoolVal(true)
+      )
   }
 
   it should "right-associate assignments" in {
@@ -178,47 +180,46 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val result = parser.parseExpr()
 
     result should be ===
-      Assignment(Id("a"),
-        Assignment(Id("b"), IntVal(5)))
+      Assignment(Assignee(Id("a")),
+        Assignment(Assignee(Id("b")), IntVal(5)))
   }
 
 
   it should "parse variable declarations" in {
-    val parser = mkParser("a.b.c.d var1; java.lang.Object var2 = 5;")
+    val parser = mkParser("java.lang.Object var2 = 5;")
     val var1 = parser.parseStmnt().asInstanceOf[VarStmnt]
-    val var2 = parser.parseStmnt().asInstanceOf[VarStmnt]
 
-    var1.name should be === "var1"
+    var1.name should be === "var2"
     var1.mods should be === NONE
-    var1.tname should be === typename("a.b.c.d")
-    var1.value should be === None
-
-    var2.name should be === "var2"
-    var2.mods should be === NONE
-    var2.tname.toString should be === "java.lang.Object"
-    var2.value should be === Some(IntVal(5))
+    var1.tname.toString should be === "java.lang.Object"
+    var1.value should be === Some(IntVal(5))
   }
 
   it should "parse variable assignment statements" in {
     def coerce(expr: Expression) = expr.asInstanceOf[Member]
 
     val parser = mkParser("a.b.c = 1337;")
-    val expr = parser.parseStmnt().asInstanceOf[ExprStmnt].expr
-    val assign = expr.asInstanceOf[Assignment]
-
-    assign.rhs should be === IntVal(1337)
-    coerce(assign.lhs).rhs should be === Id("c")
-    coerce(coerce(assign.lhs).lhs).rhs should be === Id("b")
-    coerce(coerce(assign.lhs).lhs).lhs should be === Id("a")
+    parser.parseStmnt() should be ===
+      ExprStmnt(
+        Assignment(
+          Assignee(
+            Member(
+              Member(Id("a"), Id("b")),
+              Id("c")
+            )
+          ),
+          IntVal(1337)
+        )
+      )
   }
 
   it should "parse array declarations" in {
-    val parser = mkParser("java.lang.String [] m;")
+    val parser = mkParser("java.lang.String [] m = null;")
     val var1 = parser.parseStmnt().asInstanceOf[VarStmnt]
     var1.name should be === "m"
     var1.mods should be === NONE
     var1.tname.toString should be === "java.lang.String []"
-    var1.value should be === None
+    var1.value should be === Some(NullVal())
   }
 
   it should "have null, super and this literals" in {
@@ -385,10 +386,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("""
       class BubbleSort {
         public static void main(String []args) {
-          int n;
-          int c;
-          int d;
-          int swap;
           Scanner in = new Scanner(System.in);
 
           System.out.println("Input number of integers to sort");

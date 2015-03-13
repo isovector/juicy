@@ -178,7 +178,7 @@ object Weeder {
             throw new WeederError(
               s"Can't explicitly call methods on super()", me)
 
-        case me@Assignment(Cast(_, _), _) =>
+        case me@Assignment(Assignee(_: Cast), _) =>
           throw new WeederError(
             s"Can't cast lhs of assignment operator", me)
 

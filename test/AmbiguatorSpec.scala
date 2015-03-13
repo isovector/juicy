@@ -59,10 +59,10 @@ class AmbiguatorSpec extends FlatSpec with ShouldMatchers {
       .asInstanceOf[ExprStmnt]
       .expr should be ===
         Assignment(
-          Member(
+          Assignee(Member(
             access,
             Id("member")
-          ),
+          )),
           IntVal(5)
         )
 

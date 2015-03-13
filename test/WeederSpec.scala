@@ -120,7 +120,7 @@ class WeederSpec extends FlatSpec with ShouldMatchers {
       public class Class {
         public Class() {}
         public bool fail() {
-          void a;
+          void a = 5;
         }
       }
 
