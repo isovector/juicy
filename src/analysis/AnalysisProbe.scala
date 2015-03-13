@@ -1,6 +1,7 @@
 package juicy.source.analysis;
 
 import juicy.source.ast._
+import juicy.source.ast.Modifiers._
 import juicy.utils.CompilerError
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
@@ -24,11 +25,22 @@ object AnalysisProbe {
     val msg = s"Method `$qname $name` has a code-path which doesn't return"
   }
 
+  private def check(which: Modifiers.Value, flag: Modifiers.Value) =
+    (which & flag) == flag
+
   def apply(node: FileNode) = {
-    node
-      .classes
-      .map(_.fields)
-      .foreach(probeFields)
+    val fields =
+      node
+        .classes
+        .flatMap(_.fields)
+
+    probeFields(
+      fields
+        .filter(f => check(f.mods, STATIC)))
+
+    probeFields(
+      fields
+        .filter(f => !check(f.mods, STATIC)))
 
     node
       .classes
@@ -70,8 +82,7 @@ object AnalysisProbe {
         .map(n => foreachVarDefn(n) { id =>
           val name = id.name
           if (!inScope.contains(name))
-            if (id.scope.flatMap(_.resolve(name)).isDefined)
-              throw UninitVarError(id)
+            throw UninitVarError(id)
         }
       )
 
