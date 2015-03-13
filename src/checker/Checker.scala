@@ -471,7 +471,6 @@ object Checker {
           }
         case v: VarStmnt =>
           if (v.value.isDefined && v.value.flatMap(_.exprType).isDefined) {
-            println("Assign ", v.tname, v.name, v.value.flatMap(_.exprType))
             if (!isAssignable(v.tname, v.value.flatMap(_.exprType).get)) {
               errors :+= unsupported("assignment", v.from, v.tname, v.value.flatMap(_.exprType).get)
             }
