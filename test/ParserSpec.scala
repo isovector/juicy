@@ -293,7 +293,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val parser = mkParser("((a))")
     val result = parser.parseExpr()
 
-    result should be === Id("a")
+    result should be === Parens(Parens(Id("a")))
   }
 
   it should "parse casts" in {
@@ -302,7 +302,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
 
     result should be ===
       Cast(typename("int"),
-        Cast(typename("bool", true), Id("a")))
+        Cast(typename("bool", true), Parens(Id("a"))))
   }
 
   it should "parse constructors" in {

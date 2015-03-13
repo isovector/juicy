@@ -128,7 +128,7 @@ trait TypeDefn extends Definition {
     ++ resolvedImpls.flatMap(_.superTypes)
      )
   }
-  
+
   def origTypeForMethod(sig: Signature): Option[TypeDefn] = {
     if(methods.find(_.signature == sig).isDefined) {
       Some(this)
@@ -136,7 +136,7 @@ trait TypeDefn extends Definition {
       superTypes.find(s => s.methods.find(_.signature == sig).isDefined)
     }
   }
-  
+
   def origTypeForField(name: String): Option[TypeDefn] = {
     if(classScope.resolve(name).isDefined) {
       Some(this)
@@ -839,3 +839,9 @@ case class Neg(ghs: Expression) extends UnOp {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     rewriter(Neg.apply _)(rule, context)
 }
+
+case class Parens(ghs: Expression) extends UnOp {
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
+    rewriter(Parens.apply _)(rule, context)
+}
+

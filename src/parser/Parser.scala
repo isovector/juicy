@@ -492,10 +492,9 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         return result
       } catch {
         case UnexpectedError(_, _) => tokens.backtrack()
+        Parens(parsePostOp())
       }
-    }
-
-    parsePostOp()
+    } else parsePostOp()
   }
 
   def parsePostOp(): Expression = withSource {
