@@ -41,31 +41,38 @@ object AnalysisProbe {
       }
   }
 
+  def foreachVarDefn(n: Visitable)(handle: Id => Unit) = {
+    n.visit { (node, context) =>
+      implicit val implContext = context
+      before(node) match {
+        case id@Id(name) =>
+          context.headOption match {
+            case Some(Member(_, rhs)) if id == rhs =>
+            case Some(_: StaticMember )            =>
+            case Some(_: Assignee)                 =>
+            case Some(_: Callee)                   =>
+            case _                                 =>
+              handle(id)
+          }
+
+        case _ =>
+      }
+    } .fold(
+      l => throw VisitError(l),
+      r => { }
+    )
+  }
+
   def probeFields(fields: Seq[VarStmnt]) = {
     (Set[String]() /: fields) { (inScope, field) =>
       field
         .value
-        .map(_.visit { (node, context) =>
-          implicit val implContext = context
-          before(node) match {
-            case id@Id(name) =>
-              context.headOption match {
-                case Some(Member(_, rhs)) if id == rhs =>
-                case Some(_: StaticMember )            =>
-                case Some(_: Assignee)                 =>
-                case Some(_: Callee)                   =>
-                case _                                 =>
-                  if (!inScope.contains(name))
-                    if (id.scope.flatMap(_.resolve(name)).isDefined)
-                      throw UninitVarError(id)
-              }
-
-            case _ =>
-          }
-        }.fold(
-          l => throw VisitError(l),
-          r => { }
-        )
+        .map(n => foreachVarDefn(n) { id =>
+          val name = id.name
+          if (!inScope.contains(name))
+            if (id.scope.flatMap(_.resolve(name)).isDefined)
+              throw UninitVarError(id)
+        }
       )
 
       inScope + field.name
@@ -100,12 +107,12 @@ object AnalysisProbe {
         probe(body) && !const
 
       case VarStmnt(name, _, _, value) =>
-        value match {
-          case Some(id@Id(iname)) if name == iname =>
-            throw UninitVarError(id)
-
-          case _ => true
-        }
+        if (value.isDefined)
+          foreachVarDefn(value.get) { id =>
+            if (!id.scope.get.definedBefore(id.name, name))
+              throw UninitVarError(id)
+          }
+        true
 
       case _: ReturnStmnt =>
         false
