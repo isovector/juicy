@@ -224,7 +224,6 @@ object Checker {
                 }
                 if (checkMod(tn.get.mods, Modifiers.PROTECTED)) {
                   if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
-                    println(thisCls.name, declCls.get.name)
                     errors :+= protectedAccess(ident, thisType, cls.get.makeTypename)
                   }
                   else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
@@ -526,7 +525,6 @@ object Checker {
             } else if (r.value.flatMap(_.exprType).isDefined) {
               val retType = r.value.flatMap(_.exprType).get
               if(!isAssignable(methodType, retType)) {
-                println(ancestor[MethodDefn].map(m => (m.name, m.params)).get)
                 val rt = retType.qname.mkString(".")
                 val mt = methodType.qname.mkString(".")
                 errors :+= CheckerError(s"Return type $rt cannot be converted to expected type $mt", r.from)
