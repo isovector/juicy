@@ -117,11 +117,9 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
       for (;true;);
       stmnt();
       """)
-  }
-
-  it should "pass through for(;;) return;" in {
-    reachable("""
+    unreachable("""
       for (;;) return;
+      stmnt();
       """)
   }
 
@@ -132,9 +130,8 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "pass for(;false;);" in {
-    reachable("""
+    unreachable("""
       for (;false;);
-      stmnt();
       """)
   }
 

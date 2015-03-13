@@ -103,19 +103,32 @@ object AnalysisProbe {
       case IfStmnt(_, then, otherwise) =>
         if (otherwise.isDefined)
           probe(then) || probe(otherwise.get)
-        else
-          // You can always get through a then block
+        else {
+          probe(then)
           true
+        }
 
       case ForStmnt(_, cond, _, body) =>
-        val const = cond == Some(BoolVal(true)) || cond == None
-        // Can have a const expr as long as your probe fails
-        probe(body) && !const
+        cond match {
+          case Some(BoolVal(true))  =>
+            false
+          case None                 =>
+            false
+          case Some(BoolVal(false)) =>
+            probe(false, body)
+          case _                    =>
+            true
+        }
 
       case WhileStmnt(cond, body) =>
-        val const = cond == BoolVal(true)
-        // Can have a const expr as long as your probe fails
-        probe(body) && !const
+        cond match {
+          case BoolVal(true)  =>
+            false
+          case BoolVal(false) =>
+            probe(false, body)
+          case _              =>
+            true
+        }
 
       case VarStmnt(name, _, _, value) =>
         if (value.isDefined)
