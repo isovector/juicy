@@ -195,6 +195,8 @@ object Checker {
                   val field = definedIn.get.fields.filter(_.name == rname)(0)
                   if (checkMod(field.mods, Modifiers.PROTECTED) && !hasProtectedAccess(thisCls, curType)) {
                     errors :+= protectedAccess(right.name, thisType, curType.makeTypename)
+                  } else if (checkMod(field.mods, Modifiers.STATIC)) {
+                    errors :+= CheckerError(s"Static Symbol $rname accessed from nonstatic context", m.from)
                   }
                   m.exprType = definedIn.get.classScope.resolve(rname)
                 }
@@ -202,9 +204,16 @@ object Checker {
           m
         case c@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
-            case id: Id => (Some(thisCls), id.name, Some(false))
-            case StaticMember(cls, right) => (Some(cls), right.name, Some(true))
-            case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, Some(false))
+            case id: Id => {
+              val meth = ancestor[MethodDefn]
+              val iname = id.name
+              if (meth.isDefined && checkMod(meth.map(_.mods).get, Modifiers.STATIC)) {
+                 errors :+= CheckerError(s"Nonstatic method $iname accessed from static context", c.from)
+              }
+              (Some(thisCls), iname, false)
+            }
+            case StaticMember(cls, right) => (Some(cls), right.name, true)
+            case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
           if (cls.isDefined) {
@@ -217,12 +226,10 @@ object Checker {
                 val at = argtypes.mkString(",")
                 errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
               } else {
-                if(isStatic.isDefined) {
-                  if (isStatic.get && !checkMod(tn.get.mods, Modifiers.STATIC)) {
+                if (isStatic && !checkMod(tn.get.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
-                  } else if (!isStatic.get && checkMod(tn.get.mods, Modifiers.STATIC)) {
+                } else if (!isStatic && checkMod(tn.get.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
-                  }
                 }
                 if (checkMod(tn.get.mods, Modifiers.PROTECTED)) {
                   if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
