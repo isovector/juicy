@@ -75,8 +75,8 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
       """)
   }
 
-  it should "get through while(true) with a return" in {
-    reachable("""
+  it should "not get through while(true) with a return" in {
+    unreachable("""
       while (true) return;
       stmnt();
       """)
@@ -166,6 +166,14 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
     returns(
       """
       return;
+      """
+      )
+  }
+
+  it should "succeed with a while true return as the last statement" in {
+    returns(
+      """
+      while(true) return 123;
       """
       )
   }

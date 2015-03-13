@@ -125,13 +125,13 @@ object AnalysisProbe {
         val const = cond == Some(BoolVal(true)) || cond == None
         val (reach, init) = probe(body, uninit)
         // Can have a const expr as long as your probe fails
-        (reach --> !const, init)
+        (reach && !const, init)
 
       case WhileStmnt(cond, body) =>
         val const = cond == BoolVal(true)
         val (reach, init) = probe(body, uninit)
         // Can have a const expr as long as your probe fails
-        (reach --> !const, init)
+        (reach && !const, init)
 
       case _: ReturnStmnt =>
         (false, uninit)
