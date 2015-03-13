@@ -40,7 +40,12 @@ trait Expression extends Visitable {
   def typeScope = exprType.flatMap(_.resolved).map(_.classScope)
 }
 
-trait Statement extends Visitable
+trait Statement extends Visitable {
+  // TODO: do we need these?
+  var reachable: Option[Boolean] = None
+  var canComplete: Option[Boolean] = None
+}
+
 trait Definition extends Visitable
 trait ImportStmnt extends Statement
 
