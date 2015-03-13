@@ -66,6 +66,14 @@ object Checker {
       }
     }
 
+    val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
+    val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
+    val NullType = NullDefn().makeTypename
+    val VoidType = pkgTree.getTypename(Seq("void")).get
+    val thisCls = node.classes(0)
+    val thisType = thisCls.makeTypename
+    val IntType = pkgTree.getTypename(Seq("int")).get
+    val ObjectCls = pkgTree.getType(Seq("java", "lang", "Object")).get
     val bools = Set(pkgTree.getTypename(Seq("boolean")).get,
       pkgTree.getTypename(Seq("java", "lang", "Boolean")).get)
 
@@ -79,15 +87,19 @@ object Checker {
         case _ => expr.lhs.exprType
       }
       if (expr.exprType.isDefined) {
-        val newExpr = (expr.lhs, expr.rhs) match {
-          case (l: IntVal, r: IntVal) => IntVal(fold(l.value, r.value))
-          case (l: CharVal, r: CharVal) => IntVal(fold(l.value, r.value))
-          case (l: IntVal, r: CharVal) => IntVal(fold(l.value, r.value))
-          case (l: CharVal, r: IntVal) => IntVal(fold(l.value, r.value))
-          case _ => expr
+        val collapsed = (expr.lhs, expr.rhs) match {
+          case (l: IntVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
+          case (l: CharVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
+          case (l: IntVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
+          case (l: CharVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
+          case _ => None
         }
-        newExpr.exprType = expr.exprType
-        newExpr
+        if (collapsed.isDefined) {
+          collapsed.get.exprType = Some(IntType)
+          collapsed.get
+        } else {
+          expr
+        }
       } else {
         if (expr.lhs.exprType.isDefined && expr.rhs.exprType.isDefined) {
           errors :+= unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get)
@@ -95,14 +107,6 @@ object Checker {
         expr
       }
     }
-    val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
-    val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
-    val NullType = NullDefn().makeTypename
-    val VoidType = pkgTree.getTypename(Seq("void")).get
-    val thisCls = node.classes(0)
-    val thisType = thisCls.makeTypename
-    val ObjectCls = pkgTree.getType(Seq("java", "lang", "Object")).get
-
 
     def doComp(expr: BinOp, fold: (Int, Int) => Boolean, symbol: String): Expression = {
       if (expr.lhs.exprType.isEmpty || expr.rhs.exprType.isEmpty) {
