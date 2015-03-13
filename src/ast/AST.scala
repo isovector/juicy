@@ -90,6 +90,8 @@ trait TypeDefn extends Definition {
   val impls: Seq[Typename]
   val methods: Seq[MethodDefn]
   val fields: Seq[VarStmnt]
+  val mods: Modifiers.Value
+  val isInterface: Boolean
 
   val nullable = true
 
@@ -126,6 +128,22 @@ trait TypeDefn extends Definition {
     ++ resolvedImpls.flatMap(_.superTypes)
      )
   }
+  
+  def origTypeForMethod(sig: Signature): Option[TypeDefn] = {
+    if(methods.find(_.signature == sig).isDefined) {
+      Some(this)
+    } else {
+      superTypes.find(s => s.methods.find(_.signature == sig).isDefined)
+    }
+  }
+  
+  def origTypeForField(name: String): Option[TypeDefn] = {
+    if(classScope.resolve(name).isDefined) {
+      Some(this)
+    } else {
+      superTypes.find(s => s.classScope.resolve(name).isDefined)
+    }
+  }
 
   def isSubtypeOf (other: TypeDefn) = superTypes contains other
 
@@ -134,6 +152,7 @@ trait TypeDefn extends Definition {
     arr.scope = Some(new ClassScope())
 
     val intType  = pkgtree.getTypename(Seq("int")).get
+    intType.isFinal = true
     arr.scope.get.define("length", intType)
     arr
   }
@@ -173,6 +192,7 @@ case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   val children = Seq()
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
+  var isFinal = false
 }
 
 case class FileNode(
@@ -327,6 +347,8 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     transfer(rule(this, context))
   }
+  override val mods = Modifiers.FINAL + Modifiers.PUBLIC
+  override val isInterface = false
 }
 
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
@@ -359,6 +381,8 @@ case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
      t.resolved = Some(this)
      t
   }
+  override val mods = Modifiers.FINAL + Modifiers.PUBLIC
+  override val isInterface = false
 }
 
 case class NullDefn() extends TypeDefn {
@@ -375,6 +399,8 @@ case class NullDefn() extends TypeDefn {
     t.resolved = Some(this)
     t
   }
+  override val isInterface = false
+  override val mods = Modifiers.PUBLIC + Modifiers.FINAL
 }
 
 case class ImportClass(

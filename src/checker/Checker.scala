@@ -32,10 +32,6 @@ object Checker {
     CheckerError(s"Type $tn1 does not have access to symbol $v in type $tn2", t2.from)
   }
   
-  def hasProtectedAccess(t1: TypeDefn, t2: TypeDefn): Boolean = {
-    return (t1 resolvesTo t2) || (t1 isSubtypeOf t2) || (t2 isSubtypeOf t1) || (t1.pkg == t2.pkg)
-  }
-  def hasProtectedInstanceAccess(t1: TypeDefn, t2: TypeDefn) = (t1 resolvesTo t2) || t1.pkg == t2.pkg || (t2 isSubtypeOf t1)
   
   def unsupported(op: String, from: SourceLocation, tnames:Typename*) = {
     val ts = tnames.mkString(", ")
@@ -121,15 +117,22 @@ object Checker {
     val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
     val NullType = NullDefn().makeTypename
     val VoidType = pkgTree.getTypename(Seq("void")).get
+    val thisCls = node.classes(0)
+    val thisType = thisCls.makeTypename
+    val ObjectType = pkgTree.getTypename(Seq("java", "lang", "Object"))
     
+    
+    def hasProtectedAccess(t1: TypeDefn, t2: TypeDefn): Boolean = {
+      return ((t1 resolvesTo thisCls) && (t1 isSubtypeOf t2)) || (t1 resolvesTo t2) || (t2 isSubtypeOf t1) || (t1.pkg == t2.pkg)
+    }
     
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
       if (lhs.resolved.get resolvesTo rhs.resolved.get) {
         true
       } else if (lhs.isArray && rhs.isArray) {
-         val elemL = lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).map(_.makeTypename).get
-         val elemR = rhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).map(_.makeTypename).get
-         isAssignable(elemL, elemR)
+         val elemL = lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).get
+         val elemR = rhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).get
+         (elemL resolvesTo elemR) || (elemL.nullable && (elemR isSubtypeOf elemL))
       } else if ((numerics contains lhs) && (numerics contains rhs)) {
         isWidening(lhs, rhs)
       } else if (rhs == NullType && lhs.resolved.get.nullable) {
@@ -154,16 +157,16 @@ object Checker {
           }
           if (isVariable) {
             val name = i.name
-            val varScope =  (Seq(i.scope.get) ++ node.classes(0).superTypes.map(_.classScope)).find(_.resolve(name) != None)
+            val varScope =  (Seq(i.scope.get) ++ thisCls.superTypes.map(_.classScope)).find(_.resolve(name) != None)
             if (varScope.isEmpty) {
-              errors :+= undefined(i, node.classes(0).makeTypename)
+              errors :+= undefined(i, thisType)
             } else if (isIn[MethodDefn]()) {
               val isStatic = checkMod(ancestor[MethodDefn].map(_.mods).get, Modifiers.STATIC)
               val nonStaticVar = {
                 if (i.scope == varScope) {
-                  !i.scope.get.isLocalScope(name) && node.classes(0).fields.find(f => f.name == name && checkMod(f.mods, Modifiers.STATIC)).isEmpty
+                  !i.scope.get.isLocalScope(name) && thisCls.fields.find(f => f.name == name && checkMod(f.mods, Modifiers.STATIC)).isEmpty
                 } else {
-                  node.classes(0).superTypes.find(s => s.fields.find(
+                  thisCls.superTypes.find(s => s.fields.find(
                         f => f.name == name && !checkMod(f.mods, Modifiers.STATIC)).isDefined).isDefined
                 }
               }
@@ -187,8 +190,8 @@ object Checker {
                   errors :+= undefined(right, left.exprType.get)
                 } else {
                   val field = definedIn.get.fields.filter(_.name == rname)(0)
-                  if (checkMod(field.mods, Modifiers.PROTECTED) && !hasProtectedInstanceAccess(node.classes(0), curType)) {
-                    errors :+= protectedAccess(right.name, node.classes(0).makeTypename, curType.makeTypename)
+                  if (checkMod(field.mods, Modifiers.PROTECTED) && !hasProtectedAccess(thisCls, curType)) {
+                    errors :+= protectedAccess(right.name, thisType, curType.makeTypename)
                   }
                   m.exprType = definedIn.get.classScope.resolve(rname)
                 }
@@ -196,7 +199,7 @@ object Checker {
           m
         case c@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
-            case id: Id => (Some(node.classes(0)), id.name, None)
+            case id: Id => (Some(thisCls), id.name, Some(false))
             case StaticMember(cls, right) => (Some(cls), right.name, Some(true))
             case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, Some(false))
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
@@ -205,7 +208,8 @@ object Checker {
             if(fields.filter(!_.hasType).isEmpty) {
               val argtypes = fields.map(_.exprType.get)
               val sig = Signature(ident, argtypes)
-              val tn = cls.get.allMethods.find(_.signature == sig)
+              val declCls = cls.get.origTypeForMethod(sig)
+              val tn = declCls.flatMap(m => m.methods.find(_.signature == sig))
               if (tn.isEmpty) {
                 val at = argtypes.mkString(",")
                 errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
@@ -218,11 +222,12 @@ object Checker {
                   }
                 }
                 if (checkMod(tn.get.mods, Modifiers.PROTECTED)) {
-                  if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(node.classes(0), cls.get)) {
-                    errors :+= protectedAccess(ident, node.classes(0).makeTypename, cls.get.makeTypename)
+                  if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
+                    println(thisCls.name, declCls.get.name)
+                    errors :+= protectedAccess(ident, thisType, cls.get.makeTypename)
                   }
-                  else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedInstanceAccess(node.classes(0), cls.get)) {
-                    errors :+= protectedAccess(ident, node.classes(0).makeTypename, cls.get.makeTypename)
+                  else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasProtectedAccess(thisCls, declCls.get)) {
+                    errors :+= protectedAccess(ident, thisType, declCls.get.makeTypename)
                   }
                 }
                 c.exprType = Some(tn.get.tname)
@@ -263,6 +268,9 @@ object Checker {
         }
         case eq: Eq => {
           if (!eq.lhs.hasType || !eq.rhs.hasType) {
+            eq
+          } else if (eq.lhs.exprType.get == VoidType || eq.rhs.exprType.get == VoidType) {
+            errors :+= unsupported("==", eq.from, eq.lhs.exprType.get, eq.rhs.exprType.get)
             eq
           } else if ((numerics contains eq.lhs.exprType.get) && (numerics contains eq.rhs.exprType.get)) {
             doComp(eq, (a, b) => a == b, "==")
@@ -342,6 +350,9 @@ object Checker {
               val arglist = defArgs.mkString(",")
               val t = nt.tname
               errors :+= CheckerError(s"No constructor for type $t with parameters $arglist", nt.from)
+            } else if (checkMod(nt.tname.resolved.map(_.mods).get, Modifiers.ABSTRACT) || nt.tname.resolved.map(_.isInterface).get) {
+              val t = nt.tname
+              errors :+= CheckerError(s"Instantiation of non-concrete type $t", nt.from)
             }
           }
           nt
@@ -446,6 +457,10 @@ object Checker {
         case ass: Assignment =>
           if (ass.lhs.exprType.isEmpty || ass.rhs.exprType.isEmpty) {
             ass
+          } else if (ass.lhs.exprType.get.isFinal) {
+            val tname = ass.lhs
+            errors :+= CheckerError(s"Invalid assignment to final expression $tname", ass.from)
+            ass
           } else if (isAssignable(ass.lhs.exprType.get, ass.rhs.exprType.get)) {
             ass.exprType = ass.lhs.exprType
             ass
@@ -531,8 +546,8 @@ object Checker {
             } else if (!checkMod(eqId.get.mods, Modifiers.STATIC)) {
               val name = sm.rhs.name
               errors :+= CheckerError(s"Accessing non-static member $name from static context", sm.from)
-            } else if (checkMod(eqId.get.mods, Modifiers.PROTECTED) && !hasProtectedAccess(node.classes(0), eqCls.get)) {
-              errors :+= protectedAccess(sm.rhs.name, node.classes(0).makeTypename, sm.lhs.makeTypename)
+            } else if (checkMod(eqId.get.mods, Modifiers.PROTECTED) && !hasProtectedAccess(thisCls, eqCls.get)) {
+              errors :+= protectedAccess(sm.rhs.name, thisType, sm.lhs.makeTypename)
             } else {
               sm.exprType = eqId.map(_.tname)
             }

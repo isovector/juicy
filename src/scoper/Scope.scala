@@ -7,6 +7,7 @@ abstract class Scope {
   val parent: Scope
   
   val variables = collection.mutable.Map[String, Typename]()
+  var orderedDecls = Seq[String]()
   var children = Seq[Scope]()
   
   def resolve(varname: String) : Option[Typename] = {
@@ -32,9 +33,12 @@ abstract class Scope {
       false
     } else {
       variables(varname) = tname
+      orderedDecls :+= varname
       true
     }
   }
+  def definedBefore(v1: String, v2: String) = !orderedDecls.takeWhile(_ != v1).takeWhile(_ != v2).isEmpty
+  
   def enclosingClass(): ClassScope
   
   def printVariables(indent: Int = 0): Unit = {
