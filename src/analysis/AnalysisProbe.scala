@@ -35,7 +35,7 @@ object AnalysisProbe {
       .flatMap(_.methods)
       .filter(_.body.isDefined)
       .foreach { method =>
-        val result = probe(method.body.get, Set())._1
+        val result = probe(method.body.get)
         if (method.tname.qname != Seq("void") && result && !method.isCxr)
           throw MethodReturnError(method)
       }
@@ -72,84 +72,46 @@ object AnalysisProbe {
     }
   }
 
-  def probe(stmnt: Statement, uninit: Set[String]): (Boolean, Set[String]) =
-    probe(true, stmnt, uninit)
+  def probe(stmnt: Statement): Boolean = probe(true, stmnt)
 
-  private def probe(
-      reachable: Boolean,
-      stmnt: Statement,
-      uninitVars: Set[String]): (Boolean, Set[String]) = {
+  private def probe(reachable: Boolean, stmnt: Statement): Boolean = {
     if (!reachable)
       throw UnreachableError(stmnt)
 
-    // Only visit this node's expression children
-    var definedVars = Set[String]()
-    stmnt
-      .children
-      .filter(_.isInstanceOf[Expression])
-      .foreach(_.visit { (node, context) =>
-        implicit val implContext = context
-        node match {
-          case Before(id: Id) =>
-            if (!(isIn[Assignee]()))
-              if (id.isVar && uninitVars.contains(id.name))
-                throw UninitVarError(id)
-
-          case After(Assignment(Assignee(lhs: Id), rhs)) if rhs != NullVal() =>
-            if (!isIn[BlockStmnt]() && lhs.isVar)
-              definedVars += lhs.name
-
-          case _ =>
-        }
-      }.fold(
-        l => throw VisitError(l),
-        r => {}))
-
-    val uninit = uninitVars -- definedVars
-
     stmnt match {
       case BlockStmnt(stmnts) =>
-        ((true, uninit) /: stmnts) {
-          case ((reach, init), stmnt) => probe(reach, stmnt, init) }
+        (true /: stmnts)(probe)
 
       case IfStmnt(_, then, otherwise) =>
-        val (treach, tinit) = probe(then, uninit)
-
-        if (otherwise.isDefined) {
-          val (oreach, oinit) = probe(otherwise.get, uninit)
-          (treach || oreach, tinit ++ oinit)
-        } else
-          (true, tinit)
+        if (otherwise.isDefined)
+          probe(then) || probe(otherwise.get)
+        else
+          // You can always get through a then block
+          true
 
       case ForStmnt(_, cond, _, body) =>
         val const = cond == Some(BoolVal(true)) || cond == None
-        val (reach, init) = probe(body, uninit)
         // Can have a const expr as long as your probe fails
-        (reach && !const, init)
+        probe(body) && !const
 
       case WhileStmnt(cond, body) =>
         val const = cond == BoolVal(true)
-        val (reach, init) = probe(body, uninit)
         // Can have a const expr as long as your probe fails
-        (reach && !const, init)
-
-      case _: ReturnStmnt =>
-        (false, uninit)
+        probe(body) && !const
 
       case VarStmnt(name, _, _, value) =>
         value match {
-          case Some(NullVal()) =>
-            (true, uninit + name)
-
           case Some(id@Id(iname)) if name == iname =>
             throw UninitVarError(id)
 
-          case _ => (true, uninit)
+          case _ => true
         }
 
-      case o: Statement =>
-        (true, uninit)
+      case _: ReturnStmnt =>
+        false
+
+      case _: Statement =>
+        true
     }
   }
 }
-

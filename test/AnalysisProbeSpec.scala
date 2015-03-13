@@ -194,81 +194,11 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
       )
   }
 
-  it should "fail uninit var usage" in {
-    intercept[VisitError] {
-      init(
-        """
-        Type x = null;
-        test(x);
-        """
-      )
-    }
-  }
-
-  it should "fail uninit var usage with null assign" in {
-    intercept[VisitError] {
-      init(
-        """
-        Type x = null;
-        x = null;
-        test(x);
-        """
-      )
-    }
-  }
-
   it should "fail var init with self assign" in {
     intercept[UninitVarError] {
       init(
         """
         Type x = x;
-        """
-      )
-    }
-  }
-
-  it should "fail uninit var usage with self assign" in {
-    intercept[VisitError] {
-      init(
-        """
-        Type x = null;
-        x = x;
-        test(x);
-        """
-      )
-    }
-  }
-
-  it should "pass uninit var usage with non-null assign" in {
-    init(
-      """
-      Type x = null;
-      x = 5;
-      test(x);
-      """
-      )
-  }
-
-  it should "require all code paths to non-null assign" in {
-    init(
-      """
-      Type x = null;
-      if (true)
-        x = 5;
-      else
-        x = 5;
-      test(x);
-      """
-    )
-
-    intercept[VisitError] {
-      init(
-        """
-        Type x = null;
-        if (true)
-          x = 5;
-        else;
-        test(x);
         """
       )
     }
