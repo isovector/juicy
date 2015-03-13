@@ -25,15 +25,47 @@ object AnalysisProbe {
   }
 
   def apply(node: FileNode) = {
+    // TODO: do we want to do this here?
+    // it requires checking this.$var, which might not be the best
+    // place.
+    node
+      .classes
+      .map(_.fields)
+      .foreach(probeFields)
+
     node
       .classes
       .flatMap(_.methods)
       .filter(_.body.isDefined)
       .foreach { method =>
         val result = probe(method.body.get, Set())._1
-        if (method.tname.qname != Seq("void") && result)
+        if (method.tname.qname != Seq("void") && result && !method.isCxr)
           throw MethodReturnError(method)
       }
+  }
+
+  def probeFields(fields: Seq[VarStmnt]) = {
+    (Set[String]() /: fields) { (inScope, field) =>
+      field
+        .value
+        .map(_.visit { (node, context) =>
+          implicit val implContext = context
+          before(node) match {
+            case id@Id(name) if !isIn[Assignee]() =>
+              if (!inScope.contains(name))
+                if (id.scope.flatMap(_.resolve(name)).isDefined)
+                  throw UninitVarError(id)
+
+            case _ =>
+          }
+        }.fold(
+          l => throw VisitError(l),
+          r => { }
+        )
+      )
+
+      inScope + field.name
+    }
   }
 
   def probe(stmnt: Statement, uninit: Set[String]): (Boolean, Set[String]) =
@@ -60,10 +92,8 @@ object AnalysisProbe {
                 throw UninitVarError(id)
 
           case After(Assignment(Assignee(lhs: Id), rhs)) if rhs != NullVal() =>
-            if (!isIn[BlockStmnt]() && lhs.isVar) {
-              println("defined",lhs,rhs)
+            if (!isIn[BlockStmnt]() && lhs.isVar)
               definedVars += lhs.name
-            }
 
           case _ =>
         }
@@ -83,7 +113,6 @@ object AnalysisProbe {
 
         if (otherwise.isDefined) {
           val (oreach, oinit) = probe(otherwise.get, uninit)
-          println(tinit.mkString(":"), oinit.mkString(":"))
           (treach || oreach, tinit ++ oinit)
         } else
           (true, tinit)

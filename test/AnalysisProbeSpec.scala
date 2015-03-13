@@ -7,6 +7,7 @@ import juicy.source.analysis.AnalysisProbe.UninitVarError
 import juicy.source.analysis.AnalysisProbe.UnreachableError
 import juicy.source.ast._
 import juicy.source.parser.Parser
+import juicy.source.scoper._
 import juicy.source.tokenizer.TokenStream
 import juicy.utils.visitor.VisitError
 
@@ -37,6 +38,15 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
     intercept[MethodReturnError] {
       returns(src)
     }
+  }
+
+  def probe(src: String) = {
+    val file =
+      new Parser(
+        new TokenStream("class A {" + src + "}")).parseFile()
+
+    file.classes.map(Hashtag360NoScoper(_))
+    AnalysisProbe(file)
   }
 
   "Analysis probe" should "pass serial statements" in {
@@ -251,6 +261,26 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
           x = 5;
         else;
         test(x);
+        """
+      )
+    }
+  }
+
+  it should "ensure consistent field initialization order" in {
+    probe(
+      """
+      int x = 5;
+      int y = x;
+      int z = y;
+      """
+    )
+
+    intercept[VisitError] {
+      probe(
+        """
+        int x = y;
+        int y = z;
+        int z = 5;
         """
       )
     }
