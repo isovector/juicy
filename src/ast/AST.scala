@@ -108,6 +108,14 @@ trait TypeDefn extends Definition {
     superTypes.filter(_.isInterface)
   }
 
+  lazy val callableMethods: Seq[MethodDefn] = {
+    val interfaceMethods =
+      allInterfaces.flatMap(_.methods)
+    val sigs = allMethods.map(_.signature)
+
+    allMethods ++ interfaceMethods.filterNot(sigs contains _.signature)
+  }
+
   lazy val superTypes: Seq[ClassDefn] = {
     val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
     val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
@@ -135,7 +143,7 @@ trait TypeDefn extends Definition {
      t.resolved = Some(this)
      t
   }
-  
+
   def resolvesTo(other: TypeDefn) =
     name == other.name && pkg == other.pkg
 }
@@ -186,17 +194,18 @@ case class FileNode(
   }
 
   // the most balls function of all time
-  def unambiguousType(name: String, from: SourceLocation): Option[ClassDefn] = {
+  def unambiguousType(name: String, from: SourceLocation): Option[SuburbanClassDefn] = {
     val possible = typeScope.flatMap(_.get(name)).getOrElse { return None }
     val classImport = possible.find(!_.fromPkg)
 
     if (classImport.isDefined)
-      classImport.map(_.u).map(_.asInstanceOf[ClassDefn])
+      classImport
     else if (possible.length == 1)
-      Some(possible(0).u.asInstanceOf[ClassDefn])
+      Some(possible.head)
     else
       throw AmbiguousResolveError(Seq(name), from)
   }
+
 
   def resolve(
       qname: QName,
@@ -210,21 +219,25 @@ case class FileNode(
     }
 
     val qnameOpt = pkgtree.getType(qname)
-    val ambigOpt = unambiguousType(qname.head, from)
     val inPkgOpt = pkgtree.getType(pkg :+ qname.head)
+    val ambigOpt = unambiguousType(qname.head, from)
 
     // Resolving to multiple of the above is only ok if one is fully qualified
     // and its prefix doesn't collide due to the current package. Or something.
     // This makes it pass tests and Sanjay said it was probably a good idea
     if (qnameOpt.isDefined && (ambigOpt.isDefined || inPkgOpt.isDefined)) {
-      val which = ambigOpt.getOrElse(inPkgOpt.get)
+      val which = ambigOpt.map(_.u).getOrElse(inPkgOpt.get)
       if (which.pkg == pkg)
         throw AmbiguousResolveError(qname, from)
     }
 
+    val localOpt  = ambigOpt.flatMap(x => if (!x.fromPkg) Some(x.u) else None)
+    val demandOpt = ambigOpt.flatMap(x => if (x.fromPkg) Some(x.u) else None)
+
     qnameOpt
-      .orElse(ambigOpt)
+      .orElse(localOpt)
       .orElse(inPkgOpt)
+      .orElse(demandOpt)
   }
 }
 
