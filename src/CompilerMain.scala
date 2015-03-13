@@ -1,6 +1,7 @@
 package juicy.source
 
 import juicy.source.ambiguous.Sexuality
+import juicy.source.analysis.AnalysisProbe
 import juicy.source.ast.FileNode
 import juicy.source.checker.Checker
 import juicy.source.parser._
@@ -66,7 +67,9 @@ object CompilerMain {
       HardlyKnower(pkgtree)
       asts.foreach(Hashtag360NoScoper(_))
       Sexuality(asts, pkgtree)
-        .foreach(Checker(_, pkgtree))
+        .map(Checker(_, pkgtree))
+        .foreach(AnalysisProbe(_))
+
     }
 
     CompilerTerminate(0)

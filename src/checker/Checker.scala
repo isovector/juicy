@@ -18,7 +18,7 @@ object Checker {
     final val SHORT = 1
     final val BYTE = 2
     final val CHAR = 3
-    
+
   }
   def checkMod(flags: Modifiers.Value, flag: Modifiers.Value) = (flags & flag) == flag
   def undefined (v: Id, t: Typename) = {
@@ -31,8 +31,8 @@ object Checker {
     val tn2 = t2.name
     CheckerError(s"Type $tn1 does not have access to symbol $v in type $tn2", t2.from)
   }
-  
-  
+
+
   def unsupported(op: String, from: SourceLocation, tnames:Typename*) = {
     val ts = tnames.mkString(", ")
     val s = if (tnames.length == 1) "" else "s"
@@ -40,7 +40,7 @@ object Checker {
   }
   def apply(node: FileNode, pkgTree: PackageTree): FileNode = {
     var errors = Seq[CompilerError]()
-    
+
     val numerics = Map[Typename, NumericType.value](
       (pkgTree.getTypename(Seq("int")).get -> NumericType.INT),
       (pkgTree.getTypename(Seq("java", "lang", "Integer")).get -> NumericType.INT),
@@ -51,7 +51,7 @@ object Checker {
       (pkgTree.getTypename(Seq("char")).get -> NumericType.CHAR),
       (pkgTree.getTypename(Seq("java", "lang", "Character")).get -> NumericType.CHAR)
     )
-    
+
     def isWidening(lhs: Typename, rhs: Typename): Boolean = {
       val lhsT = numerics(lhs)
       val rhsT = numerics(rhs)
@@ -65,10 +65,10 @@ object Checker {
         false
       }
     }
-    
-    val bools = Set(pkgTree.getTypename(Seq("boolean")).get, 
+
+    val bools = Set(pkgTree.getTypename(Seq("boolean")).get,
       pkgTree.getTypename(Seq("java", "lang", "Boolean")).get)
-    
+
     def doNumeric(expr: BinOp, fold: (Int, Int) => Int, symbol: String): Expression = {
       val lhsT = expr.lhs.exprType.flatMap(numerics.get _).getOrElse(NumericType.UNKNOWN)
       val rhsT = expr.rhs.exprType.flatMap(numerics.get _).getOrElse(NumericType.UNKNOWN)
@@ -120,12 +120,12 @@ object Checker {
     val thisCls = node.classes(0)
     val thisType = thisCls.makeTypename
     val ObjectType = pkgTree.getTypename(Seq("java", "lang", "Object"))
-    
-    
+
+
     def hasProtectedAccess(t1: TypeDefn, t2: TypeDefn): Boolean = {
       return ((t1 resolvesTo thisCls) && (t1 isSubtypeOf t2)) || (t1 resolvesTo t2) || (t2 isSubtypeOf t1) || (t1.pkg == t2.pkg)
     }
-    
+
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
       if (lhs.resolved.get resolvesTo rhs.resolved.get) {
         true
@@ -143,7 +143,7 @@ object Checker {
         false
       }
     }
-    
+
     val newFile = node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
       self match {
@@ -155,6 +155,9 @@ object Checker {
             case v: VarStmnt => true
             case _ => true
           }
+
+          i.isVar = isVariable
+
           if (isVariable) {
             val name = i.name
             val varScope =  (Seq(i.scope.get) ++ thisCls.superTypes.map(_.classScope)).find(_.resolve(name) != None)
@@ -282,7 +285,7 @@ object Checker {
             }
             expr.exprType = Some(BoolTypename)
             expr
-          } else if ((eq.lhs.exprType.get == NullType && eq.rhs.exprType.flatMap(_.resolved).get.nullable) 
+          } else if ((eq.lhs.exprType.get == NullType && eq.rhs.exprType.flatMap(_.resolved).get.nullable)
               || (eq.rhs.exprType.get == NullType && eq.lhs.exprType.flatMap(_.resolved).get.nullable)) {
             eq.exprType = Some(BoolTypename)
             eq
@@ -310,7 +313,7 @@ object Checker {
             }
             expr.exprType = Some(BoolTypename)
             expr
-          } else if ((neq.lhs.exprType.get == NullType && neq.rhs.exprType.flatMap(_.resolved).get.nullable) 
+          } else if ((neq.lhs.exprType.get == NullType && neq.rhs.exprType.flatMap(_.resolved).get.nullable)
               || (neq.rhs.exprType.get == NullType && neq.lhs.exprType.flatMap(_.resolved).get.nullable)) {
             neq.exprType = Some(BoolTypename)
             neq
@@ -506,7 +509,7 @@ object Checker {
           if (c.value.exprType.isDefined) {
             val castType = c.tname
             val exprType = c.value.exprType.get
-            if (((numerics contains castType) && (numerics contains exprType)) || 
+            if (((numerics contains castType) && (numerics contains exprType)) ||
                 isAssignable(castType, exprType) || isAssignable(exprType, castType)) {
               c.exprType = Some(castType)
               c
@@ -553,7 +556,7 @@ object Checker {
             }
           }
           sm
-        case t: ThisVal => 
+        case t: ThisVal =>
           if (isIn[MethodDefn]() && (ancestor[MethodDefn].map(_.mods).get & Modifiers.STATIC) != 0) {
             errors :+= CheckerError(s"Reference to `this` in static context", t.from)
           }
@@ -562,7 +565,7 @@ object Checker {
         case ass: Assignee =>
           ass.exprType = ass.expr.exprType
           ass
-        case ex: Expression => 
+        case ex: Expression =>
           errors :+= CheckerError(s"Did not typecheck expression $ex", ex.from)
           ex
         case _ => self

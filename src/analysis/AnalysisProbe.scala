@@ -25,9 +25,6 @@ object AnalysisProbe {
   }
 
   def apply(node: FileNode) = {
-    // TODO: do we want to do this here?
-    // it requires checking this.$var, which might not be the best
-    // place.
     node
       .classes
       .map(_.fields)
@@ -51,10 +48,17 @@ object AnalysisProbe {
         .map(_.visit { (node, context) =>
           implicit val implContext = context
           before(node) match {
-            case id@Id(name) if !isIn[Assignee]() =>
-              if (!inScope.contains(name))
-                if (id.scope.flatMap(_.resolve(name)).isDefined)
-                  throw UninitVarError(id)
+            case id@Id(name) =>
+              context.headOption match {
+                case Some(Member(_, rhs)) if id == rhs =>
+                case Some(_: StaticMember )            =>
+                case Some(_: Assignee)                 =>
+                case Some(_: Callee)                   =>
+                case _                                 =>
+                  if (!inScope.contains(name))
+                    if (id.scope.flatMap(_.resolve(name)).isDefined)
+                      throw UninitVarError(id)
+              }
 
             case _ =>
           }
