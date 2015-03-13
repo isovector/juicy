@@ -280,11 +280,11 @@ object Checker {
         case inst: InstanceOf => {
           if (!inst.lhs.hasType) {
             inst
-          } else if (inst.lhs.exprType.flatMap(_.resolved).get isSubtypeOf inst.tname.resolved.get){
+          } else if (isAssignable(inst.tname, inst.lhs.exprType.get)){
              val expr = BoolVal(true)
              expr.exprType = Some(BoolTypename)
              expr
-          } else if (inst.tname.resolved.get isSubtypeOf inst.lhs.exprType.flatMap(_.resolved).get) {
+          } else if (isAssignable(inst.lhs.exprType.get, inst.tname)) {
             inst.exprType = Some(BoolTypename)
             inst
           } else {
@@ -451,7 +451,8 @@ object Checker {
           if (c.value.exprType.isDefined) {
             val castType = c.tname
             val exprType = c.value.exprType.get
-            if (isAssignable(castType, exprType) || isAssignable(exprType, castType)) {
+            if (((numerics contains castType) && (numerics contains exprType)) || 
+                isAssignable(castType, exprType) || isAssignable(exprType, castType)) {
               c.exprType = Some(castType)
               c
             } else {
