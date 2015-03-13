@@ -124,7 +124,7 @@ object Checker {
     }
 
     def hasProtectedAccess(t1: TypeDefn, t2: TypeDefn): Boolean = {
-      return ((t1 resolvesTo thisCls) && (t1 isSubtypeOf t2)) || (t1 resolvesTo t2) || (t2 isSubtypeOf t1) || (t1.pkg == t2.pkg)
+      return ((t1 resolvesTo thisCls) && (t1 isSubtypeOf t2)) || (t1 resolvesTo t2) || (t1.pkg == t2.pkg)
     }
 
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
@@ -193,7 +193,7 @@ object Checker {
                   errors :+= undefined(right, left.exprType.get)
                 } else {
                   val field = definedIn.get.fields.filter(_.name == rname)(0)
-                  if (checkMod(field.mods, Modifiers.PROTECTED) && !hasProtectedAccess(thisCls, curType)) {
+                  if (checkMod(field.mods, Modifiers.PROTECTED) && !(hasProtectedAccess(thisCls, curType) || (curType isSubtypeOf  thisCls))) {
                     errors :+= protectedAccess(right.name, thisType, curType.makeTypename)
                   } else if (checkMod(field.mods, Modifiers.STATIC)) {
                     errors :+= CheckerError(s"Static Symbol $rname accessed from nonstatic context", m.from)
