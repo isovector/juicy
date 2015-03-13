@@ -387,10 +387,14 @@ object Checker {
             newString.exprType = Some(StringTypename)
             newString
           } else if (a.lhs.exprType.get == StringTypename) {
+            if (a.rhs.exprType.get == VoidType)
+              errors :+= unsupported("+", a.from, a.rhs.exprType.get)
             //TODO: actually collapse string + nonstring
             a.exprType = Some(StringTypename)
             a
           } else if (a.rhs.exprType.get == StringTypename) {
+            if (a.lhs.exprType.get == VoidType)
+              errors :+= unsupported("+", a.from, a.lhs.exprType.get)
             //TODO: collapse nonstring + string
             a.exprType = Some(StringTypename)
             a
