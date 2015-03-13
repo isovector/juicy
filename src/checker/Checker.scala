@@ -507,6 +507,9 @@ object Checker {
           }
           t.exprType = ancestor[ClassDefn].map(_.makeTypename)
           t
+        case ass: Assignee =>
+          ass.exprType = ass.expr.exprType
+          ass
         case ex: Expression => 
           errors :+= CheckerError(s"Did not typecheck expression $ex", ex.from)
           ex
