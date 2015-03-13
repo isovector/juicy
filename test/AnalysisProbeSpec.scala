@@ -195,10 +195,12 @@ class AnalysisProbeSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "fail var init with self assign" in {
-    intercept[UninitVarError] {
-      init(
+    intercept[VisitError] {
+      probe(
         """
-        Type x = x;
+        void method() {
+          Type x = x;
+        }
         """
       )
     }
