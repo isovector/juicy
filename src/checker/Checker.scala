@@ -105,12 +105,16 @@ object Checker {
     val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
     val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
     val NullType = NullDefn().makeTypename
+    val VoidType = pkgTree.getTypename(Seq("void")).get
     
     
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
-      println(lhs, rhs)
       if (lhs == rhs) {
         true
+      } else if (lhs.isArray || rhs.isArray) {
+        lhs.isArray && rhs.isArray &&
+          lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType) == 
+            rhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType)
       } else if ((numerics contains lhs) && (numerics contains rhs)) {
         isWidening(lhs, rhs)
       } else if (rhs == NullType && lhs.resolved.get.nullable) {
@@ -301,7 +305,7 @@ object Checker {
           if (narr.size.exprType.isEmpty) {
             // Already invalid
           } else if (numerics contains narr.size.exprType.get) {
-            narr.exprType = narr.tname.resolved.map(_.getArrayOf(pkgTree).makeTypename)
+            narr.exprType = Some(narr.tname)
           } else {
             val t = narr.size.exprType.get.name
             errors :+= CheckerError(s"Array size cannot be of type $t", narr.from)
@@ -360,7 +364,7 @@ object Checker {
               case (b1, b2: BoolVal) if b2.value => b1
               case _ => and
             }
-            res.exprType = pkgTree.getTypename(Seq("bool"))
+            res.exprType = Some(BoolTypename)
             res
           } else {
             errors :+= unsupported("&&", and.from, and.lhs.exprType.get, and.rhs.exprType.get)
@@ -374,7 +378,7 @@ object Checker {
               case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value || b2.value)
               case _ => or
             }
-            res.exprType = pkgTree.getTypename(Seq("bool"))
+            res.exprType = Some(BoolTypename)
             res
           } else {
             errors :+= unsupported("||", or.from, or.lhs.exprType.get, or.rhs.exprType.get)
@@ -388,14 +392,13 @@ object Checker {
               case b: BoolVal => BoolVal(!b.value)
               case _ => n
             }
-            newVal.exprType = pkgTree.getTypename(Seq("bool"))
+            newVal.exprType = Some(BoolTypename)
             newVal
           } else {
             errors :+= unsupported("unary-!", n.from, n.ghs.exprType.get)
             n
           }
         case ass: Assignment =>
-          println(ass.lhs.exprType, ass.rhs.exprType, ass.from)
           if (ass.lhs.exprType.isEmpty || ass.rhs.exprType.isEmpty) {
             ass
           } else if (isAssignable(ass.lhs.exprType.get, ass.rhs.exprType.get)) {
@@ -406,13 +409,81 @@ object Checker {
             ass
           }
         case v: VarStmnt =>
-          if (v.value.isDefined && v.value.map(_.exprType).isDefined) {
-            val vtype = v.scope.get.resolve(v.name).get
-            if (!isAssignable(vtype, v.value.flatMap(_.exprType).get)) {
-              errors :+= unsupported("assignment", v.from, vtype, v.value.flatMap(_.exprType).get)
+          if (v.value.isDefined && v.value.flatMap(_.exprType).isDefined) {
+            if (!isAssignable(v.tname, v.value.flatMap(_.exprType).get)) {
+              errors :+= unsupported("assignment", v.from, v.tname, v.value.flatMap(_.exprType).get)
             }
           }
           v
+        case i: IfStmnt =>
+          if (i.cond.exprType.isEmpty) {
+              i
+          } else if (bools contains i.cond.exprType.get) {
+            i.cond match {
+               case BoolVal(false) => i.otherwise.getOrElse(BlockStmnt(Seq()))
+               case BoolVal(true) => i.then
+               case _ => i
+            }
+          } else {
+            val t = i.cond.exprType.map(_.qname.mkString(".")).get
+            errors :+= CheckerError(s"Branch Condition must be a boolean, received $t", i.from)
+            i
+          }
+        case f: ForStmnt =>
+          if (f.cond.isDefined && f.cond.flatMap(_.exprType).isDefined &&
+              (!(bools contains f.cond.flatMap(_.exprType).get))) {
+            val t = f.cond.flatMap(_.exprType).map(_.qname.mkString(".")).get
+            errors :+= CheckerError(s"Loop condition must be a boolean, received $t", f.from)
+          }
+          f
+        case w: WhileStmnt =>
+          if (w.cond.exprType.isDefined && !(bools contains w.cond.exprType.get)) {
+            val t = w.cond.exprType.map(_.qname.mkString(".")).get
+            errors :+= CheckerError(s"Loop condition must be a boolean, received $t", w.from)
+          }
+          w
+        case c: Cast =>
+          if (c.value.exprType.isDefined) {
+            val castType = c.tname
+            val exprType = c.value.exprType.get
+            if (castType == exprType) {
+              c.value
+            } else if ((numerics contains castType) && (numerics contains exprType)) {
+              val newExpr = c.value match {
+                case i: IntVal => i
+                case c: CharVal => IntVal(c.value)
+                case _ => c
+              }
+              newExpr.exprType = Some(castType)
+              newExpr
+            } else if (exprType == NullType) {
+              if (castType.resolved.get.nullable) {
+                c.exprType = Some(castType)
+              } else {
+                val et = exprType.qname.mkString(".")
+                errors :+= CheckerError(s"Invalid null cast to type $et", c.from)
+              }
+              c
+            } else if ((castType.resolved.get isSubtypeOf exprType.resolved.get) || 
+                (exprType.resolved.get isSubtypeOf exprType.resolved.get)) {
+              c.exprType = Some(castType)
+              c
+            } else {
+              errors :+= unsupported("cast", c.from, castType, exprType)
+              c
+            }
+          } else {
+            c
+          }
+        case r: ReturnStmnt =>
+          val retType = ancestor[MethodDefn].map(_.tname).get
+          if (r.value.isDefined) {
+            val retType = ancestor[MethodDefn].map(_.tname).get
+            if(retType == VoidType || !isAssignable(retType, r.value.exprType.get)) {
+              
+            }
+          }
+          r
         case _ => self
       }
     }).asInstanceOf[FileNode]
