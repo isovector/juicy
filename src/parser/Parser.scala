@@ -492,9 +492,9 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         return result
       } catch {
         case UnexpectedError(_, _) => tokens.backtrack()
-        Parens(parsePostOp())
       }
-    } else parsePostOp()
+    }
+    parsePostOp()
   }
 
   def parsePostOp(): Expression = withSource {
@@ -545,7 +545,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         next()
         val result = parseExpr()
         ensure(")")
-        result
+        Parens(result)
 
       case ThisLiteral() =>
         next()
