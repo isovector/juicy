@@ -220,7 +220,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
   }
 
   def parseConstructor(className: String, mods: Modifiers.Value) = {
-    parseMethod(".ctor." + className, mods, new Typename(Seq(className)), true)
+    parseMethod(".ctor." + className, mods, new Typename(Seq("void")), true)
   }
 
   // Parse  `= Expr` or ``

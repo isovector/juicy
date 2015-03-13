@@ -328,12 +328,12 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     val classes = result.classes
     classes(0).methods.filter(_.isCxr) should be ===
       Seq(
-        MethodDefn(".ctor.A", PUBLIC, true, typename("A"), Seq(), None),
+        MethodDefn(".ctor.A", PUBLIC, true, typename("void"), Seq(), None),
         MethodDefn(
           ".ctor.A",
           STATIC,
           true,
-          typename("A"),
+          typename("void"),
           Seq(
             VarStmnt("B", NONE, typename("int"), None)),
           None))
