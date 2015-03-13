@@ -85,7 +85,7 @@ trait TypeDefn extends Definition {
   val impls: Seq[Typename]
   val methods: Seq[MethodDefn]
   val fields: Seq[VarStmnt]
-  
+
   val nullable = true
 
   lazy val (allMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
@@ -503,15 +503,15 @@ case class BlockStmnt(
 }
 
 case class ReturnStmnt(
-  value: Expression
+  value: Option[Expression]
 ) extends Statement {
-  val children = Seq(value)
+  val children = value.toList
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
     transfer(rule(
       ReturnStmnt(
-        value.rewrite(rule, newContext).asInstanceOf[Expression]
+        value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context))
   }
 }

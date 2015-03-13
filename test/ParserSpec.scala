@@ -149,9 +149,14 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     result.body should be === BlockStmnt(Seq())
   }
 
-  it should "parse return statements" in {
+  it should "parse non-empty return statements" in {
     val parser = mkParser("return 5;")
-    parser.parseStmnt() should be === ReturnStmnt(IntVal(5))
+    parser.parseStmnt() should be === ReturnStmnt(Some(IntVal(5)))
+  }
+
+  it should "parse empty return statements" in {
+    val parser = mkParser("return;")
+    parser.parseStmnt() should be === ReturnStmnt(None)
   }
 
   it should "parse binary expressions with precedence" in {

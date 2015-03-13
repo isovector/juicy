@@ -283,7 +283,11 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       new BlockStmnt(Seq())
     } else if (check("return")) {
       next();
-      val value = parseExpr()
+      val value =
+        if (check(";"))
+          None
+        else
+          Some(parseExpr())
       ensure(";")
 
       new ReturnStmnt(value)
