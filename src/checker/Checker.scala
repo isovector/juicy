@@ -101,7 +101,7 @@ object Checker {
     val VoidType = pkgTree.getTypename(Seq("void")).get
     val thisCls = node.classes(0)
     val thisType = thisCls.makeTypename
-    val ObjectType = pkgTree.getTypename(Seq("java", "lang", "Object"))
+    val ObjectCls = pkgTree.getType(Seq("java", "lang", "Object")).get
 
 
     def doComp(expr: BinOp, fold: (Int, Int) => Boolean, symbol: String): Expression = {
@@ -129,6 +129,8 @@ object Checker {
 
     def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
       if (lhs.resolved.get resolvesTo rhs.resolved.get) {
+        true
+      } else if (lhs.resolved.get resolvesTo ObjectCls) {
         true
       } else if (lhs.isArray && rhs.isArray) {
          val elemL = lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).get
@@ -327,16 +329,24 @@ object Checker {
         }
         case inst: InstanceOf => {
           if (!inst.lhs.hasType) {
+            inst.exprType = Some(BoolTypename)
             inst
-          } else if (isAssignable(inst.tname, inst.lhs.exprType.get)){
+          } else if (!inst.lhs.exprType.flatMap(_.resolved).map(_.nullable).get ||
+              !inst.tname.resolved.map(_.nullable).get) {
+            errors :+= CheckerError("Operands of instanceOf cannot be value types", inst.from)
+            inst.exprType = Some(BoolTypename)
+            inst
+        } else if (isAssignable(inst.tname, inst.lhs.exprType.get)){
              val expr = BoolVal(true)
              expr.exprType = Some(BoolTypename)
              expr
-          } else if (isAssignable(inst.lhs.exprType.get, inst.tname)) {
+          } else if (
+              isAssignable(inst.lhs.exprType.get, inst.tname)) {
             inst.exprType = Some(BoolTypename)
             inst
           } else {
             errors :+= unsupported("instanceof", inst.from, inst.lhs.exprType.get, inst.tname)
+            inst.exprType = Some(BoolTypename)
             inst
           }
         }
@@ -345,14 +355,17 @@ object Checker {
           val args = nt.args.map(_.exprType)
           if(args.filter(_.isEmpty).isEmpty) {
             val defArgs = args.map(_.get)
-            val cxrs = nt.tname.resolved.get.methods.filter(_.isCxr).map(_.signature).filter(_.params == defArgs)
-            if (cxrs.isEmpty) {
+            val cxr = nt.tname.resolved.get.methods.filter(_.isCxr).find(_.signature.params == defArgs)
+            if (cxr.isEmpty) {
               val arglist = defArgs.mkString(",")
               val t = nt.tname
               errors :+= CheckerError(s"No constructor for type $t with parameters $arglist", nt.from)
             } else if (checkMod(nt.tname.resolved.map(_.mods).get, Modifiers.ABSTRACT) || nt.tname.resolved.map(_.isInterface).get) {
               val t = nt.tname
               errors :+= CheckerError(s"Instantiation of non-concrete type $t", nt.from)
+            } else if (checkMod(cxr.get.mods, Modifiers.PROTECTED) && nt.tname.resolved.map(_.pkg).get != thisCls.pkg) {
+              val t = nt.tname
+              errors :+= CheckerError(s"Protected constructor for type $t cannot be accessed from outside package", nt.from)
             }
           }
           nt
@@ -384,15 +397,16 @@ object Checker {
               case (l: StringVal, r: StringVal) => StringVal(l.value + r.value)
               case _ => a
             }
+              
             newString.exprType = Some(StringTypename)
             newString
-          } else if (a.lhs.exprType.get == StringTypename) {
+          } else if (a.lhs.exprType.get == StringTypename) {            
             if (a.rhs.exprType.get == VoidType)
               errors :+= unsupported("+", a.from, a.rhs.exprType.get)
             //TODO: actually collapse string + nonstring
             a.exprType = Some(StringTypename)
             a
-          } else if (a.rhs.exprType.get == StringTypename) {
+          } else if (a.rhs.exprType.get == StringTypename) { 
             if (a.lhs.exprType.get == VoidType)
               errors :+= unsupported("+", a.from, a.lhs.exprType.get)
             //TODO: collapse nonstring + string
