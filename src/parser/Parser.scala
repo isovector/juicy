@@ -437,7 +437,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     def parseNextPrec() =
       if (level + 1 < operators.length)
         parseExprPrec(level + 1)
-      else parseUnaryExpr()
+      else parseUnaryMinus()
 
     var lhs = parseNextPrec()
     val syms = operators(level).keys.map(_.asToken)
@@ -458,7 +458,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     lhs
   }
 
-  def parseUnaryExpr(): Expression = withSource {
+  def parseUnaryMinus(): Expression = withSource {
     if (check("-")) {
       next()
       cur match {
@@ -470,11 +470,15 @@ class Parser(tokens: TokenStream) extends ParserUtils {
               throw new UnexpectedError("Invalid integer literal " + (-l), cur.from)
             }
           }
-          case _ => new Neg(parseUnaryExpr())
+          case _ => new Neg(parseUnaryMinus())
       }
-    } else if (check("!")) {
+    } else parseUnaryNot()
+  }
+
+  def parseUnaryNot(): Expression = withSource {
+    if (check("!")) {
       next()
-      new Not(parseUnaryExpr())
+      new Not(parseUnaryMinus())
     } else parseCast()
   }
 
@@ -485,7 +489,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         next()
         val tname = qualifiedName()
         ensure(")")
-        val value = parseUnaryExpr()
+        val value = parseUnaryNot()
 
         val result = new Cast(tname, value)
         tokens.unsetBacktrace()

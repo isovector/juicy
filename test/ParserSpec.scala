@@ -305,6 +305,22 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
         Cast(typename("bool", true), Parens(Id("a"))))
   }
 
+  it should "parse (X)-y as a subtraction" in {
+    val parser = mkParser("(X)-42")
+    val result = parser.parseExpr()
+
+    result should be ===
+      Sub(Parens(Id("X")), IntVal(42))
+  }
+
+  it should "parse (X)!-y as a cast" in {
+    val parser = mkParser("(X)!-42")
+    val result = parser.parseExpr()
+
+    result should be ===
+      Cast(typename("X", false), Not(IntVal(-42)))
+  }
+
   it should "parse constructors" in {
     val parser = mkParser("class A { public A(); static A(int B); }")
     val result = parser.parseFile()
