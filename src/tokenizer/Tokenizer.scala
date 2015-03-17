@@ -68,7 +68,7 @@ class Tokenizer(input: String, fname: String = "<string>") {
     } else if (cur.isDigit) {
       // Try to match a int literal first because they're easy
       val ipart = source.takeWhile(_.isDigit)
-      if (cur.isLetter || cur == '_') {
+      if (cur.isLetter || cur == '_' || cur == '$') {
         new Token.Invalid()
       } else if (ipart.startsWith("0") && ipart.length > 1) {
         new Token.Invalid(Some("Octal Literals not supported"))
@@ -77,9 +77,8 @@ class Tokenizer(input: String, fname: String = "<string>") {
           new Token.IntLiteral(ipart.toLong)
         } catch {
           case _: Throwable => new Token.Invalid(Some("Invalid integer literal " + ipart))
-        }  
-            
-    }
+        }
+      }
     } else if (cur == '\'') {
       CharDFA.matchChar(source)
     } else if (cur == '\"') {
