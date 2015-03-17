@@ -3,7 +3,6 @@
 \usepackage{listings}
 \usepackage[margin=0.5in]{geometry}
 
-
 \title{CS 444 - A4}
 \author{Jacob Abrahams - 20370104\\ Alexander Maguire - 20396195}
 
@@ -14,16 +13,9 @@
     new,null,object,override,package,%
     private,protected,requires,return,sealed,%
     super,this,throw,trait,true,try,%
-    type,val,var,while,with,yield,Some,None,Option},
-  otherkeywords={=>,<-,<\%,<:,>:,\#,@},
-  sensitive=true,
-  morecomment=[l]{//},
-  morecomment=[n]{/*}{*/},
-  morestring=[b]",
-  morestring=[b]',
-  morestring=[b]"""
-}
-
+    type,val,var,while,with,yield,Some,None,Option,Before,After,visit},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@}, sensitive=true, morecomment=[l]{//}, morecomment=[n]{/*}{*/}, morestring=[b]",
+  morestring=[b]', morestring=[b]""" }
 
 \usepackage{color}
 \definecolor{dkgreen}{rgb}{0,0.6,0}
@@ -31,23 +23,10 @@
 \definecolor{mauve}{rgb}{0.58,0,0.82}
 
 % Default settings for code listings
-\lstset{frame=tb,
-  language=scala,
-  aboveskip=3mm,
-  belowskip=3mm,
-  showstringspaces=false,
-  columns=flexible,
-  basicstyle={\small\ttfamily},
-  numbers=none,
-  numberstyle=\tiny\color{gray},
-  keywordstyle=\color{blue},
-  commentstyle=\color{dkgreen},
-  stringstyle=\color{mauve},
-  frame=single,
-  breaklines=true,
-  breakatwhitespace=true
-  tabsize=3
-}
+\lstset{frame=tb, language=scala, aboveskip=3mm, belowskip=3mm, showstringspaces=false, columns=flexible,
+  basicstyle={\small\ttfamily}, numbers=none, numberstyle=\tiny\color{gray}, keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen}, stringstyle=\color{mauve}, frame=single, breaklines=true, breakatwhitespace=true
+  tabsize=3 }
 
 \begin{document}
 
@@ -60,31 +39,68 @@
 
 \maketitle
 
+
 \section{Design}
 
 \subsection{Resolver}
 \subsubsection{Building the Package Tree}
-also creates primitives
+The first step of the \type{Resolver} was to iterate over each compilation unit, and build a map from fully-qualified
+typenames to their corresponding definitions. Additionally, at this step we created type definitions for primitives, and
+injected them into the package tree.
+
+The package tree provides several useful functions for working with types; for example, it allows us to get any types
+which might reside in a given package (\code{import pkg.*} for example):
+\begin{lstlisting}[language=Scala]
+def getPackage(pkg: QName): Map[QName, TypeDefn] = {
+  val len = pkg.length
+  tree
+    .filter(_._1.take(len) == pkg)  // same prefix
+    .filter(_._1.length == len + 1) // directly inside
+    .filter(_._2.isDefined)         // not a package
+    .map { case (path, classDef) =>
+      path.drop(len) -> classDef.get
+    }
+}
+\end{lstlisting}
+\source{ast/PackageTree}{PackageTree\#getPackage}
 
 \subsubsection{Determining Type Scopes}
-\subsubsection{Resolving Types}
+For each compilation unit (internally referred to as a \type{FileNode}), we constructed a ``type scope'' -- a map from a
+single identifier to any types it might resolve to -- by pulling in references from the package tree. Type scopes are
+written into the AST, so later stages can take advantage of this analysis.
 
-\begin{lstlisting}[language=Scala]
-\end{lstlisting}
+\subsubsection{Resolving Types}
+The \type{Resolver} then performs the actual type resolution of syntactically-available types. This is implemented via a
+visitor over each \type{FileNode} whose purpose is to find every \type{Typename} existing in the AST and to point it
+towards its definition from the package tree. Any \type{Typename} which fails to resolve unambiguously via the type
+scope results in an error.
 
 
 
 \subsection{Knower}
 \subsubsection{Inheritance Expansion}
+The \type{Knower} is responsible for hierarchy checking. The most interesting part of this pass is its flattening of
+class hierarchies: every class pulls all of its parent's methods into scope, respecting hiding rules. This is
+implemented via a lazy recursion over a class' resolved \code{extends}.
+
+In order to get all classes deriving from \type{java.lang.Object}, the \type{Parser} was extended with a special case to
+make any class without an explicit \code{extends} clause extend from \type{java.lang.Object}.
 
 \begin{lstlisting}[language=Scala]
 lazy val (inheritedMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
   val parentMethods =
-    extnds.flatMap(_.resolved.get.inheritedMethods).filter(!_.isCxr)
-  val sigs = methods.map(_.signature)
-  val (hides, keeps) = parentMethods.partition { parMeth =>
-    sigs.contains(parMeth.signature)
-  }
+    extnds
+      .flatMap(
+        _.resolved.get.inheritedMethods)
+      .filter(!_.isCxr)
+  val sigs =diff
+    methods
+      .map(_.signature)
+  val (hides, keeps) =
+    parentMethods
+      .partition { parMeth =>
+        sigs.contains(parMeth.signature)
+      }
 
   (methods ++ keeps, hides)
 }
@@ -92,6 +108,11 @@ lazy val (inheritedMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
 \source{ast/AST}{TypeDefn}
 
 \subsubsection{Interface Contract Verification}
+Additionally, the \type{Knower} is responsible for determining whether classes satisfy their \code{implements}
+contracts; similarly to the inheritance expansion stage, this is implemented by flattening the implementation hierarchy,
+and ensuring every class has method signatures which agree with every interface in the hierarchy.
+
+\source{resolver/HardlyKnower}{HardlyKnower\#apply:84}
 
 
 
@@ -130,19 +151,28 @@ node.visit { (self, context) =>
 
 \subsection{Disambiguator}
 \subsubsection{Rewriter}
-our generalized visitor strategy turned out to not be powerful enough to implement AST rewriting.
-we briefly looked at implementing scrap your boilerplate in scala which would give us automatic traversals
-over the AST (and notably, WOULD be strong enough), but the implementation turned out to be too much work
-and overkill. we ended up just explicitly writing rewrite methods on every ast node type
-realized that our current AST was amazingly unhelpful for some some use cases
+By the time we had the need to disambiguate names, we ran into an issue where our AST no longer provided semantic
+information about what we were trying to accomplish. For example, static method calls would be represented in the AST
+by:
 
-for example, static method calls would be represented with
 \begin{lstlisting}[language=Scala]
 val staticCall = parse("pkg.Type.method()")
 staticCall === Call(Member(Member(Id("pkg"), Id("Type")), Id("method")))
 \end{lstlisting}
-notably, this doesn't reflect the case that \code{pkg.Type} is not a member access, but instead
-refers to a single ontological entity. this becomes much more of an issue with longer package names
+
+Notably, this doesn't reflect that \code{pkg.Type} is not a member access, but instead refers to a single ontological
+entity (the type \type{pkg.Type}). Any further passes over the AST would require re-implementing parsing this chained
+member access into the intended type resolution. It was decided that instead we should rewrite the AST to elide this
+issue.
+
+Unfortunately, our generalized visitor strategy (described in \textit{A1}) turned out to have insufficient power to
+implement AST rewriting. A brief review of the literature suggested a technique called \textit{Scrap Your Boilerplate}
+(SYB), to implement this for arbitrary trees, however, the implementation details of this strategy were deemed to be
+outside the scope of our project (plus, monads are scary).
+
+Instead, we implemented a \func{rewrite} method on every node of the AST, who was responsibile for rewriting all of its
+children, constructing a new version of itself (since our AST is mostly immutable), and then rewriting this new copy of
+itself. An example of this pattern is shown here:
 
 \begin{lstlisting}[language=Scala]
 def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
@@ -157,20 +187,16 @@ def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
 \end{lstlisting}
 \source{ast/AST}{IfStmnt\#rewrite}
 
-where rule is a partial function defined over AST nodes which returns what to replace the node with. for
-a visit over the tree, the identity function will suffice
-
-unfortunately this approach (but not SYB in general) loses type-safety, thus the instanceof casts in the
-above code sample. in practice, this is not a huge issue, but is something to keep tabs on
-(and unfortunately slows down our code at runtime)
-
+\func{transfer} is a function which keeps metadata on the AST (for example, original source location and scope), while
+\func{rule} is a partial function defined over AST nodes which returns what that node should be replaced with. To simply
+visit the tree, the identity function will suffice as a \func{rule}. Unfortunately, this approach loses type-safety,
+which isn't a huge issue in practice, but did make us squirm a little.
 
 
 \subsubsection{Static Disambiguation}
-the disambiguator's goal is to solve the above issue with static accesses
-we attempt to disambiguate every identifier in a member access chain, by following the rules in JLS (TODO: wahtever)
-if something ever resolves to a type (with the same rules as in the resolver pass), we immediately transform it
-into a static member access, and stop processing further
+With the \type{Rewriter} in place, it was now possible to rewrite chained member accesses representing qualified
+types with static member accesses. Another pass of the AST is performed here to resolve all remaining types (those which
+are not syntactically-available).
 
 \begin{lstlisting}[language=Scala]
 node.rewrite(Rewriter { (newNode: Visitable, context: Seq[Visitable]) =>
@@ -257,7 +283,9 @@ private def probe(reachable: Boolean, stmnt: Statement): Boolean = {
 \section{Challenges}
 \begin{itemize}
     \item resolving is a bitch cause of spec
+    \item resolved class equality infinitely looped
     \item rewriter
+    \item technical debt for primitives and arrays
     \item scoper doesn't scope on a per-statement level
     \item checker should probably have been two passes
 \end{itemize}
