@@ -53,7 +53,7 @@ object AnalysisProbe {
       }
   }
 
-  def foreachVarDefn(n: Visitable)(handle: Id => Unit) = {
+  def foreachVarUsage(n: Visitable)(handle: Id => Unit) = {
     n.visit { (node, context) =>
       implicit val implContext = context
       before(node) match {
@@ -79,7 +79,7 @@ object AnalysisProbe {
     (Set[String]() /: fields) { (inScope, field) =>
       field
         .value
-        .map(n => foreachVarDefn(n) { id =>
+        .map(n => foreachVarUsage(n) { id =>
           val name = id.name
           if (!inScope.contains(name))
             throw UninitVarError(id)
@@ -132,7 +132,7 @@ object AnalysisProbe {
 
       case VarStmnt(name, _, _, value) =>
         if (value.isDefined)
-          foreachVarDefn(value.get) { id =>
+          foreachVarUsage(value.get) { id =>
             if (!id.scope.get.definedBefore(id.name, name))
               throw UninitVarError(id)
           }

@@ -1,5 +1,6 @@
 package juicy.source.ast
 
+import juicy.codegen._
 import juicy.source.disambiguator.AmbiguousStatus
 import juicy.source.PackageTree
 import juicy.source.resolver.Resolver.AmbiguousResolveError
@@ -165,6 +166,12 @@ trait TypeDefn extends Definition {
 
   def resolvesTo(other: TypeDefn) =
     name == other.name && pkg == other.pkg
+
+  // size to allocate
+  def allocSize = 4
+
+  // size when put on the stack
+  def stackSize = 4
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
@@ -330,6 +337,11 @@ case class ClassDefn(
       ), context))
   }
 
+  override def allocSize = {
+    // TODO: this might have aligntment bugs
+    extnds.map(_.resolved.get.allocSize).sum +
+      fields.map(_.tname.resolved.get.stackSize).sum
+  }
 }
 
 case class PrimitiveDefn(name: String) extends TypeDefn {
@@ -347,8 +359,19 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     transfer(rule(this, context))
   }
+
   override val mods = Modifiers.FINAL + Modifiers.PUBLIC
   override val isInterface = false
+
+  override def allocSize =
+    name match {
+      case "boolean" => 1
+      case "byte"    => 1
+      case "char"    => 1 // TODO: is this right?
+      case "short"   => 2
+      case "int"     => 4
+    }
+  override def stackSize = allocSize
 }
 
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
@@ -493,6 +516,22 @@ case class IfStmnt(
         otherwise.map(_.rewrite(rule, newContext).asInstanceOf[BlockStmnt])
       ), context))
   }
+
+  override def emit = {
+    val elseL = AnonLabel()
+
+    cond.emit
+    Target.text.emit(RawInstr(s"jne $elseL"))
+
+    then.emit
+    if (otherwise.isDefined) {
+      val afterL = AnonLabel()
+      Target.text.emit(RawInstr(s"jmp $afterL"))
+      Target.text.emit(elseL)
+      otherwise.get.emit
+      Target.text.emit(afterL)
+    } else Target.text.emit(elseL)
+  }
 }
 
 case class WhileStmnt(
@@ -542,6 +581,10 @@ case class BlockStmnt(
       BlockStmnt(
         body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
       ), context))
+  }
+
+  override def emit = {
+    body.foreach(_.emit)
   }
 }
 

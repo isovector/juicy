@@ -3,8 +3,12 @@ import org.scalatest.matchers.ShouldMatchers
 
 import juicy.codegen._
 import juicy.codegen.Implicits._
+import juicy.source.parser._
+import juicy.source.tokenizer._
 
 class CodegenSpec extends FlatSpec with ShouldMatchers {
+  def mkParser(source: String) = new Parser(new TokenStream(source))
+
   "Codegen" should "write a useful hello world" in {
     val t = new Target
 
@@ -32,5 +36,20 @@ class CodegenSpec extends FlatSpec with ShouldMatchers {
     )
 
     println(t.emitted)
+  }
+
+  it should "emit elses" in {
+    Target.withFile("debug") {
+      mkParser("""
+        if (true) {
+          if (false)
+            x;
+          } else {
+            y;
+          }
+        """).parseStmnt().emit
+
+      println(Target.file.emitted)
+    }
   }
 }

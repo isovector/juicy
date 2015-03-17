@@ -1,5 +1,7 @@
 package juicy.utils
 
+import juicy.codegen.RawInstr
+import juicy.codegen.Target
 import juicy.source.scoper.Scope
 import scala.reflect.ClassTag
 
@@ -125,6 +127,10 @@ trait Visitable {
     dst.scope         = scope
     dst.originalToken = originalToken
     dst
+  }
+
+  def emit = {
+    Target.text.emit(RawInstr(s"; not implemented: ${this.toString.takeWhile(_ != '(')}"))
   }
 }
 

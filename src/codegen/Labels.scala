@@ -2,7 +2,7 @@ package juicy.codegen
 
 trait Label extends Instruction {
   val name: String
-  val emitted = name + ":"
+  def emitted = name + ":"
 
   override def toString = name
 }

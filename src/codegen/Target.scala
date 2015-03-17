@@ -17,6 +17,20 @@ class Section(which: String) extends Emittable {
   }
 }
 
+object Target {
+  var file = new Target
+  val global = new Target
+
+  def text = file.text
+  def data = file.data
+
+  def withFile[T](fileName: String)(doWhat: => T) = {
+    file = new Target
+    doWhat
+    // TODO: write file to fileName
+  }
+}
+
 class Target extends Emittable {
   private val imports = collection.mutable.Set[Label]()
   private val exports = collection.mutable.Set[Label]()
