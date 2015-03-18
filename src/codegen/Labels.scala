@@ -10,14 +10,23 @@ trait Label extends Instruction {
 object AnonLabel {
   protected var nextLabel = 0
 
-  def getLabel = {
+  def getLabel: String = {
     nextLabel += 1
-    "__anon_" + nextLabel.toString
+    s"__anon_$nextLabel"
+  }
+
+
+  def getLabel(semantic: String): String = {
+    getLabel + s"_$semantic"
   }
 }
 
-case class AnonLabel() extends Label {
-  val name = AnonLabel.getLabel
+case class AnonLabel(semantic: String = "") extends Label {
+  val name =
+    if (semantic.isEmpty)
+      AnonLabel.getLabel
+    else
+      AnonLabel.getLabel(semantic)
 }
 
 case class NamedLabel(name: String) extends Label

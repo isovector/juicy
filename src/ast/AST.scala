@@ -518,17 +518,19 @@ case class IfStmnt(
   }
 
   override def emit = {
-    val elseL = AnonLabel()
+    val elseL = AnonLabel("else")
 
     cond.emit
     Target.text.emit(RawInstr(s"jne $elseL"))
 
     then.emit
     if (otherwise.isDefined) {
-      val afterL = AnonLabel()
+      val afterL = AnonLabel("after")
       Target.text.emit(RawInstr(s"jmp $afterL"))
+
       Target.text.emit(elseL)
       otherwise.get.emit
+
       Target.text.emit(afterL)
     } else Target.text.emit(elseL)
   }
