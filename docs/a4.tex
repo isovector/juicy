@@ -13,7 +13,7 @@
     new,null,object,override,package,%
     private,protected,requires,return,sealed,%
     super,this,throw,trait,true,try,%
-    type,val,var,while,with,yield,Some,None,Option,Before,After,visit},
+    type,val,var,while,with,yield,Some,None,Option,Before,After,visit,map,foreach,flatMap},
   otherkeywords={=>,<-,<\%,<:,>:,\#,@}, sensitive=true, morecomment=[l]{//}, morecomment=[n]{/*}{*/}, morestring=[b]",
   morestring=[b]', morestring=[b]""" }
 
@@ -86,6 +86,7 @@ implemented via a lazy recursion over a class' resolved \code{extends}.
 In order to get all classes deriving from \type{java.lang.Object}, the \type{Parser} was extended with a special case to
 make any class without an explicit \code{extends} clause extend from \type{java.lang.Object}.
 
+\newpage
 \begin{lstlisting}[language=Scala]
 lazy val (inheritedMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
   val parentMethods =
@@ -93,7 +94,7 @@ lazy val (inheritedMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
       .flatMap(
         _.resolved.get.inheritedMethods)
       .filter(!_.isCxr)
-  val sigs =diff
+  val sigs =
     methods
       .map(_.signature)
   val (hides, keeps) =
@@ -118,6 +119,7 @@ and ensuring every class has method signatures which agree with every interface 
 
 
 \subsection{Scoper}
+\todo{JACOB}
 builds a scope table for every lexical scope
 errors if things are defined multiple times in the same scope
 notably doesn't determine what's in scope any given statement, which lead to some issues for analysis
@@ -200,16 +202,13 @@ are not syntactically-available).
 
 \begin{lstlisting}[language=Scala]
 node.rewrite(Rewriter { (newNode: Visitable, context: Seq[Visitable]) =>
-  implicit val implContext = context
   newNode match {
-    // ... other cases
     case m: Member =>
       val folded =
         m.fold {
           case id: Id if id.status != SCOPE => Some(id)
           case _ => None
         }
-
       if (!folded.contains(None)) {
         val rhs = folded.flatten.last
         val path = folded.flatten.dropRight(1)
@@ -217,8 +216,6 @@ node.rewrite(Rewriter { (newNode: Visitable, context: Seq[Visitable]) =>
 
         if (path.last.status == TYPE) {
           val classDefn = node.resolve(qname, pkgtree, m.from).get
-
-          // rewrite this member access with a static member access
           StaticMember(classDefn.asInstanceOf[ClassDefn], rhs)
         } else {
           disambiguate(rhs, qname)
@@ -233,16 +230,12 @@ node.rewrite(Rewriter { (newNode: Visitable, context: Seq[Visitable]) =>
 
 
 \subsection{Analysis Probe}
-the analysis probe is responsible for checking field initialization order
-also ensuring variables are in scope by the time they are used
-    (since the scoper doesn't do this)
-statement reachability
-and method return
-reachability is implemented by folding over the JLS rules for reachable and completing normally
-since these turn out to be extraneous
-    implemented as a tail-recursive walk over each lexical scope
-    calling the next stmnt with whether or not it is reachable
-        if this is ever false, we throw an error
+The \type{AnalysisProbe} is responsible for performing static analysis over the AST; it determines whether all
+statements are reachable and if all code paths necessarily return values. Additionally, since it is already walking the
+control flow graph, we augment its responsibilities with checking whether or not variables are in scope (since the
+\type{Scoper} only determines this on a per-block level).
+
+An excerpt of our probing function is presented here to demonstrate the approach taken to walk the control flow graph:
 
 \begin{lstlisting}[language=Scala]
 private def probe(reachable: Boolean, stmnt: Statement): Boolean = {
@@ -272,6 +265,7 @@ private def probe(reachable: Boolean, stmnt: Statement): Boolean = {
 
 
 \subsection{Checker}
+\todo{JACOB}
 \subsubsection{Typechecking}
 \subsubsection{Constant Folding}
 
@@ -282,12 +276,23 @@ private def probe(reachable: Boolean, stmnt: Statement): Boolean = {
 
 \section{Challenges}
 \begin{itemize}
-    \item resolving is a bitch cause of spec
-    \item resolved class equality infinitely looped
-    \item rewriter
-    \item technical debt for primitives and arrays
-    \item scoper doesn't scope on a per-statement level
-    \item checker should probably have been two passes
+    \item Our resolving step had to be rewritten twice; the first time we realized that we had passed all of the a2
+        tests, but some of them were for the wrong reasons. Instead of trying to figure out why (which we considered to
+        be a dangerous undertaking), it was decided that we rewrite the logic entirely from first principles. The second
+        time was when we realized that syntactically-ambiguous types needed equivalent logic for resolution, but our
+        current solution was unable of handling this. As it currently stands, much of the resolving logic is not handled
+        directly by the \type{Resolver} itself, but exists in the \type{FileNode} so we have access to it in later
+        stages.
+    \item In addition to the above issues, we found that some of our \type{Resolver} unit tests would hang indefinitely.
+        Tracking down this bug led to the realization that our types were being compared by value (which was good), but
+        after being resolved could contain cyclic references (which was bad). This was ``solved'' by writing a custom
+        equality method for our types, but broke our unit tests which had facilities to handle the new equality logic.
+        In order to fix \textit{that}, we added a means of turning off the extra equality handling for these unit tests,
+        but this solution turned out to be non-reentrant, leading to non-deterministic failures in deterministic unit
+        tests. In the end, we simply turned off parallel execution of unit tests.
+    \item technical debt for primitives and arrays \todo{JACOB}
+    \item scoper doesn't scope on a per-statement level \todo{JACOB}
+    \item checker should probably have been two passes \todo{JACOB}
 \end{itemize}
 
 
@@ -295,25 +300,11 @@ private def probe(reachable: Boolean, stmnt: Statement): Boolean = {
 
 \section{Testing}
 
-We've heavily depended on a strong testing infrastructure during the development of our code; at time of writing we have
-a little over 70 unit tests. Because Scala has strong support for domain specific languages, scalatest is absolutely
-lovely to use. Furthermore, the testing infrastructure is a first-class citizen, and so some of our later-stage tests
-are capable of succinctly running A/B tests on code -- ensuring that text substitution changes the results from pass to
-failure.
-
-Our tests have been written from the bottom-up, marking very small units to be tested. Our philosophy has been
-test-driven development, and on quite a few occasions this policy has prevented us from creating regression bugs.
-
-An example of one of our parser tests looks like this:
-
-\begin{lstlisting}[language=Scala]
-"Parser" should "right-associate assignments" in {
-  mkParser("a = b = 5").parseExpr() should be ===
-    Assignment(
-      Id("a"),
-      Assignment(Id("b"), IntVal(5)))
-}
-\end{lstlisting}
+As in our documentation for a1, we have remained heavily dependent on a strong unit-testing infrastructure. Most
+compiler passes have approximately 10 unit tests written for them, with some of the trickier ones having over 40. In
+addition, we have integrated marmoset's tests into our continuous integration tests, giving us an accurate notion of how
+well we are doing on the assignment. As an added bonus, we also get a huge repository of tests from previous assignments
+to ensure we haven't introduced any regressions as we proceed.
 
 \testsrc{*}
 
