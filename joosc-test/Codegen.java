@@ -2,12 +2,11 @@ public class Codegen {
     public Codegen() { }
 
     public static int test() {
-        Codegen.print();
-        #YOLO "return worked";
-        return 99;
+        return Codegen.print(77, 99);
     }
 
-    public static void print() {
+    public static int print(int a, int b) {
         #YOLO "sup sexy";
+        return a;
     }
 }

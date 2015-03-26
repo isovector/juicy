@@ -5,6 +5,8 @@ import juicy.source.ast._
 import juicy.utils.visitor._
 
 object Generator {
+  var currentMethod: MethodDefn = null
+
   def emit(v: Visitable): Unit = {
     v match {
       case BlockStmnt(body) =>
@@ -33,7 +35,8 @@ object Generator {
 
 
       case c: Call =>
-        // TODO: figure out how to this
+        // TODO: figure out how to 'this'
+        val paramSize = c.args.map(_.t.stackSize).sum
         c.args.foreach { arg =>
           emit(arg)
           Target.text.emit("push ebx")
@@ -41,6 +44,9 @@ object Generator {
 
         val label = c.resolvedMethod.label
         Target.text.emit(s"call $label")
+
+        if (paramSize > 0)
+          Target.text.emit(s"add esp, byte $paramSize")
 
 
 
@@ -65,15 +71,40 @@ object Generator {
 
 
       case c: ClassDefn =>
-        Target.file.export(c.dataLabel)
+        Target.file.export(c.allocLabel)
+        Target.file.export(c.initLabel)
+        Target.file.export(c.defaultCtorLabel)
         Target.text.emit(
-          c.dataLabel,
+          // ALLOCATOR:
+          c.allocLabel,
+          Prologue(),
           s"mov eax, ${c.allocSize}",
           //"call __malloc",
-          s"mov eax, ${c.classId}"
-          // call initializer (which calls parent initializer)
-          // DONT call constructor, call it from your ctor, whic his called by a new stmtn
+          s"mov eax, ${c.classId}",
+          "push eax", // TODO: uhh so how do we do this passing?
+          s"call ${c.initLabel}",
+          Epilogue(),
+
+          // INITIALIZER
+          c.initLabel,
+          Prologue()
         )
+
+        if (c.extnds.length > 0) {
+          val parentInit = c.extnds(0).r.asInstanceOf[ClassDefn].initLabel
+          Target.file.reference(parentInit)
+          // TODO: when we link back to stdlib, do this properly
+          Target.text.emit(
+            //"pushw [ebp-4]", // TODO: is this THIS?
+            //s"call $parentInit"
+          )
+        }
+
+        Target.text.emit(
+          Epilogue()
+          )
+
+
 
         c.methods.foreach(emit)
 
@@ -81,6 +112,8 @@ object Generator {
 
 
       case m: MethodDefn =>
+        currentMethod = m
+
         if (m.isEntry) {
           val startLabel = NamedLabel("start")
           Target.file.export(startLabel)
@@ -100,6 +133,21 @@ object Generator {
         )
         m.body.map(emit)
         Target.text.emit(Epilogue())
+
+
+
+
+      case i: Id =>
+        // relative to local scope
+        val stackOffset = i.stackOffset
+        val params = currentMethod.params.length
+        val offset =
+          if (stackOffset < params)
+            params - stackOffset + 1
+          else
+            -(stackOffset - params)
+
+        Target.text.emit(s"mov ebx, [ebp+${4 * offset}]")
 
 
 

@@ -66,11 +66,23 @@ abstract class Scope {
   def isActuallyLocalScope(id: String): Boolean = {
     variables contains id
   }
+
+  def localVarStackIndex(id: String): Int = {
+    val i = orderedDecls.indexOf(id)
+    if (i < 0) parent.localVarStackIndex(id)
+    else i + parent.stackSize
+  }
+
+  def stackSize: Int
 }
 
 class BlockScope (val parent: Scope) extends Scope {
   parent.children :+= this
   def enclosingClass() = parent.enclosingClass
+
+  override def stackSize: Int = {
+    orderedDecls.length + parent.stackSize
+  }
 }
 
 class ClassScope extends Scope {
@@ -93,4 +105,6 @@ class ClassScope extends Scope {
   override def enclosingClass() = this
   override def printParent(indent: Int) = {}
   override def isLocalScope(id: String) = false
+
+  override def stackSize: Int = 0
 }

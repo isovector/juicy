@@ -39,6 +39,7 @@ object Modifiers {
 
 trait Expression extends Visitable {
   var exprType: Option[Typename] = None
+  lazy val t = exprType.get.r
   def hasType = exprType.isDefined
   def typeScope = exprType.flatMap(_.resolved).map(_.classScope)
 }
@@ -359,11 +360,9 @@ case class ClassDefn(
     s"$qname.$name"
   }
 
-  val dataLabel = {
-    // TODO: lets not do this here
-    val qname = pkg.mkString(".")
-    NamedLabel(s"$qname.$name@@new")
-  }
+  val allocLabel = NamedLabel(s"$labelName##new")
+  val initLabel = NamedLabel(s"$labelName##init")
+  val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
 
   val classId = ClassDefn.getNextEqualityComparitor
 
@@ -526,10 +525,12 @@ case class MethodDefn(
 
   var rawContainingClass: Option[ClassDefn] = None
   lazy val containingClass = rawContainingClass.get
-  lazy val label = {
-    val qname = (containingClass.pkg :+ containingClass.name).mkString(".")
-    NamedLabel(s"$qname@$signature")
-  }
+  lazy val label =
+    if (isCxr && params.length == 0)
+      containingClass.defaultCtorLabel
+    else
+      NamedLabel(s"${containingClass.labelName}@$signature")
+
 }
 
 case class VarStmnt(
@@ -669,6 +670,9 @@ case class Id(name: String)         extends NullOp {
   // TODO: make the prober fill this in
   var offset: Int                   = 0
 
+  lazy val stackOffset = {
+    scope.get.localVarStackIndex(name)
+  }
 }
 
 case class Callee(
