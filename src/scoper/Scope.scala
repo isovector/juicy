@@ -73,6 +73,14 @@ abstract class Scope {
     else i + parent.stackSize
   }
 
+  def maxStackIndex: Int = {
+    if (children.length > 0)
+      children.map(_.maxStackIndex).max
+    else if (orderedDecls.length > 0)
+      localVarStackIndex(orderedDecls.last)
+    else 0
+  }
+
   def stackSize: Int
 }
 

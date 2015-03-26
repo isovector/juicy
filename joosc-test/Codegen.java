@@ -6,7 +6,9 @@ public class Codegen {
     }
 
     public static int print(int a, int b) {
+        int c = 15;
+        int d = 9;
         #YOLO "sup sexy";
-        return a;
+        return c;
     }
 }

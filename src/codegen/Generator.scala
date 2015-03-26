@@ -2,10 +2,24 @@ package juicy.codegen
 
 import juicy.codegen.Implicits._
 import juicy.source.ast._
+import juicy.source.scoper.Scope
 import juicy.utils.visitor._
 
 object Generator {
   var currentMethod: MethodDefn = null
+
+  def varOffset(name: String, scope: Scope): String = {
+    val params = currentMethod.params.length
+    val stackOffset = scope.localVarStackIndex(name)
+
+    val offset =
+      if (stackOffset < params)
+        params - stackOffset + 1
+      else
+        -(stackOffset - params + 1)
+
+    s"[ebp+${4 * offset}]"
+  }
 
   def emit(v: Visitable): Unit = {
     v match {
@@ -125,12 +139,20 @@ object Generator {
           )
         }
 
+        val stackSize =
+          (m.scope.get.maxStackIndex - m.params.length) * 4
+
         Target.file.export(m.label)
         Target.text.emit(
           m.label,
           Prologue()
-          // TODO: allocate stack space
         )
+
+        if (stackSize > 0)
+          // 4 of these are for the return ptr
+          // another 4 are to get to the END of the last thing on the stack
+          Target.text.emit(s"sub esp, ${stackSize+8}")
+
         m.body.map(emit)
         Target.text.emit(Epilogue())
 
@@ -139,15 +161,8 @@ object Generator {
 
       case i: Id =>
         // relative to local scope
-        val stackOffset = i.stackOffset
-        val params = currentMethod.params.length
-        val offset =
-          if (stackOffset < params)
-            params - stackOffset + 1
-          else
-            -(stackOffset - params)
-
-        Target.text.emit(s"mov ebx, [ebp+${4 * offset}]")
+        val offset = varOffset(i.name, i.scope.get)
+        Target.text.emit(s"mov ebx, $offset")
 
 
 
@@ -168,6 +183,20 @@ object Generator {
 
           Target.text.emit(afterL)
         } else Target.text.emit(elseL)
+
+
+
+
+      case v: VarStmnt =>
+        if (v.value.isDefined) {
+          val offset = varOffset(v.name, v.scope.get)
+
+          v.value.map(emit)
+          Target.text.emit(
+            s"mov $offset, ebx"
+            )
+        }
+
 
 
 
