@@ -286,23 +286,34 @@ object Checker {
           } else if (helper.isString(lhs) && helper.isString(rhs)) {
             val newString = (lhs, rhs) match {
               case (l: StringVal, r: StringVal) => StringVal(l.value + r.value)
-              case _ => add
+              case _ => StringConcat(lhs, rhs)
             }
 
             helper.setString(newString)
             newString
           } else if (helper.isString(lhs)) {
-            if (helper.isVoid(rhs))
+            if (helper.isVoid(rhs)) {
               helper.addError(unsupported("+", add.from, rhs.exprType.get))
-            //TODO: actually collapse string + nonstring
-            helper.setString(add)
-            add
+              helper.setString(add)
+              add
+            } else {
+              val strExpr = ToString(rhs)
+              helper.setString(strExpr)
+              val res = StringConcat(lhs, strExpr)
+              helper.setString(res)
+              res
+            }
           } else if (helper.isString(rhs)) {
-            if (helper.isVoid(lhs))
+            if (helper.isVoid(lhs)) {
               helper.addError(unsupported("+", add.from, lhs.exprType.get))
-            //TODO: collapse nonstring + string
-            helper.setString(add)
-            add
+              helper.setString(add)
+              add
+            } else {
+              val strExpr = ToString(lhs)
+              helper.setString(strExpr)
+              val res = StringConcat(strExpr, rhs)
+              res
+            }
           } else {
             helper.doNumeric(add, (l, r) => l + r, "+")
           }

@@ -887,6 +887,22 @@ case class Index(lhs: Expression, rhs: Expression) extends BinOp {
     rewriter(Index.apply _)(rule, context)
 }
 
+
+case class StringConcat(lhs: Expression, rhs: Expression) extends BinOp {
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    rewriter(StringConcat.apply _)(rule, context)
+}
+
+case class ToString(expr: Expression) extends Expression {
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    transfer(rule(
+      ToString(
+        expr.rewrite(rule, this +: context).asInstanceOf[Expression]
+      ), context))
+  }
+  val children = Seq(expr)
+}
+
 case class Member(lhs: Expression, rhs: Id) extends Expression {
   val children = Seq(lhs, rhs)
 
