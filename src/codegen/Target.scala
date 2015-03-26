@@ -1,6 +1,6 @@
 package juicy.codegen
 
-class Section(which: String) extends Emittable {
+class Section(which: String, align: Int = 0) extends Emittable {
   private val instructions = collection.mutable.MutableList[Instruction]()
 
   private def emitImpl(ins: Instruction) = {
@@ -11,7 +11,13 @@ class Section(which: String) extends Emittable {
     ins.toList.foreach(emitImpl)
   }
 
-  emit(RawInstr(s"section .$which"))
+  val alignment =
+    if (align != 0)
+      s"align=$align"
+    else
+      ""
+
+  emit(RawInstr(s"section .$which $alignment"))
   def emitted = {
     instructions.map(_.emitted).mkString("\n")
   }
@@ -29,6 +35,13 @@ object Target {
     doWhat
     // TODO: write file to fileName
   }
+
+  def fromGlobal(ls: Label*) = {
+    ls.toList.foreach { l =>
+      global.export(l)
+      file.reference(l)
+    }
+  }
 }
 
 class Target extends Emittable {
@@ -44,7 +57,7 @@ class Target extends Emittable {
   }
 
   val text = new Section("text")
-  val data = new Section("data")
+  val data = new Section("data", 4)
 
   def emitted = {
     exports

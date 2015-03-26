@@ -901,9 +901,11 @@ case class Debugger(
     import juicy.codegen.Implicits._
 
     val msg = AnonLabel("debugstr")
-    Target.data.emit((msg, "db \"" + debugWhat + "\", 10"))
     val msglen = AnonLabel("debugstrln")
-    Target.data.emit((msglen, s"equ $$ - $msg"))
+    Target.fromGlobal(msg, msglen)
+
+    Target.global.data.emit((msg, "db \"" + debugWhat + "\", 10"))
+    Target.global.data.emit((msglen, s"equ $$ - $msg"))
 
     Target.text.emit(
       "mov eax, 4",
