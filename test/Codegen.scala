@@ -56,7 +56,7 @@ class CodegenSpec extends FlatSpec with ShouldMatchers {
 
   it should "emit debuggers" in {
     Target.withFile("debug") {
-      val debugger = mkParser("""=( )= "wagwan homie";""").parseStmnt()
+      val debugger = mkParser("""#YOLO "wagwan homie";""").parseStmnt()
       debugger should be === Debugger("wagwan homie")
       debugger.emit
       println(Target.file.emitted)

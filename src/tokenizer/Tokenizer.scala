@@ -1,7 +1,7 @@
 package juicy.source.tokenizer
 
 object Tokenizer {
-  val debugToken = "=( )="
+  val debugToken = "#YOLO"
 
   val singleChars: Map[Char, Unit => Token] = Map(
     '\0' -> (Unit => new Token.EOF()),
