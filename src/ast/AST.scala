@@ -149,6 +149,8 @@ trait TypeDefn extends Definition {
     }
   }
 
+  def isAbstract = (mods & Modifiers.ABSTRACT) == Modifiers.ABSTRACT
+
   def isSubtypeOf (other: TypeDefn) = (this resolvesTo other) || (superTypes contains other)
 
   def getArrayOf(pkgtree: PackageTree): ArrayDefn = {
@@ -501,6 +503,9 @@ case class MethodDefn(
     mods == (Modifiers.STATIC | Modifiers.PUBLIC)
   val children = Seq(tname) ++ params ++ body.toList
 
+  val isStatic = (mods & Modifiers.STATIC) == Modifiers.STATIC
+  val isPublic = (mods & Modifiers.PUBLIC) == Modifiers.PUBLIC
+
   val signature = Signature(name, params.map(_.tname))
 
   // Equivalency equality
@@ -551,6 +556,8 @@ case class VarStmnt(
         value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context))
   }
+  val isStatic = (mods & Modifiers.STATIC) == Modifiers.STATIC
+  val isPublic = (mods & Modifiers.PUBLIC) == Modifiers.PUBLIC
 }
 
 case class IfStmnt(
@@ -706,6 +713,7 @@ case class Call(
 
   var rawResolvedMethod: Option[MethodDefn] = None
   lazy val resolvedMethod = rawResolvedMethod.get
+  lazy val isStatic = resolvedMethod.isStatic
 }
 
 case class Assignee(
@@ -928,6 +936,12 @@ case class Neg(ghs: Expression) extends UnOp {
 case class Parens(ghs: Expression) extends UnOp {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     rewriter(Parens.apply _)(rule, context)
+}
+
+case class TypeExpression (t: Typename) extends Expression {
+  val children = Seq()
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = transfer(this)
+  exprType = Some(t)
 }
 
 case class Debugger(

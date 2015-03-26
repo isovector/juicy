@@ -11,184 +11,47 @@ case class CheckerError (msg: String, from: SourceLocation) extends CompilerErro
 
 
 object Checker {
-  object NumericType {
-    type value = Int
-    final val UNKNOWN = -1
-    final val INT = 0
-    final val SHORT = 1
-    final val BYTE = 2
-    final val CHAR = 3
 
-  }
-  def checkMod(flags: Modifiers.Value, flag: Modifiers.Value) = (flags & flag) == flag
-  def undefined (v: Id, t: Typename) = {
-    val tn = t.name
-    val in = v.name
-    CheckerError(s"Undefined symbol $in for type $tn", v.from)
-  }
-  def protectedAccess (v: String, t1: Typename, t2: Typename) = {
-    val tn1 = t1.name
-    val tn2 = t2.name
-    CheckerError(s"Type $tn1 does not have access to symbol $v in type $tn2", t2.from)
-  }
-
-
-  def unsupported(op: String, from: SourceLocation, tnames:Typename*) = {
-    val ts = tnames.mkString(", ")
-    val s = if (tnames.length == 1) "" else "s"
-    CheckerError(s"Unsupported $op for type$s $ts", from)
-  }
   def apply(node: FileNode, pkgTree: PackageTree): FileNode = {
-    var errors = Seq[CompilerError]()
+    import CheckerHelper._
 
-    val numerics = Map[Typename, NumericType.value](
-      (pkgTree.getTypename(Seq("int")).get -> NumericType.INT),
-      (pkgTree.getTypename(Seq("java", "lang", "Integer")).get -> NumericType.INT),
-      (pkgTree.getTypename(Seq("short")).get -> NumericType.SHORT),
-      (pkgTree.getTypename(Seq("java", "lang", "Short")).get -> NumericType.SHORT),
-      (pkgTree.getTypename(Seq("byte")).get -> NumericType.BYTE),
-      (pkgTree.getTypename(Seq("java", "lang", "Byte")).get -> NumericType.BYTE),
-      (pkgTree.getTypename(Seq("char")).get -> NumericType.CHAR),
-      (pkgTree.getTypename(Seq("java", "lang", "Character")).get -> NumericType.CHAR)
-    )
-
-    def isWidening(lhs: Typename, rhs: Typename): Boolean = {
-      val lhsT = numerics(lhs)
-      val rhsT = numerics(rhs)
-      if (lhsT == rhsT) {
-        true
-      } else if (lhsT == NumericType.INT) {
-        true
-      } else if (lhsT == NumericType.SHORT && rhsT == NumericType.BYTE) {
-        true
-      } else {
-        false
-      }
-    }
-
-    val StringTypename = pkgTree.getTypename(Seq("java", "lang", "String")).get
-    val BoolTypename = pkgTree.getTypename(Seq("boolean")).get
-    val NullType = NullDefn().makeTypename
-    val VoidType = pkgTree.getTypename(Seq("void")).get
-    val thisCls = node.classes(0)
-    val thisType = thisCls.makeTypename
-    val IntType = pkgTree.getTypename(Seq("int")).get
-    val ObjectCls = pkgTree.getType(Seq("java", "lang", "Object")).get
-    val bools = Set(pkgTree.getTypename(Seq("boolean")).get,
-      pkgTree.getTypename(Seq("java", "lang", "Boolean")).get)
-
-    def doNumeric(expr: BinOp, fold: (Int, Int) => Int, symbol: String): Expression = {
-      val lhsT = expr.lhs.exprType.flatMap(numerics.get _).getOrElse(NumericType.UNKNOWN)
-      val rhsT = expr.rhs.exprType.flatMap(numerics.get _).getOrElse(NumericType.UNKNOWN)
-      expr.exprType = (lhsT, rhsT) match {
-        case (_, NumericType.UNKNOWN) => None
-        case (NumericType.UNKNOWN, _) => None
-        case (a, b) if a > b => expr.rhs.exprType
-        case _ => expr.lhs.exprType
-      }
-      if (expr.exprType.isDefined) {
-        val collapsed = (expr.lhs, expr.rhs) match {
-          case (l: IntVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
-          case (l: CharVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
-          case (l: IntVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
-          case (l: CharVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
-          case _ => None
-        }
-        if (collapsed.isDefined) {
-          collapsed.get.exprType = Some(IntType)
-          collapsed.get
-        } else {
-          expr
-        }
-      } else {
-        if (expr.lhs.exprType.isDefined && expr.rhs.exprType.isDefined) {
-          errors :+= unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get)
-        }
-        expr
-      }
-    }
-
-    def doComp(expr: BinOp, fold: (Int, Int) => Boolean, symbol: String): Expression = {
-      if (expr.lhs.exprType.isEmpty || expr.rhs.exprType.isEmpty) {
-        expr
-      } else if ((numerics contains expr.lhs.exprType.get) && (numerics contains expr.rhs.exprType.get)) {
-        val newExpr = (expr.lhs, expr.rhs) match {
-          case (l: CharVal, r: CharVal) => BoolVal(fold(l.value, r.value))
-          case (l: CharVal, r: IntVal) => BoolVal(fold(l.value, r.value))
-          case (l: IntVal, r: CharVal) => BoolVal(fold(l.value, r.value))
-          case (l: IntVal, r: IntVal) => BoolVal(fold(l.value, r.value))
-          case _ => expr
-        }
-        newExpr.exprType = Some(BoolTypename)
-        newExpr
-      } else {
-        errors :+= unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get)
-        expr
-      }
-    }
-
-    def hasStaticProtectedAccess(t1: TypeDefn, tref: TypeDefn, tdef: TypeDefn): Boolean = {
-      return ((t1 isSubtypeOf tdef)) || (t1.pkg == tdef.pkg)
-    }
-
-    def hasInstanceProtectedAccess(t1: TypeDefn, tref: TypeDefn, tdef: TypeDefn): Boolean = {
-      return ((tref isSubtypeOf t1) && (t1 isSubtypeOf tdef)) || (t1.pkg == tdef.pkg)
-    }
-
-    def isAssignable(lhs: Typename, rhs: Typename): Boolean = {
-      if (lhs.resolved.get resolvesTo rhs.resolved.get) {
-        true
-      } else if (lhs.resolved.get resolvesTo ObjectCls) {
-        true
-      } else if (lhs.isArray && rhs.isArray) {
-         val elemL = lhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).get
-         val elemR = rhs.resolved.map(_.asInstanceOf[ArrayDefn]).map(_.elemType).get
-         (elemL resolvesTo elemR) || (elemL.nullable && (elemR isSubtypeOf elemL))
-      } else if ((numerics contains lhs) && (numerics contains rhs)) {
-        isWidening(lhs, rhs)
-      } else if (rhs == NullType && lhs.resolved.get.nullable) {
-        true
-      } else if (rhs.resolved.get isSubtypeOf lhs.resolved.get) {
-        true
-      } else {
-        false
-      }
-    }
+    val helper = new CheckerHelper(pkgTree, node.classes(0))
 
     val newFile = node.rewrite(Rewriter {(self, context) =>
       implicit val ctx = context
       self match {
-        case i: Id =>
+        case id: Id =>
           val isVariable = context.head match {
-            case Member(_, r) if r == i => false
+            case Member(_, r) if r == id => false
             case sm: StaticMember => false
-            case Callee(f) if f == i => false
+            case Callee(f) if f == id => false
             case v: VarStmnt => true
             case _ => true
           }
           if (isVariable) {
-            val name = i.name
-            val varScope =  (Seq(i.scope.get) ++ thisCls.superTypes.map(_.classScope)).find(_.resolve(name) != None)
+            val name = id.name
+            val varScope =  (Seq(id.scope.get) ++ helper.ThisCls.superTypes.map(_.classScope)).find(_.resolve(name) != None)
             if (varScope.isEmpty) {
-              errors :+= undefined(i, thisType)
+              helper.addError(undefined(id, helper.ThisType))
             } else if (isIn[MethodDefn]()) {
-              val isStatic = checkMod(ancestor[MethodDefn].map(_.mods).get, Modifiers.STATIC)
+              val isStatic = ancestor[MethodDefn].get.isStatic
               val nonStaticVar = {
-                if (i.scope == varScope) {
-                  !i.scope.get.isLocalScope(name) && thisCls.fields.find(f => f.name == name && checkMod(f.mods, Modifiers.STATIC)).isEmpty
+                if (id.scope == varScope) {
+                  !id.scope.get.isLocalScope(name) && helper.ThisCls.fields.find(f => f.name == name && f.isStatic).isEmpty
                 } else {
-                  thisCls.superTypes.find(s => s.fields.find(
-                        f => f.name == name && !checkMod(f.mods, Modifiers.STATIC)).isDefined).isDefined
+                  helper.ThisCls.superTypes.find(s => s.fields.find(
+                        f => f.name == name && !f.isStatic).isDefined).isDefined
                 }
               }
               if (isStatic && nonStaticVar) {
-                errors :+= CheckerError(s"Reference to instance variable $name in static context", i.from)
+                helper.addError(CheckerError(s"Reference to instance variable $name in static context", id.from))
               }
-              i.exprType = varScope.flatMap(_.resolve(name))
+              helper.setType(id, varScope.flatMap(_.resolve(name)).get)
             }
           }
-          i
-        case m@Member(left, right) =>
+          id
+          
+        case member@Member(left, right) =>
            val isInCall = context.head match {
              case c: Callee => true
              case _ => false
@@ -198,28 +61,28 @@ object Checker {
                 val curType = left.exprType.flatMap(_.resolved).get
                 val definedIn = (curType +: curType.superTypes).find(_.classScope.resolve(rname) != None)
                 if (definedIn.isEmpty) {
-                  errors :+= undefined(right, left.exprType.get)
+                  helper.addError(undefined(right, left.exprType.get))
                 } else {
                   val field = definedIn.get.fields.filter(_.name == rname)(0)
-                  if (checkMod(field.mods, Modifiers.PROTECTED) && !hasInstanceProtectedAccess(thisCls, curType, definedIn.get)) {
-                    errors :+= protectedAccess(right.name, thisType, curType.makeTypename)
-                  } else if (checkMod(field.mods, Modifiers.STATIC)) {
-                    errors :+= CheckerError(s"Static Symbol $rname accessed from nonstatic context", m.from)
+                  if (!field.isPublic && !hasInstanceProtectedAccess(helper.ThisCls, curType, definedIn.get)) {
+                    helper.addError(protectedAccess(right.name, helper.ThisType, curType.makeTypename))
+                  } else if (field.isStatic) {
+                    helper.addError(CheckerError(s"Static Symbol $rname accessed from nonstatic context", member.from))
                   }
-                  m.exprType = definedIn.get.classScope.resolve(rname)
+                  helper.setType(member, definedIn.get.classScope.resolve(rname).get)
                 }
             }
-          m
-        case c@Call(method, fields) =>
+          member
+          
+        case call@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
             case id: Id => {
               val meth = ancestor[MethodDefn]
               val iname = id.name
-              if (meth.isDefined && checkMod(meth.map(_.mods).get, Modifiers.STATIC)) {
-                 errors :+= CheckerError(s"Nonstatic method $iname accessed from static context", c.from)
+              if (meth.isDefined && meth.get.isStatic) {
+                 helper.addError(CheckerError(s"Nonstatic method $iname accessed from static context", call.from))
               }
-              // TODO: make this work for dynamic dispatch
-              (Some(thisCls), iname, false)
+              (Some(helper.ThisCls), iname, false)
             }
             // TODO: other setup labels
             case StaticMember(cls, right) => (Some(cls), right.name, true)
@@ -234,141 +97,133 @@ object Checker {
               val tn = declCls.flatMap(m => m.methods.find(_.signature == sig))
               if (tn.isEmpty) {
                 val at = argtypes.mkString(",")
-                errors :+= CheckerError(s"No method $ident defined for parameters: $at", c.from)
+                helper.addError(CheckerError(s"No method $ident defined for parameters: $at", call.from))
               } else {
-                if (isStatic && !checkMod(tn.get.mods, Modifiers.STATIC)) {
-                    errors :+= CheckerError(s"Nonstatic method $ident accessed from a static context", c.from)
-                } else if (!isStatic && checkMod(tn.get.mods, Modifiers.STATIC)) {
-                    errors :+= CheckerError(s"Static method $ident accessed from a nonstatic context", c.from)
+                if (isStatic && !tn.get.isStatic) {
+                    helper.addError(CheckerError(s"Nonstatic method $ident accessed from a static context", call.from))
+                } else if (!isStatic && tn.get.isStatic) {
+                    helper.addError(CheckerError(s"Static method $ident accessed from a nonstatic context", call.from))
                 }
-                if (checkMod(tn.get.mods, Modifiers.PROTECTED) && !(thisCls resolvesTo cls.get)) {
-                  if (checkMod(tn.get.mods, Modifiers.STATIC) && !hasStaticProtectedAccess(thisCls, cls.get, declCls.get)) {
-                    errors :+= protectedAccess(ident, thisType, cls.get.makeTypename)
+                if (!tn.get.isPublic && !(helper.ThisCls resolvesTo cls.get)) {
+                  if (tn.get.isStatic && !hasStaticProtectedAccess(helper.ThisCls, cls.get, declCls.get)) {
+                    helper.addError(protectedAccess(ident, helper.ThisType, cls.get.makeTypename))
                   }
-                  else if (!checkMod(tn.get.mods, Modifiers.STATIC) && !hasInstanceProtectedAccess(thisCls, cls.get, declCls.get)) {
-                    errors :+= protectedAccess(ident, thisType, declCls.get.makeTypename)
+                  else if (!tn.get.isStatic && !hasInstanceProtectedAccess(helper.ThisCls, cls.get, declCls.get)) {
+                    helper.addError(protectedAccess(ident, helper.ThisType, declCls.get.makeTypename))
                   }
                 }
 
-                c.rawResolvedMethod = tn
-                c.exprType = Some(tn.get.tname)
+                call.rawResolvedMethod = tn
+                helper.setType(call, tn.get.tname)
               }
             }
           }
-          c
-        case i: IntVal =>
-          i.exprType = pkgTree.getTypename(Seq("int"))
-          i
-        case b: BoolVal =>
-          b.exprType = Some(BoolTypename)
-          b
-        case c: CharVal =>
-          c.exprType = pkgTree.getTypename(Seq("char"))
-          c
-        case s: StringVal =>
-          s.exprType = Some(StringTypename)
-          s
+          call
+        case int: IntVal =>
+          helper.setInt(int)
+          int
+        case bool: BoolVal =>
+          helper.setBoolean(bool)
+          bool
+        case char: CharVal =>
+          helper.setChar(char)
+          char
+        case str: StringVal =>
+          helper.setString(str)
+          str
         case n: NullVal =>
-          n.exprType = Some(NullType)
+          helper.setNull(n)
           n
-        case n: Neg => {
-          if (n.ghs.exprType.isEmpty) {
-            n
-          } else if (numerics contains n.ghs.exprType.get) {
-            val newNeg = n.ghs match {
+        case neg@Neg(expr) => {
+          if (!expr.hasType) {
+            neg
+          } else if (helper.isNumeric(expr)) {
+            val newNeg = expr match {
               case i: IntVal => IntVal(-i.value)
               case c: CharVal => IntVal(-c.value)
-              case _ => n
+              case _ => neg
             }
-            newNeg.exprType = n.ghs.exprType
+            newNeg.exprType = expr.exprType
             newNeg
           } else {
-            errors :+= unsupported("unary -", n.from, n.ghs.exprType.get)
-            n
+            helper.addError(unsupported("unary -", neg.from, expr.exprType.get))
+            neg
           }
         }
-        case eq: Eq => {
-          if (!eq.lhs.hasType || !eq.rhs.hasType) {
+        case eq@Eq(lhs, rhs) => {
+          if (!lhs.hasType || !rhs.hasType) {
             eq
-          } else if (eq.lhs.exprType.get == VoidType || eq.rhs.exprType.get == VoidType) {
-            errors :+= unsupported("==", eq.from, eq.lhs.exprType.get, eq.rhs.exprType.get)
+          } else if (helper.isVoid(lhs) || helper.isVoid(rhs)) {
+            helper.addError(unsupported("==", eq.from, lhs.exprType.get, rhs.exprType.get))
             eq
-          } else if ((numerics contains eq.lhs.exprType.get) && (numerics contains eq.rhs.exprType.get)) {
-            doComp(eq, (a, b) => a == b, "==")
-          } else if (eq.lhs.exprType.get == eq.rhs.exprType.get) {
-            val expr = (eq.lhs, eq.rhs) match {
+          } else if (helper.isNumeric(lhs) && helper.isNumeric(rhs)) {
+            helper.doComp(eq, (a, b) => a == b, "==")
+          } else if (lhs.exprType.get == rhs.exprType.get) {
+            val expr = (lhs, rhs) match {
               case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
-              case (l, r) if l.exprType.get == NullType => BoolVal(true)
+              case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value == b2.value)
+              case (l, r) if helper.isNull(l) => BoolVal(true)
               case _ => eq
             }
-            expr.exprType = Some(BoolTypename)
+            helper.setBoolean(expr)
             expr
-          } else if ((eq.lhs.exprType.get == NullType && eq.rhs.exprType.flatMap(_.resolved).get.nullable)
-              || (eq.rhs.exprType.get == NullType && eq.lhs.exprType.flatMap(_.resolved).get.nullable)) {
-            eq.exprType = Some(BoolTypename)
-            eq
-          } else if ((eq.lhs.exprType.flatMap(_.resolved).get) isSubtypeOf (eq.rhs.exprType.flatMap(_.resolved).get)) {
-            eq.exprType = Some(BoolTypename)
-            eq
-          } else if ((eq.rhs.exprType.flatMap(_.resolved).get) isSubtypeOf (eq.lhs.exprType.flatMap(_.resolved).get)) {
-            eq.exprType = Some(BoolTypename)
+          } else if (helper.isAssignable(lhs, rhs) || helper.isAssignable(rhs, lhs)) {
+            helper.setBoolean(eq)
             eq
           } else {
-            errors :+= unsupported("==", eq.from, eq.lhs.exprType.get, eq.rhs.exprType.get)
+            helper.addError(unsupported("==", eq.from, lhs.exprType.get, rhs.exprType.get))
             eq
           }
         }
-        case neq: NEq => {
-          if (!neq.lhs.hasType || !neq.rhs.hasType) {
+        
+        case neq@NEq(lhs, rhs) => {
+          if (!lhs.hasType || !rhs.hasType) {
+            helper.setBoolean(neq)
             neq
-          } else if ((numerics contains neq.lhs.exprType.get) && (numerics contains neq.rhs.exprType.get)) {
-            doComp(neq, (a, b) => a != b, "!=")
-          } else if (neq.lhs.exprType.get == neq.rhs.exprType.get) {
-            val expr = (neq.lhs, neq.rhs) match {
-              case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
-              case (l, r) if (l.exprType.get == NullType) => BoolVal(false)
+          } else if (helper.isNumeric(lhs) && helper.isNumeric(rhs)) {
+            helper.doComp(neq, (a, b) => a != b, "!=")
+          } else if (lhs.exprType.get == rhs.exprType.get) {
+            val expr = (lhs, rhs) match {
+              case (s1: StringVal, s2: StringVal) => BoolVal(s1.value != s2.value)
+              case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value != b2.value)
+              case (l, r) if helper.isNull(l) => BoolVal(false)
               case _ => neq
             }
-            expr.exprType = Some(BoolTypename)
+            helper.setBoolean(expr)
             expr
-          } else if ((neq.lhs.exprType.get == NullType && neq.rhs.exprType.flatMap(_.resolved).get.nullable)
-              || (neq.rhs.exprType.get == NullType && neq.lhs.exprType.flatMap(_.resolved).get.nullable)) {
-            neq.exprType = Some(BoolTypename)
-            neq
-          } else if ((neq.lhs.exprType.flatMap(_.resolved).get) isSubtypeOf (neq.rhs.exprType.flatMap(_.resolved).get)) {
-            neq.exprType = Some(BoolTypename)
-            neq
-          } else if ((neq.rhs.exprType.flatMap(_.resolved).get) isSubtypeOf (neq.lhs.exprType.flatMap(_.resolved).get)) {
-            neq.exprType = Some(BoolTypename)
+          } else if (helper.isAssignable(lhs, rhs) || helper.isAssignable(rhs, lhs)) {
+            helper.setBoolean(neq)
             neq
           } else {
-            errors :+= unsupported("!=", neq.from, neq.lhs.exprType.get, neq.rhs.exprType.get)
+            helper.addError(unsupported("!=", neq.from, lhs.exprType.get, rhs.exprType.get))
+            helper.setBoolean(neq)
             neq
           }
         }
-        case inst: InstanceOf => {
-          if (!inst.lhs.hasType) {
-            inst.exprType = Some(BoolTypename)
+        
+        case inst@InstanceOf(lhs, tname) => {
+          if (!lhs.hasType) {
+            helper.setBoolean(inst)
             inst
-          } else if (!inst.lhs.exprType.flatMap(_.resolved).map(_.nullable).get ||
-              !inst.tname.resolved.map(_.nullable).get) {
-            errors :+= CheckerError("Operands of instanceOf cannot be value types", inst.from)
-            inst.exprType = Some(BoolTypename)
+          } else if (!lhs.exprType.get.r.nullable ||
+              !tname.r.nullable) {
+            helper.addError(CheckerError("Operands of instanceOf cannot be value types", inst.from))
+            helper.setBoolean(inst)
             inst
-        } else if (isAssignable(inst.tname, inst.lhs.exprType.get)){
+        } else if (helper.isAssignable(TypeExpression(tname), lhs)){
              val expr = BoolVal(true)
-             expr.exprType = Some(BoolTypename)
+             helper.setBoolean(expr)
              expr
-          } else if (
-              isAssignable(inst.lhs.exprType.get, inst.tname)) {
-            inst.exprType = Some(BoolTypename)
+          } else if (helper.isAssignable(lhs, TypeExpression(tname))) {
+            helper.setBoolean(inst)
             inst
           } else {
-            errors :+= unsupported("instanceof", inst.from, inst.lhs.exprType.get, inst.tname)
-            inst.exprType = Some(BoolTypename)
+            helper.addError(unsupported("instanceof", inst.from, lhs.exprType.get, tname))
+            helper.setBoolean(inst)
             inst
           }
         }
+        
         case nt: NewType => {
           nt.exprType = Some(nt.tname)
           val args = nt.args.map(_.exprType)
@@ -378,233 +233,256 @@ object Checker {
             if (cxr.isEmpty) {
               val arglist = defArgs.mkString(",")
               val t = nt.tname
-              errors :+= CheckerError(s"No constructor for type $t with parameters $arglist", nt.from)
-            } else if (checkMod(nt.tname.resolved.map(_.mods).get, Modifiers.ABSTRACT) || nt.tname.resolved.map(_.isInterface).get) {
+              helper.addError(CheckerError(s"No constructor for type $t with parameters $arglist", nt.from))
+            } else if (nt.tname.r.isAbstract || nt.tname.r.isInterface) {
               val t = nt.tname
-              errors :+= CheckerError(s"Instantiation of non-concrete type $t", nt.from)
-            } else if (checkMod(cxr.get.mods, Modifiers.PROTECTED) && nt.tname.resolved.map(_.pkg).get != thisCls.pkg) {
+              helper.addError(CheckerError(s"Instantiation of non-concrete type $t", nt.from))
+            } else if (!cxr.get.isPublic && nt.tname.resolved.map(_.pkg).get != helper.ThisCls.pkg) {
               val t = nt.tname
-              errors :+= CheckerError(s"Protected constructor for type $t cannot be accessed from outside package", nt.from)
+              helper.addError(CheckerError(s"Protected constructor for type $t cannot be accessed from outside package", nt.from))
             }
           }
           nt
         }
-        case narr: NewArray => {
-          if (narr.size.exprType.isEmpty) {
+        
+        case newArr@NewArray(tname, size) => {
+          if (!size.hasType) {
             // Already invalid
-          } else if (numerics contains narr.size.exprType.get) {
-            narr.exprType = Some(narr.tname)
+          } else if (helper.isNumeric(size)) {
+            helper.setType(newArr, tname)
           } else {
-            val t = narr.size.exprType.get.name
-            errors :+= CheckerError(s"Array size cannot be of type $t", narr.from)
+            val t = size.exprType.get.name
+            helper.addError(CheckerError(s"Array size cannot be of type $t", newArr.from))
           }
-          narr
+          newArr
         }
-        case geq: GEq => doComp(geq, (a,b) => a >= b, ">=")
-        case gt: GThan => doComp(gt, (a,b) => a > b, ">")
-        case leq: LEq => doComp(leq, (a,b) => a <= b, "<=")
-        case lt: LThan => doComp(lt, (a,b) => a < b, "<")
-        case m: Mul => doNumeric(m, (a, b) => a * b, "*")
-        case d: Div => doNumeric(d, (a,b) => a / b, "/")
-        case s: Sub => doNumeric(s, (a,b) => a - b, "-")
-        case m: Mod => doNumeric(m, (a,b) => a % b, "%")
-        case a: Add =>
-          if (a.lhs.exprType.isEmpty || a.rhs.exprType.isEmpty) {
-            a
-          } else if (a.lhs.exprType.get == StringTypename && a.rhs.exprType.get == StringTypename) {
-            val newString = (a.lhs, a.rhs) match {
+        
+        case geq: GEq => helper.doComp(geq, (a,b) => a >= b, ">=")
+        
+        case gt: GThan => helper.doComp(gt, (a,b) => a > b, ">")
+        
+        case leq: LEq => helper.doComp(leq, (a,b) => a <= b, "<=")
+        
+        case lt: LThan => helper.doComp(lt, (a,b) => a < b, "<")
+        
+        case mul: Mul => helper.doNumeric(mul, (a, b) => a * b, "*")
+        
+        case div: Div => helper.doNumeric(div, (a,b) => a / b, "/")
+        
+        case sub: Sub => helper.doNumeric(sub, (a,b) => a - b, "-")
+        
+        case mod: Mod => helper.doNumeric(mod, (a,b) => a % b, "%")
+        
+        case add@Add(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
+            add
+          } else if (helper.isString(lhs) && helper.isString(rhs)) {
+            val newString = (lhs, rhs) match {
               case (l: StringVal, r: StringVal) => StringVal(l.value + r.value)
-              case _ => a
+              case _ => add
             }
 
-            newString.exprType = Some(StringTypename)
+            helper.setString(newString)
             newString
-          } else if (a.lhs.exprType.get == StringTypename) {
-            if (a.rhs.exprType.get == VoidType)
-              errors :+= unsupported("+", a.from, a.rhs.exprType.get)
+          } else if (helper.isString(lhs)) {
+            if (helper.isVoid(rhs))
+              helper.addError(unsupported("+", add.from, rhs.exprType.get))
             //TODO: actually collapse string + nonstring
-            a.exprType = Some(StringTypename)
-            a
-          } else if (a.rhs.exprType.get == StringTypename) {
-            if (a.lhs.exprType.get == VoidType)
-              errors :+= unsupported("+", a.from, a.lhs.exprType.get)
+            helper.setString(add)
+            add
+          } else if (helper.isString(rhs)) {
+            if (helper.isVoid(lhs))
+              helper.addError(unsupported("+", add.from, lhs.exprType.get))
             //TODO: collapse nonstring + string
-            a.exprType = Some(StringTypename)
-            a
+            helper.setString(add)
+            add
           } else {
-            doNumeric(a, (l, r) => l + r, "+")
+            helper.doNumeric(add, (l, r) => l + r, "+")
           }
-        case ind: Index =>
-          if (ind.lhs.exprType.isEmpty || ind.rhs.exprType.isEmpty) {
+        
+        case ind@Index(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
             // Nothing to do
-          } else if (!(numerics contains ind.rhs.exprType.get)) {
-            errors :+= unsupported("[]", ind.from, ind.lhs.exprType.get, ind.rhs.exprType.get)
+          } else if (!helper.isNumeric(rhs)) {
+            helper.addError(unsupported("[]", ind.from, lhs.exprType.get, rhs.exprType.get))
           } else {
-            val t = ind.lhs.exprType.flatMap(_.resolved).get
+            val t = lhs.exprType.get.r
             t match {
-              case arr@ArrayDefn(elem) => ind.exprType = Some(elem.makeTypename)
-              case _ => errors :+= unsupported("[]", ind.from, ind.lhs.exprType.get, ind.rhs.exprType.get)
+              case arr@ArrayDefn(elem) => helper.setType(ind, elem.makeTypename)
+              case _ => helper.addError(unsupported("[]", ind.from, lhs.exprType.get, rhs.exprType.get))
             }
           }
           ind
-        case and: LogicAnd =>
-          if (and.lhs.exprType.isEmpty || and.rhs.exprType.isEmpty) {
+          
+        case and@LogicAnd(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
             and
-          } else if ((bools contains and.lhs.exprType.get) && (bools contains and.rhs.exprType.get)) {
-            val res = (and.lhs, and.rhs) match {
+          } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
+            val res = (lhs, rhs) match {
               case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value && b2.value)
               case (b1: BoolVal, b2) if b1.value => b2
               case (b1, b2: BoolVal) if b2.value => b1
               case _ => and
             }
-            res.exprType = Some(BoolTypename)
+            helper.setBoolean(res)
             res
           } else {
-            errors :+= unsupported("&&", and.from, and.lhs.exprType.get, and.rhs.exprType.get)
+            helper.addError(unsupported("&&", and.from, lhs.exprType.get, rhs.exprType.get))
             and
           }
-        case or: LogicOr =>
-          if (or.lhs.exprType.isEmpty || or.rhs.exprType.isEmpty) {
+        
+        case or@LogicOr(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
             or
-          } else if ((bools contains or.lhs.exprType.get) && (bools contains or.rhs.exprType.get)) {
-            val res = (or.lhs, or.rhs) match {
+          } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
+            val res = (lhs, rhs) match {
               case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value || b2.value)
               case _ => or
             }
-            res.exprType = Some(BoolTypename)
+            helper.setBoolean(res)
             res
           } else {
-            errors :+= unsupported("||", or.from, or.lhs.exprType.get, or.rhs.exprType.get)
+            helper.addError(unsupported("||", or.from, lhs.exprType.get, rhs.exprType.get))
             or
           }
+        
         case n: Not =>
-          if (n.ghs.exprType.isEmpty) {
+          if (!n.ghs.hasType) {
             n
-          } else if (bools contains n.ghs.exprType.get) {
+          } else if (helper.isBoolean(n.ghs)) {
             val newVal = n.ghs match {
               case b: BoolVal => BoolVal(!b.value)
               case _ => n
             }
-            newVal.exprType = Some(BoolTypename)
+            helper.setBoolean(newVal)
             newVal
           } else {
-            errors :+= unsupported("unary-!", n.from, n.ghs.exprType.get)
+            helper.addError(unsupported("unary-!", n.from, n.ghs.exprType.get))
             n
           }
-        case ass: Assignment =>
-          if (ass.lhs.exprType.isEmpty || ass.rhs.exprType.isEmpty) {
+        
+        case ass@Assignment(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
             ass
-          } else if (ass.lhs.exprType.get.isFinal) {
-            val tname = ass.lhs
-            errors :+= CheckerError(s"Invalid assignment to final expression $tname", ass.from)
+          } else if (lhs.exprType.get.isFinal) {
+            helper.addError(CheckerError(s"Invalid assignment to final expression $lhs", ass.from))
             ass
-          } else if (isAssignable(ass.lhs.exprType.get, ass.rhs.exprType.get)) {
-            ass.exprType = ass.lhs.exprType
+          } else if (helper.isAssignable(lhs, rhs)) {
+            ass.exprType = lhs.exprType
             ass
           } else {
-            errors :+= unsupported("assignment", ass.from, ass.lhs.exprType.get, ass.rhs.exprType.get)
+            helper.addError(unsupported("assignment", ass.from, lhs.exprType.get, rhs.exprType.get))
             ass
           }
+        
         case v: VarStmnt =>
-          if (v.value.isDefined && v.value.flatMap(_.exprType).isDefined) {
-            if (!isAssignable(v.tname, v.value.flatMap(_.exprType).get)) {
-              errors :+= unsupported("assignment", v.from, v.tname, v.value.flatMap(_.exprType).get)
+          if (v.value.isDefined && v.value.get.hasType) {
+            if (!helper.isAssignable(TypeExpression(v.tname), v.value.get)) {
+              helper.addError(unsupported("assignment", v.from, v.tname, v.value.flatMap(_.exprType).get))
             }
           }
           v
+        
         case i: IfStmnt =>
-          if (i.cond.exprType.isEmpty) {
+          if (!i.cond.hasType) {
             i
-          } else if (bools contains i.cond.exprType.get) {
+          } else if (helper.isBoolean(i.cond)) {
             i
           } else {
             val t = i.cond.exprType.map(_.qname.mkString(".")).get
-            errors :+= CheckerError(s"Branch Condition must be a boolean, received $t", i.from)
+            helper.addError(CheckerError(s"Branch Condition must be a boolean, received $t", i.from))
             i
           }
+        
         case f: ForStmnt =>
-          if (f.cond.isDefined && f.cond.flatMap(_.exprType).isDefined &&
-              (!(bools contains f.cond.flatMap(_.exprType).get))) {
+          if (f.cond.isDefined && f.cond.get.hasType &&
+              (!(helper.isBoolean(f.cond.get)))) {
             val t = f.cond.flatMap(_.exprType).map(_.qname.mkString(".")).get
-            errors :+= CheckerError(s"Loop condition must be a boolean, received $t", f.from)
+            helper.addError(CheckerError(s"Loop condition must be a boolean, received $t", f.from))
           }
           f
+        
         case w: WhileStmnt =>
-          if (w.cond.exprType.isDefined && !(bools contains w.cond.exprType.get)) {
+          if (w.cond.hasType && !helper.isBoolean(w.cond)) {
             val t = w.cond.exprType.map(_.qname.mkString(".")).get
-            errors :+= CheckerError(s"Loop condition must be a boolean, received $t", w.from)
+            helper.addError(CheckerError(s"Loop condition must be a boolean, received $t", w.from))
           }
           w
-        case c: Cast =>
-          if (c.value.exprType.isDefined) {
-            val castType = c.tname
-            val exprType = c.value.exprType.get
-            if (((numerics contains castType) && (numerics contains exprType)) ||
-                isAssignable(castType, exprType) || isAssignable(exprType, castType)) {
-              c.exprType = Some(castType)
+        
+        case c@Cast(tname, value) =>
+          if (c.value.hasType) {
+            val castType = TypeExpression(tname)
+            if ((helper.isNumeric(castType) && helper.isNumeric(value)) ||
+                helper.isAssignable(castType, value) || helper.isAssignable(value, castType)) {
+              helper.setType(c, tname)
               c
             } else {
-              errors :+= unsupported("cast", c.from, castType, exprType)
+              helper.addError(unsupported("cast", c.from, tname, value.exprType.get))
               c
             }
           } else {
             c
           }
+        
         case r: ReturnStmnt =>
-          val methodType = ancestor[MethodDefn].map(_.tname).flatMap(_.resolved).map(_.makeTypename).get
+          val methodType = TypeExpression(ancestor[MethodDefn].map(_.tname).flatMap(_.resolved).map(_.makeTypename).get)
           if (r.value.isDefined) {
-            if (methodType == VoidType) {
-              errors :+= CheckerError("Void method cannot return value", r.from)
+            if (helper.isVoid(methodType)) {
+              helper.addError(CheckerError("Void method cannot return value", r.from))
             } else if (r.value.flatMap(_.exprType).isDefined) {
-              val retType = r.value.flatMap(_.exprType).get
-              if(!isAssignable(methodType, retType)) {
-                val rt = retType.qname.mkString(".")
-                val mt = methodType.qname.mkString(".")
-                errors :+= CheckerError(s"Return type $rt cannot be converted to expected type $mt", r.from)
+              if(!helper.isAssignable(methodType, r.value.get)) {
+                val rt = r.value.flatMap(_.exprType).get.qname.mkString(".")
+                val mt = methodType.exprType.get.qname.mkString(".")
+                helper.addError(CheckerError(s"Return type $rt cannot be converted to expected type $mt", r.from))
               }
             }
-          } else if (methodType != VoidType) {
-            errors :+= CheckerError(s"Non-void method must return a value", r.from)
+          } else if (helper.isVoid(methodType)) {
+            helper.addError(CheckerError(s"Non-void method must return a value", r.from))
           }
           r
+        
         case c: Callee => c
-        case sm: StaticMember =>
+        
+        case sm@StaticMember(lhs, rhs) =>
           if (context.head != Callee(sm)) {
-            val eqCls = (sm.lhs +: sm.lhs.superTypes)
-                            .find(s => !s.fields.filter(f => f.name == sm.rhs.name && checkMod(f.mods, Modifiers.STATIC)).isEmpty)
-            val eqId = eqCls.flatMap(c => c.fields.find(_.name == sm.rhs.name))
+            val eqCls = (lhs +: lhs.superTypes)
+                            .find(s => !s.fields.filter(f => f.name == rhs.name && f.isStatic).isEmpty)
+            val eqId = eqCls.flatMap(c => c.fields.find(_.name == rhs.name))
             if (eqId.isEmpty) {
-              errors :+= undefined(sm.rhs, sm.lhs.makeTypename)
-            } else if (!checkMod(eqId.get.mods, Modifiers.STATIC)) {
-              val name = sm.rhs.name
-              errors :+= CheckerError(s"Accessing non-static member $name from static context", sm.from)
-            } else if (checkMod(eqId.get.mods, Modifiers.PROTECTED) && !hasStaticProtectedAccess(thisCls, sm.lhs, eqCls.get)) {
-              errors :+= protectedAccess(sm.rhs.name, thisType, sm.lhs.makeTypename)
+              helper.addError(undefined(rhs, lhs.makeTypename))
+            } else if (!eqId.get.isStatic) {
+              val name = rhs.name
+              helper.addError(CheckerError(s"Accessing non-static member $name from static context", sm.from))
+            } else if (!eqId.get.isPublic && !hasStaticProtectedAccess(helper.ThisCls, lhs, eqCls.get)) {
+              helper.addError(protectedAccess(rhs.name, helper.ThisType, lhs.makeTypename))
             } else {
-              sm.exprType = eqId.map(_.tname)
+              helper.setType(sm, eqId.get.tname)
             }
           }
           sm
+        
         case t: ThisVal =>
-          if (isIn[MethodDefn]() && (ancestor[MethodDefn].map(_.mods).get & Modifiers.STATIC) != 0) {
-            errors :+= CheckerError(s"Reference to `this` in static context", t.from)
+          if (isIn[MethodDefn]() && ancestor[MethodDefn].get.isStatic) {
+            helper.addError(CheckerError(s"Reference to `this` in static context", t.from))
           }
           t.exprType = ancestor[ClassDefn].map(_.makeTypename)
           t
+        
         case ass: Assignee =>
           ass.exprType = ass.expr.exprType
           ass
+        
         case Parens(expr) =>
           expr
+        
         case ex: Expression =>
-          errors :+= CheckerError(s"Did not typecheck expression $ex", ex.from)
+          helper.addError(CheckerError(s"Did not typecheck expression $ex", ex.from))
           ex
+        
         case _ => self
       }
     }).asInstanceOf[FileNode]
-    if (!errors.isEmpty) {
-      throw new VisitError(errors)
-    }
+    helper.throwIfErrors
     newFile
   }
 }
