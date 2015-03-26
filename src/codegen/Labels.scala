@@ -5,6 +5,15 @@ trait Label extends Instruction {
   def emitted = name + ":"
 
   override def toString = name
+
+  override def equals(o: Any) = {
+    o match {
+      case l: Label => l.name == name
+      case _ => false
+    }
+  }
+
+  override def hashCode = name.hashCode
 }
 
 object AnonLabel {
@@ -17,11 +26,11 @@ object AnonLabel {
 
 
   def getLabel(semantic: String): String = {
-    getLabel + s"_$semantic"
+    getLabel + s".$semantic"
   }
 }
 
-case class AnonLabel(semantic: String = "") extends Label {
+case class GlobalAnonLabel(semantic: String = "") extends Label {
   val name =
     if (semantic.isEmpty)
       AnonLabel.getLabel
@@ -29,5 +38,15 @@ case class AnonLabel(semantic: String = "") extends Label {
       AnonLabel.getLabel(semantic)
 }
 
-case class NamedLabel(name: String) extends Label
+case class AnonLabel(semantic: String = "") extends Label {
+  val name =
+    if (semantic.isEmpty)
+      "." + AnonLabel.getLabel
+    else
+      "." + AnonLabel.getLabel(semantic)
+}
+
+case class NamedLabel(earlyName: String) extends Label {
+  val name = s"_$earlyName"
+}
 

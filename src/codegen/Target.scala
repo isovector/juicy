@@ -45,7 +45,7 @@ object Target {
 }
 
 class Target extends Emittable {
-  private val imports = collection.mutable.Set[Label]()
+  private val imports = collection.mutable.Set[Label](NamedLabel("__malloc"))
   private val exports = collection.mutable.Set[Label]()
 
   def export(l: Label) = {

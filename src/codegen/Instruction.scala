@@ -23,3 +23,20 @@ case class SysExitInstr(code: Int) extends Instruction {
     ).mkString("\n")
 }
 
+case class Prologue() extends Instruction {
+  def emitted =
+    Seq(
+      "push ebp",
+      "mov ebp, esp"
+    ).mkString("\n")
+}
+
+case class Epilogue() extends Instruction {
+  def emitted =
+    Seq(
+      "mov esp, ebp",
+      "pop ebp",
+      "ret"
+    ).mkString("\n")
+}
+

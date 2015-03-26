@@ -102,7 +102,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       } else
         // According to a2/Je_3_UndefinedType_DefaultPackageNotVisible, the
         // default package should not be visible from other packages.
-        Seq(".DEFAULT")
+        Seq("#")
 
     val children = kleene(new Token.EOF()) {
       if (check("import")) {
@@ -174,7 +174,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
     ensure("}")
 
-    new ClassDefn(
+    val result = ClassDefn(
       name,
       pkg,
       mods,
@@ -183,6 +183,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       fields.map(_.asInstanceOf[VarStmnt]),
       methods,
       isInterface)
+
+    methods.foreach { method =>
+      method.rawContainingClass = Some(result)
+    }
+
+    result
   }
 
   // Parse modifiers, types and names, and then delegate parsing to methods

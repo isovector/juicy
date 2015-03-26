@@ -1,5 +1,6 @@
 package juicy.source
 
+import juicy.codegen._
 import juicy.source.analysis.AnalysisProbe
 import juicy.source.ast.FileNode
 import juicy.source.checker.Checker
@@ -61,22 +62,42 @@ object CompilerMain {
     }.toList.flatten
   }
 
-  def build(asts: Seq[FileNode]) = {
+  def build(asts: Seq[FileNode]): Seq[FileNode] = {
     handleErrors {
       val pkgtree = Resolver(asts)
       HardlyKnower(pkgtree)
       asts.foreach(Hashtag360NoScoper(_))
-      Disambiguator(asts, pkgtree)
+      val newasts =
+        Disambiguator(asts, pkgtree)
         .map(Checker(_, pkgtree))
+
+      newasts
         .foreach(AnalysisProbe(_))
 
+      return newasts
     }
 
-    CompilerTerminate(0)
+    asts
   }
 
   def main(args: Array[String]): Unit = {
-    build(parseFiles(args.toList))
+    // HACK HACK HACK HACK HACK
+    // val files = build(parseFiles(args.toList))
+    val files = build(parseFiles("stdlib/io/OutputStream.java stdlib/io/PrintStream.java stdlib/io/Serializable.java stdlib/lang/Boolean.java stdlib/lang/Byte.java stdlib/lang/Character.java stdlib/lang/Class.java stdlib/lang/Cloneable.java stdlib/lang/Integer.java stdlib/lang/Number.java stdlib/lang/Object.java stdlib/lang/Short.java stdlib/lang/String.java stdlib/lang/System.java stdlib/util/Arrays.java joosc-test/Codegen.java".split(" ").toList))
+
+    val codegen = files.last
+
+    import java.io._
+    Target.withFile(codegen.toString) {
+      codegen.classes.foreach { c =>
+        c.emit
+
+        Some(new PrintWriter("asm/codegen.s")).foreach{p => p.write(Target.file.emitted); p.close}
+      }
+    }
+
+    Some(new PrintWriter("asm/global.s")).foreach{p => p.write(Target.global.emitted); p.close}
+
     CompilerTerminate(0)
   }
 }

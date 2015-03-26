@@ -130,7 +130,7 @@ object Checker {
     def hasStaticProtectedAccess(t1: TypeDefn, tref: TypeDefn, tdef: TypeDefn): Boolean = {
       return ((t1 isSubtypeOf tdef)) || (t1.pkg == tdef.pkg)
     }
-    
+
     def hasInstanceProtectedAccess(t1: TypeDefn, tref: TypeDefn, tdef: TypeDefn): Boolean = {
       return ((tref isSubtypeOf t1) && (t1 isSubtypeOf tdef)) || (t1.pkg == tdef.pkg)
     }
@@ -218,8 +218,10 @@ object Checker {
               if (meth.isDefined && checkMod(meth.map(_.mods).get, Modifiers.STATIC)) {
                  errors :+= CheckerError(s"Nonstatic method $iname accessed from static context", c.from)
               }
+              // TODO: make this work for dynamic dispatch
               (Some(thisCls), iname, false)
             }
+            // TODO: other setup labels
             case StaticMember(cls, right) => (Some(cls), right.name, true)
             case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
@@ -247,6 +249,8 @@ object Checker {
                     errors :+= protectedAccess(ident, thisType, declCls.get.makeTypename)
                   }
                 }
+
+                c.rawResolvedMethod = tn
                 c.exprType = Some(tn.get.tname)
               }
             }
@@ -412,16 +416,16 @@ object Checker {
               case (l: StringVal, r: StringVal) => StringVal(l.value + r.value)
               case _ => a
             }
-              
+
             newString.exprType = Some(StringTypename)
             newString
-          } else if (a.lhs.exprType.get == StringTypename) {            
+          } else if (a.lhs.exprType.get == StringTypename) {
             if (a.rhs.exprType.get == VoidType)
               errors :+= unsupported("+", a.from, a.rhs.exprType.get)
             //TODO: actually collapse string + nonstring
             a.exprType = Some(StringTypename)
             a
-          } else if (a.rhs.exprType.get == StringTypename) { 
+          } else if (a.rhs.exprType.get == StringTypename) {
             if (a.lhs.exprType.get == VoidType)
               errors :+= unsupported("+", a.from, a.lhs.exprType.get)
             //TODO: collapse nonstring + string

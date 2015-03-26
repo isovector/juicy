@@ -1,6 +1,7 @@
 package juicy.source.ast
 
 import juicy.codegen._
+import juicy.codegen.Implicits._
 import juicy.source.disambiguator.AmbiguousStatus
 import juicy.source.PackageTree
 import juicy.source.resolver.Resolver.AmbiguousResolveError
@@ -8,6 +9,7 @@ import juicy.source.scoper.ClassScope
 import juicy.source.tokenizer.SourceLocation
 import juicy.utils.Implicits._
 import juicy.utils.visitor._
+
 
 object Modifiers {
   type Value = Int
@@ -164,6 +166,8 @@ trait TypeDefn extends Definition {
      t
   }
 
+  def labelName: String
+
   def resolvesTo(other: TypeDefn) =
     name == other.name && pkg == other.pkg
 
@@ -172,10 +176,16 @@ trait TypeDefn extends Definition {
 
   // size when put on the stack
   def stackSize = 4
+
+  def emitLayout = {
+    Target.data.emit("; unimplemented layout")
+  }
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   var resolved: Option[TypeDefn] = None
+  lazy val r = resolved.get
+
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
   val isPrimitive =
@@ -339,8 +349,51 @@ case class ClassDefn(
 
   override def allocSize = {
     // TODO: this might have aligntment bugs
+    4 +
     extnds.map(_.resolved.get.allocSize).sum +
       fields.map(_.tname.resolved.get.stackSize).sum
+  }
+
+  override def labelName = {
+    val qname = pkg.mkString(".")
+    s"$qname.$name"
+  }
+
+  val dataLabel = {
+    // TODO: lets not do this here
+    val qname = pkg.mkString(".")
+    NamedLabel(s"$qname.$name@@new")
+  }
+
+  val classId = ClassDefn.getNextEqualityComparitor
+
+  override def emit = {
+    Target.file.export(dataLabel)
+
+    Target.text.emit(
+      dataLabel,
+      s"mov eax, $allocSize",
+      //"call __malloc",
+      s"mov eax, $classId"
+      // call initializer (which calls parent initializer)
+      // DONT call constructor, call it from your ctor, whic his called by a new stmtn
+    )
+
+    methods.foreach { m =>
+      m.emit
+    }
+  }
+
+  override def emitLayout = {
+    if (extnds.length > 1)
+      throw new Exception("WTFFFFFFFFF")
+
+    if (extnds.length == 1)
+      extnds(0).r.emitLayout
+
+    fields.foreach { f =>
+      Target.data.emit(s"resb ${f.tname.r.stackSize}")
+    }
   }
 }
 
@@ -363,15 +416,7 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   override val mods = Modifiers.FINAL + Modifiers.PUBLIC
   override val isInterface = false
 
-  override def allocSize =
-    name match {
-      case "boolean" => 1
-      case "byte"    => 1
-      case "char"    => 1 // TODO: is this right?
-      case "short"   => 2
-      case "int"     => 4
-    }
-  override def stackSize = allocSize
+  override def labelName = name
 }
 
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
@@ -406,6 +451,8 @@ case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
   }
   override val mods = Modifiers.FINAL + Modifiers.PUBLIC
   override val isInterface = false
+
+  override def labelName = elemType.labelName + "#"
 }
 
 case class NullDefn() extends TypeDefn {
@@ -424,6 +471,8 @@ case class NullDefn() extends TypeDefn {
   }
   override val isInterface = false
   override val mods = Modifiers.PUBLIC + Modifiers.FINAL
+
+  override def labelName = throw new Exception("wtf don't")
 }
 
 case class ImportClass(
@@ -448,7 +497,12 @@ case class ImportPkg(
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
 }
 
-case class Signature(name: String, params: Seq[Typename])
+case class Signature(name: String, params: Seq[Typename]) {
+  override def toString = {
+    s"$name#" + params.map(_.r.labelName).mkString("#")
+
+  }
+}
 
 case class MethodDefn(
   name: String,
@@ -458,6 +512,11 @@ case class MethodDefn(
   params: Seq[VarStmnt],
   body: Option[Statement]
 ) extends Definition {
+  val isEntry =
+    name == "test" &&
+    tname.name == "int" &&
+    tname.isArray == false &&
+    mods == (Modifiers.STATIC | Modifiers.PUBLIC)
   val children = Seq(tname) ++ params ++ body.toList
 
   val signature = Signature(name, params.map(_.tname))
@@ -468,15 +527,48 @@ case class MethodDefn(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    transfer(rule(
-      MethodDefn(
-        name,
-        mods,
-        isCxr,
-        tname.rewrite(rule, newContext).asInstanceOf[Typename],
-        params.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
-        body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
-      ), context))
+    val result =
+      transfer(rule(
+        MethodDefn(
+          name,
+          mods,
+          isCxr,
+          tname.rewrite(rule, newContext).asInstanceOf[Typename],
+          params.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
+          body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
+        ), context)).asInstanceOf[MethodDefn]
+    result.rawContainingClass = rawContainingClass
+    result
+  }
+
+  var rawContainingClass: Option[ClassDefn] = None
+  lazy val containingClass = rawContainingClass.get
+  lazy val label = {
+    val qname = (containingClass.pkg :+ containingClass.name).mkString(".")
+    NamedLabel(s"$qname@$signature")
+  }
+
+  override def emit = {
+    if (isEntry) {
+      val startLabel = NamedLabel("start")
+      Target.file.export(startLabel)
+      Target.text.emit(
+        startLabel,
+        s"call $label",
+        "mov eax, 1",
+        "int 0x80"
+      )
+    }
+
+    Target.file.export(label)
+    Target.text.emit(
+      label,
+      Prologue()
+      // TODO: allocate stack space
+      )
+    body.map(_.emit)
+
+    Target.text.emit(Epilogue())
   }
 }
 
@@ -526,9 +618,9 @@ case class IfStmnt(
     then.emit
     if (otherwise.isDefined) {
       val afterL = AnonLabel("after")
-      Target.text.emit(RawInstr(s"jmp $afterL"))
-
-      Target.text.emit(elseL)
+      Target.text.emit(
+        RawInstr(s"jmp $afterL"),
+        elseL)
       otherwise.get.emit
 
       Target.text.emit(afterL)
@@ -602,6 +694,11 @@ case class ReturnStmnt(
         value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context))
   }
+
+  override def emit = {
+    value.map(_.emit)
+    Target.text.emit(Epilogue())
+  }
 }
 
 case class ExprStmnt(
@@ -616,6 +713,8 @@ case class ExprStmnt(
         expr.rewrite(rule, newContext).asInstanceOf[Expression]
       ), context))
   }
+
+  override def emit = expr.emit
 }
 
 trait NullOp extends Expression {
@@ -628,7 +727,11 @@ trait NullOp extends Expression {
 case class NullVal()                extends NullOp
 case class ThisVal()                extends NullOp
 case class SuperVal()               extends NullOp
-case class IntVal(value: Int)       extends NullOp
+case class IntVal(value: Int)       extends NullOp {
+  override def emit = {
+    Target.text.emit(s"mov ebx,$value")
+  }
+}
 case class CharVal(value: Char)     extends NullOp
 case class BoolVal(value: Boolean)  extends NullOp
 case class StringVal(value: String) extends NullOp
@@ -636,6 +739,9 @@ case class StringVal(value: String) extends NullOp
 case class Id(name: String)         extends NullOp {
   var status: AmbiguousStatus.Value = AmbiguousStatus.AMBIGUOUS
   var isVar: Boolean                = true
+  // TODO: make the prober fill this in
+  var offset: Int                   = 0
+
 }
 
 case class Callee(
@@ -665,6 +771,20 @@ case class Call(
         method.rewrite(rule, newContext).asInstanceOf[Callee],
         args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context))
+  }
+
+  var rawResolvedMethod: Option[MethodDefn] = None
+  lazy val resolvedMethod = rawResolvedMethod.get
+
+  override def emit = {
+    // TODO: figure out how to this
+    args.foreach { arg =>
+      arg.emit
+      Target.text.emit("push ebx")
+    }
+
+    val label = resolvedMethod.label
+    Target.text.emit(s"call $label")
   }
 }
 
@@ -898,10 +1018,8 @@ case class Debugger(
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
 
   override def emit = {
-    import juicy.codegen.Implicits._
-
-    val msg = AnonLabel("debugstr")
-    val msglen = AnonLabel("debugstrln")
+    val msg = GlobalAnonLabel("debugstr")
+    val msglen = GlobalAnonLabel("debugstrln")
     Target.fromGlobal(msg, msglen)
 
     Target.global.data.emit((msg, "db \"" + debugWhat + "\", 10"))

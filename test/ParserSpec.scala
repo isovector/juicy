@@ -355,7 +355,7 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
     .parseFile().classes(0) should be ===
       ClassDefn(
         "A",
-        Seq(".DEFAULT"),
+        Seq("#"),
         NONE,
         Seq(typename("IA"), typename("IB")),
         Seq(), Seq(), Seq(), true)
