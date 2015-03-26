@@ -1,6 +1,8 @@
 package juicy.source.tokenizer
 
 object Tokenizer {
+  val debugToken = "=( )="
+
   val singleChars: Map[Char, Unit => Token] = Map(
     '\0' -> (Unit => new Token.EOF()),
     ';'  -> (Unit => new Token.Terminator()),
@@ -84,10 +86,17 @@ class Tokenizer(input: String, fname: String = "<string>") {
     } else if (cur == '\"') {
       CharDFA.matchString(source)
     } else {
+      (
+        if (source.matchExact(Tokenizer.debugToken)) {
+          source.eatExact(Tokenizer.debugToken)
+          Some(Token.Debug())
+        } else None
+      ).orElse {
       // Match an operator
       operators.find(op => source.matchExact(op)).map { op =>
         source.eatExact(op)
         new Token.Operator(op)
+      }
       }
 
       // Match a keyword or identifier

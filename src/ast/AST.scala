@@ -890,3 +890,28 @@ case class Parens(ghs: Expression) extends UnOp {
     rewriter(Parens.apply _)(rule, context)
 }
 
+case class Debugger(
+  debugWhat: String
+) extends Statement {
+  val children = Seq()
+
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
+
+  override def emit = {
+    import juicy.codegen.Implicits._
+
+    val msg = AnonLabel("debugstr")
+    Target.data.emit((msg, "db \"" + debugWhat + "\", 10"))
+    val msglen = AnonLabel("debugstrln")
+    Target.data.emit((msglen, s"equ $$ - $msg"))
+
+    Target.text.emit(
+      "mov eax, 4",
+      "mov ebx, 1",
+      s"mov ecx, $msg",
+      s"mov edx, $msglen",
+      "int 0x80"
+    )
+  }
+}
+

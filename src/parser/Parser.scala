@@ -318,6 +318,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
           tokens.backtrack()
           parseExprStmnt()
       }
+    } else if (check(Tokenizer.debugToken)) {
+      next()
+      cur match {
+        case StringLiteral(s) =>
+          next()
+          ensure(";")
+          Debugger(s)
+        case _ => throw Expected("Expected a string literal")
+      }
+
     } else parseExprStmnt()
   }
 

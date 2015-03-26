@@ -3,6 +3,7 @@ import org.scalatest.matchers.ShouldMatchers
 
 import juicy.codegen._
 import juicy.codegen.Implicits._
+import juicy.source.ast._
 import juicy.source.parser._
 import juicy.source.tokenizer._
 
@@ -49,6 +50,15 @@ class CodegenSpec extends FlatSpec with ShouldMatchers {
           }
         """).parseStmnt().emit
 
+      println(Target.file.emitted)
+    }
+  }
+
+  it should "emit debuggers" in {
+    Target.withFile("debug") {
+      val debugger = mkParser("""=( )= "wagwan homie";""").parseStmnt()
+      debugger should be === Debugger("wagwan homie")
+      debugger.emit
       println(Target.file.emitted)
     }
   }

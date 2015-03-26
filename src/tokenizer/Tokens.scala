@@ -31,4 +31,5 @@ object Token {
   case class Terminator() extends Token
   case class Invalid(reason: Option[String] = None) extends Token
   case class EOF() extends Token
+  case class Debug() extends Token
 }
