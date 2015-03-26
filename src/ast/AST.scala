@@ -367,23 +367,6 @@ case class ClassDefn(
 
   val classId = ClassDefn.getNextEqualityComparitor
 
-  override def emit = {
-    Target.file.export(dataLabel)
-
-    Target.text.emit(
-      dataLabel,
-      s"mov eax, $allocSize",
-      //"call __malloc",
-      s"mov eax, $classId"
-      // call initializer (which calls parent initializer)
-      // DONT call constructor, call it from your ctor, whic his called by a new stmtn
-    )
-
-    methods.foreach { m =>
-      m.emit
-    }
-  }
-
   override def emitLayout = {
     if (extnds.length > 1)
       throw new Exception("WTFFFFFFFFF")
@@ -547,29 +530,6 @@ case class MethodDefn(
     val qname = (containingClass.pkg :+ containingClass.name).mkString(".")
     NamedLabel(s"$qname@$signature")
   }
-
-  override def emit = {
-    if (isEntry) {
-      val startLabel = NamedLabel("start")
-      Target.file.export(startLabel)
-      Target.text.emit(
-        startLabel,
-        s"call $label",
-        "mov eax, 1",
-        "int 0x80"
-      )
-    }
-
-    Target.file.export(label)
-    Target.text.emit(
-      label,
-      Prologue()
-      // TODO: allocate stack space
-      )
-    body.map(_.emit)
-
-    Target.text.emit(Epilogue())
-  }
 }
 
 case class VarStmnt(
@@ -607,24 +567,6 @@ case class IfStmnt(
         then.rewrite(rule, newContext).asInstanceOf[BlockStmnt],
         otherwise.map(_.rewrite(rule, newContext).asInstanceOf[BlockStmnt])
       ), context))
-  }
-
-  override def emit = {
-    val elseL = AnonLabel("else")
-
-    cond.emit
-    Target.text.emit(RawInstr(s"jne $elseL"))
-
-    then.emit
-    if (otherwise.isDefined) {
-      val afterL = AnonLabel("after")
-      Target.text.emit(
-        RawInstr(s"jmp $afterL"),
-        elseL)
-      otherwise.get.emit
-
-      Target.text.emit(afterL)
-    } else Target.text.emit(elseL)
   }
 }
 
@@ -676,10 +618,6 @@ case class BlockStmnt(
         body.map(_.rewrite(rule, newContext).asInstanceOf[Statement])
       ), context))
   }
-
-  override def emit = {
-    body.foreach(_.emit)
-  }
 }
 
 case class ReturnStmnt(
@@ -693,11 +631,6 @@ case class ReturnStmnt(
       ReturnStmnt(
         value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context))
-  }
-
-  override def emit = {
-    value.map(_.emit)
-    Target.text.emit(Epilogue())
   }
 }
 
@@ -713,8 +646,6 @@ case class ExprStmnt(
         expr.rewrite(rule, newContext).asInstanceOf[Expression]
       ), context))
   }
-
-  override def emit = expr.emit
 }
 
 trait NullOp extends Expression {
@@ -727,11 +658,7 @@ trait NullOp extends Expression {
 case class NullVal()                extends NullOp
 case class ThisVal()                extends NullOp
 case class SuperVal()               extends NullOp
-case class IntVal(value: Int)       extends NullOp {
-  override def emit = {
-    Target.text.emit(s"mov ebx,$value")
-  }
-}
+case class IntVal(value: Int)       extends NullOp
 case class CharVal(value: Char)     extends NullOp
 case class BoolVal(value: Boolean)  extends NullOp
 case class StringVal(value: String) extends NullOp
@@ -775,17 +702,6 @@ case class Call(
 
   var rawResolvedMethod: Option[MethodDefn] = None
   lazy val resolvedMethod = rawResolvedMethod.get
-
-  override def emit = {
-    // TODO: figure out how to this
-    args.foreach { arg =>
-      arg.emit
-      Target.text.emit("push ebx")
-    }
-
-    val label = resolvedMethod.label
-    Target.text.emit(s"call $label")
-  }
 }
 
 case class Assignee(
@@ -1016,22 +932,5 @@ case class Debugger(
   val children = Seq()
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
-
-  override def emit = {
-    val msg = GlobalAnonLabel("debugstr")
-    val msglen = GlobalAnonLabel("debugstrln")
-    Target.fromGlobal(msg, msglen)
-
-    Target.global.data.emit((msg, "db \"" + debugWhat + "\", 10"))
-    Target.global.data.emit((msglen, s"equ $$ - $msg"))
-
-    Target.text.emit(
-      "mov eax, 4",
-      "mov ebx, 1",
-      s"mov ecx, $msg",
-      s"mov edx, $msglen",
-      "int 0x80"
-    )
-  }
 }
 

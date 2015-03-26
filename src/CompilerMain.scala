@@ -90,7 +90,7 @@ object CompilerMain {
     import java.io._
     Target.withFile(codegen.toString) {
       codegen.classes.foreach { c =>
-        c.emit
+        Generator.emit(c)
 
         Some(new PrintWriter("asm/codegen.s")).foreach{p => p.write(Target.file.emitted); p.close}
       }

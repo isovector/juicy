@@ -4,7 +4,7 @@ public class Codegen {
     public static int test() {
         Codegen.print();
         #YOLO "return worked";
-        return 0;
+        return 99;
     }
 
     public static void print() {

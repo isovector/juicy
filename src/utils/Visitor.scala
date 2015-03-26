@@ -128,10 +128,6 @@ trait Visitable {
     dst.originalToken = originalToken
     dst
   }
-
-  def emit = {
-    Target.text.emit(RawInstr(s"; not implemented: ${this.toString.takeWhile(_ != '(')}"))
-  }
 }
 
 case class Rewriter(rule: (Visitable, Seq[Visitable]) => Visitable) {
