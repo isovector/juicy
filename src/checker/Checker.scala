@@ -119,21 +119,27 @@ object Checker {
             }
           }
           call
+          
         case int: IntVal =>
           helper.setInt(int)
           int
+          
         case bool: BoolVal =>
           helper.setBoolean(bool)
           bool
+          
         case char: CharVal =>
           helper.setChar(char)
           char
+          
         case str: StringVal =>
           helper.setString(str)
           str
+          
         case n: NullVal =>
           helper.setNull(n)
           n
+          
         case neg@Neg(expr) => {
           if (!expr.hasType) {
             neg
@@ -150,6 +156,7 @@ object Checker {
             neg
           }
         }
+        
         case eq@Eq(lhs, rhs) => {
           if (!lhs.hasType || !rhs.hasType) {
             eq
@@ -436,7 +443,7 @@ object Checker {
                 helper.addError(CheckerError(s"Return type $rt cannot be converted to expected type $mt", r.from))
               }
             }
-          } else if (helper.isVoid(methodType)) {
+          } else if (!helper.isVoid(methodType)) {
             helper.addError(CheckerError(s"Non-void method must return a value", r.from))
           }
           r

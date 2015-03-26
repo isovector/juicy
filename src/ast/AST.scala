@@ -938,10 +938,10 @@ case class Parens(ghs: Expression) extends UnOp {
     rewriter(Parens.apply _)(rule, context)
 }
 
-case class TypeExpression (t: Typename) extends Expression {
+case class TypeExpression (tname: Typename) extends Expression {
   val children = Seq()
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = transfer(this)
-  exprType = Some(t)
+  exprType = Some(tname)
 }
 
 case class Debugger(

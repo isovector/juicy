@@ -11,7 +11,7 @@ class CodegenSpec extends FlatSpec with ShouldMatchers {
   def mkParser(source: String) = new Parser(new TokenStream(source))
 
   "Codegen" should "write a useful hello world" in {
-    val t = new Target
+/*    val t = new Target
 
     def func(name: String) = {
       val l = NamedLabel(name)
@@ -60,6 +60,6 @@ class CodegenSpec extends FlatSpec with ShouldMatchers {
       debugger should be === Debugger("wagwan homie")
       debugger.emit
       println(Target.file.emitted)
-    }
-  }
+    } */
+  } 
 }
