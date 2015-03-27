@@ -5,6 +5,9 @@ import juicy.source.ast._
 import juicy.source.scoper.Scope
 import juicy.utils.visitor._
 
+// NOTE: all temporaries live in ebx, except the result of malloc, and by
+// association, allocators
+
 object Generator {
   var currentClass: ClassDefn = null
   var currentMethod: MethodDefn = null
@@ -13,11 +16,15 @@ object Generator {
     lazy val deref = s"[$reg+$offset]"
   }
 
+  // Get the memory location of a variable
   def varLocation(name: String, scope: Scope) = {
     if (currentMethod != null) {
+      // TODO: this fails for non-static fields
       val params = currentMethod.params.length
       val stackOffset = scope.localVarStackIndex(name)
 
+      // Check if our offset number is < num of params, if so, we are up the
+      // stack, otherwise down
       val offset =
         if (stackOffset < params)
           params - stackOffset + 1
@@ -31,6 +38,7 @@ object Generator {
     }
   }
 
+  // Location of a reference's member
   def memLocation(m: Member) = {
     val t = m.lhs.t
     if (!t.isInstanceOf[ClassDefn]) throw new Exception("array access?")
@@ -41,6 +49,8 @@ object Generator {
     // TODO: broken if not in ebx, but should always be
     Location("ebx", offset * 4)
   }
+
+
 
   def emit(v: Visitable): Unit = {
     v match {
@@ -71,15 +81,19 @@ object Generator {
 
       case c: Call =>
         // TODO: figure out how to 'this'
+        // NOTE: put it in eax always i think is the plan
         val paramSize = c.args.map(_.t.stackSize).sum
         c.args.foreach { arg =>
           emit(arg)
           Target.text.emit("push ebx")
         }
 
+        // TODO: this should check if it's static, and if so do this
+        // otherwise dynamic dispatch
         val label = c.resolvedMethod.label
         Target.text.emit(s"call $label")
 
+        // Revert stack to old position after call
         if (paramSize > 0)
           Target.text.emit(s"add esp, byte $paramSize")
 
@@ -91,6 +105,7 @@ object Generator {
         val msglen = GlobalAnonLabel("debugstrln")
         Target.fromGlobal(msg, msglen)
 
+        // Generate string and strlen
         Target.global.data.emit((msg, "db \"" + debugWhat + "\", 10"))
         Target.global.data.emit((msglen, s"equ $$ - $msg"))
 
@@ -99,6 +114,7 @@ object Generator {
           "push ebx",
           "push ecx",
           "push edx",
+          // Interrupt for stdout write
           "mov eax, 4",
           "mov ebx, 1",
           s"mov ecx, $msg",
@@ -124,12 +140,17 @@ object Generator {
           // ALLOCATOR:
           c.allocLabel,
           Prologue(),
+
+          // Size to malloc
           s"mov eax, ${c.allocSize}",
           "call __malloc",
+
           s"mov [eax], word ${c.classId}",
           "push eax", // TODO: uhh so how do we do this passing?
           s"call ${c.initLabel}",
-          "pop ebx",  // put THIS into return addr
+
+          // Allocator should return `this`, so put it into ebx
+          "pop ebx",
           Epilogue(),
 
           // INITIALIZER
@@ -137,16 +158,19 @@ object Generator {
           Prologue()
         )
 
+        // Call parent initializer if it exists (it does, except for Object)
         if (c.extnds.length > 0) {
           val parentInit = c.extnds(0).r.asInstanceOf[ClassDefn].initLabel
           Target.file.reference(parentInit)
-          // TODO: when we link back to stdlib, do this properly
+
           Target.text.emit(
             "push word [ebp+4]"//,
+            // TODO: when we link back to stdlib, do this properly
             //s"call $parentInit"
           )
         }
 
+        // Initialize each field
         c.fields.foreach { f =>
           emit(f)
         }
@@ -155,8 +179,7 @@ object Generator {
           Epilogue()
           )
 
-
-
+        // Emit methods
         c.methods.foreach(emit)
         currentClass = null
 
@@ -166,19 +189,21 @@ object Generator {
       case m: MethodDefn =>
         currentMethod = m
 
+        // Are we `public static int test()`? If so, generate a _start symbol
         if (m.isEntry) {
           val startLabel = NamedLabel("start")
           Target.file.export(startLabel)
           Target.text.emit(
             startLabel,
+
+            // Call test()
             s"call ${m.label}",
+
+            // unix return interrupt
             "mov eax, 1",
             "int 0x80"
           )
         }
-
-        val stackSize =
-          (m.scope.get.maxStackIndex - m.params.length) * 4
 
         Target.file.export(m.label)
         Target.text.emit(
@@ -186,9 +211,13 @@ object Generator {
           Prologue()
         )
 
+        // Reserve local stack space if necessary
+        val stackSize =
+          (m.scope.get.maxStackIndex - m.params.length) * 4
         if (stackSize > 0)
           Target.text.emit(s"sub esp, $stackSize")
 
+        // Generate method body
         m.body.map(emit)
         Target.text.emit(Epilogue())
 
@@ -198,7 +227,6 @@ object Generator {
 
 
       case i: Id =>
-        // relative to local scope
         val offset = varLocation(i.name, i.scope.get).deref
         Target.text.emit(
           s"; load var ${i.name}",
@@ -210,11 +238,13 @@ object Generator {
       case i: IfStmnt =>
         val elseL = AnonLabel("else")
 
+        // Condition, jump to else
         emit(i.cond)
         Target.text.emit(RawInstr(s"jne $elseL"))
 
         emit(i.then)
         if (i.otherwise.isDefined) {
+          // We reuse our labels for posterity. or something
           val afterL = AnonLabel("after")
           Target.text.emit(
             RawInstr(s"jmp $afterL"),
@@ -238,36 +268,47 @@ object Generator {
 
 
       case a: Assignment =>
+        // Outermost expr of LHS must not be dereferenced, so we can't just
+        // delegate to the other emissions in this file to do it for us
         a.lhs.expr match {
           case i: Id =>
             val offset = varLocation(i.name, i.scope.get)
+            // Must be two instructions because otherwise nasm will dereference
             Target.text.emit(
               s"mov ebx, ${offset.reg}",
               s"add ebx, ${offset.offset}")
 
           case m: Member =>
+            // Emit the lhs of the method because only OUTERMOST expr must not
+            // be deref'd
             emit(m.lhs)
             val offset = memLocation(m)
             Target.text.emit(
               s"add ebx, ${offset.offset}")
 
+          // TODO: do static members (probably stupid easy, but we don't gen
+          // them yet)
           case sm: StaticMember => throw new Exception("static dont work sucka")
         }
 
+        // lvalue is now in ebx, but it will get stomped by rhs, so push it
         Target.text.emit("push ebx")
+        // rhs is in ebx so we can chain assignments for free
         emit(a.rhs)
         Target.text.emit(
           "pop ecx",
+          // *ecx = ebx
           "mov [ecx], ebx"
         )
 
 
       case n: NewType =>
         // TODO: do we need to store anything?
-        val init = n.tname.rc.allocLabel
+        val alloc = n.tname.rc.allocLabel
         Target.text.emit(
-          s"call $init",
+          s"call $alloc",
           // TODO: call constructor
+          // allocator returns this in eax
           "mov ebx, eax"
           )
 
