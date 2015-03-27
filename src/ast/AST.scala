@@ -425,13 +425,13 @@ case class ClassDefn(
 struct $name;
 
 struct $layout {
-  $layoutFields
+$layoutFields
 };
 
 struct $name {
   int classId;
   // TODO: uncomment this when we attack stdlib
-  // $parent
+  // $parent;
   $layout me;
 };
 

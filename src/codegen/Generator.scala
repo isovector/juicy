@@ -80,6 +80,9 @@ object Generator {
       case IntVal(value) =>
         Target.text.emit(s"mov ebx, $value")
 
+      case CharVal(value) =>
+        Target.text.emit(s"mov ebx, ${value.asInstanceOf[Int]}")
+
 
 
 
