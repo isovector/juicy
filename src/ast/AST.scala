@@ -352,8 +352,6 @@ case class ClassDefn(
   }
 
   override def allocSize = {
-    // TODO: this might have aligntment bugs
-    4 +
     extnds.map(_.resolved.get.allocSize).sum +
       fields.map(_.tname.resolved.get.stackSize).sum
   }
@@ -790,6 +788,9 @@ case class NewType(
         args.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
       ), context))
   }
+
+  var rawResolvedCxr: Option[MethodDefn] = None
+  lazy val resolvedCxr = rawResolvedCxr.get
 }
 
 case class NewArray(
@@ -906,7 +907,7 @@ case class Index(lhs: Expression, rhs: Expression) extends BinOp {
 
 
 case class StringConcat(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     rewriter(StringConcat.apply _)(rule, context)
 }
 

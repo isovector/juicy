@@ -18,10 +18,16 @@ object Generator {
 
   // Get the memory location of a variable
   def varLocation(name: String, scope: Scope) = {
+    // TODO: this fails for non-static fields
     if (currentMethod != null) {
-      // TODO: this fails for non-static fields
       val params = currentMethod.params.length
-      val stackOffset = scope.localVarStackIndex(name)
+
+      // `this` is always the first thing pushed
+      val stackOffset =
+        if (name == "this")
+          0
+        else
+          scope.localVarStackIndex(name)
 
       // Check if our offset number is < num of params, if so, we are up the
       // stack, otherwise down
@@ -49,8 +55,6 @@ object Generator {
     // TODO: broken if not in ebx, but should always be
     Location("ebx", offset * 4)
   }
-
-
 
   def emit(v: Visitable): Unit = {
     v match {
@@ -141,8 +145,8 @@ object Generator {
           c.allocLabel,
           Prologue(),
 
-          // Size to malloc
-          s"mov eax, ${c.allocSize}",
+          // Size to malloc. add 4 for the class id
+          s"mov eax, ${c.allocSize + 4}",
           "call __malloc",
 
           s"mov [eax], word ${c.classId}",
@@ -195,6 +199,7 @@ object Generator {
           Target.file.export(startLabel)
           Target.text.emit(
             startLabel,
+            // TODO: refactor this out if we need to generate vtables here
 
             // Call test()
             s"call ${m.label}",
@@ -217,6 +222,17 @@ object Generator {
         if (stackSize > 0)
           Target.text.emit(s"sub esp, $stackSize")
 
+        if (m.isCxr) {
+          m
+            .containingClass
+            .extnds
+            .headOption
+            .map { parent =>
+              // TODO: when we have stdlib, uncomment this
+              // Target.text.emit(s"call ${parent.rc.defaultCtorLabel}")
+            }
+        }
+
         // Generate method body
         m.body.map(emit)
         Target.text.emit(Epilogue())
@@ -230,6 +246,14 @@ object Generator {
         val offset = varLocation(i.name, i.scope.get).deref
         Target.text.emit(
           s"; load var ${i.name}",
+          s"mov ebx, $offset")
+
+
+
+      case t: ThisVal =>
+        val offset = varLocation("this", t.scope.get).deref
+        Target.text.emit(
+          s"; load this",
           s"mov ebx, $offset")
 
 
@@ -305,9 +329,12 @@ object Generator {
       case n: NewType =>
         // TODO: do we need to store anything?
         val alloc = n.tname.rc.allocLabel
+        val ctor = n.resolvedCxr.label
         Target.text.emit(
           s"call $alloc",
-          // TODO: call constructor
+          "push eax",
+          s"call $ctor",
+          "add esp, 4",
           // allocator returns this in eax
           "mov ebx, eax"
           )

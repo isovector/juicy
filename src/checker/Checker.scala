@@ -50,7 +50,7 @@ object Checker {
             }
           }
           id
-          
+
         case member@Member(left, right) =>
            val isInCall = context.head match {
              case c: Callee => true
@@ -73,7 +73,7 @@ object Checker {
                 }
             }
           member
-          
+
         case call@Call(method, fields) =>
           val (cls, ident, isStatic) = method.expr match {
             case id: Id => {
@@ -119,27 +119,27 @@ object Checker {
             }
           }
           call
-          
+
         case int: IntVal =>
           helper.setInt(int)
           int
-          
+
         case bool: BoolVal =>
           helper.setBoolean(bool)
           bool
-          
+
         case char: CharVal =>
           helper.setChar(char)
           char
-          
+
         case str: StringVal =>
           helper.setString(str)
           str
-          
+
         case n: NullVal =>
           helper.setNull(n)
           n
-          
+
         case neg@Neg(expr) => {
           if (!expr.hasType) {
             neg
@@ -156,7 +156,7 @@ object Checker {
             neg
           }
         }
-        
+
         case eq@Eq(lhs, rhs) => {
           if (!lhs.hasType || !rhs.hasType) {
             eq
@@ -182,7 +182,7 @@ object Checker {
             eq
           }
         }
-        
+
         case neq@NEq(lhs, rhs) => {
           if (!lhs.hasType || !rhs.hasType) {
             helper.setBoolean(neq)
@@ -207,7 +207,7 @@ object Checker {
             neq
           }
         }
-        
+
         case inst@InstanceOf(lhs, tname) => {
           if (!lhs.hasType) {
             helper.setBoolean(inst)
@@ -230,7 +230,7 @@ object Checker {
             inst
           }
         }
-        
+
         case nt: NewType => {
           nt.exprType = Some(nt.tname)
           val args = nt.args.map(_.exprType)
@@ -248,10 +248,12 @@ object Checker {
               val t = nt.tname
               helper.addError(CheckerError(s"Protected constructor for type $t cannot be accessed from outside package", nt.from))
             }
+
+            nt.rawResolvedCxr = cxr
           }
           nt
         }
-        
+
         case newArr@NewArray(tname, size) => {
           if (!size.hasType) {
             // Already invalid
@@ -263,23 +265,23 @@ object Checker {
           }
           newArr
         }
-        
+
         case geq: GEq => helper.doComp(geq, (a,b) => a >= b, ">=")
-        
+
         case gt: GThan => helper.doComp(gt, (a,b) => a > b, ">")
-        
+
         case leq: LEq => helper.doComp(leq, (a,b) => a <= b, "<=")
-        
+
         case lt: LThan => helper.doComp(lt, (a,b) => a < b, "<")
-        
+
         case mul: Mul => helper.doNumeric(mul, (a, b) => a * b, "*")
-        
+
         case div: Div => helper.doNumeric(div, (a,b) => a / b, "/")
-        
+
         case sub: Sub => helper.doNumeric(sub, (a,b) => a - b, "-")
-        
+
         case mod: Mod => helper.doNumeric(mod, (a,b) => a % b, "%")
-        
+
         case add@Add(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             add
@@ -317,7 +319,7 @@ object Checker {
           } else {
             helper.doNumeric(add, (l, r) => l + r, "+")
           }
-        
+
         case ind@Index(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             // Nothing to do
@@ -331,7 +333,7 @@ object Checker {
             }
           }
           ind
-          
+
         case and@LogicAnd(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             and
@@ -348,7 +350,7 @@ object Checker {
             helper.addError(unsupported("&&", and.from, lhs.exprType.get, rhs.exprType.get))
             and
           }
-        
+
         case or@LogicOr(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             or
@@ -363,7 +365,7 @@ object Checker {
             helper.addError(unsupported("||", or.from, lhs.exprType.get, rhs.exprType.get))
             or
           }
-        
+
         case n: Not =>
           if (!n.ghs.hasType) {
             n
@@ -378,7 +380,7 @@ object Checker {
             helper.addError(unsupported("unary-!", n.from, n.ghs.exprType.get))
             n
           }
-        
+
         case ass@Assignment(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             ass
@@ -392,7 +394,7 @@ object Checker {
             helper.addError(unsupported("assignment", ass.from, lhs.exprType.get, rhs.exprType.get))
             ass
           }
-        
+
         case v: VarStmnt =>
           if (v.value.isDefined && v.value.get.hasType) {
             if (!helper.isAssignable(TypeExpression(v.tname), v.value.get)) {
@@ -400,7 +402,7 @@ object Checker {
             }
           }
           v
-        
+
         case i: IfStmnt =>
           if (!i.cond.hasType) {
             i
@@ -411,7 +413,7 @@ object Checker {
             helper.addError(CheckerError(s"Branch Condition must be a boolean, received $t", i.from))
             i
           }
-        
+
         case f: ForStmnt =>
           if (f.cond.isDefined && f.cond.get.hasType &&
               (!(helper.isBoolean(f.cond.get)))) {
@@ -419,14 +421,14 @@ object Checker {
             helper.addError(CheckerError(s"Loop condition must be a boolean, received $t", f.from))
           }
           f
-        
+
         case w: WhileStmnt =>
           if (w.cond.hasType && !helper.isBoolean(w.cond)) {
             val t = w.cond.exprType.map(_.qname.mkString(".")).get
             helper.addError(CheckerError(s"Loop condition must be a boolean, received $t", w.from))
           }
           w
-        
+
         case c@Cast(tname, value) =>
           if (c.value.hasType) {
             val castType = TypeExpression(tname)
@@ -441,7 +443,7 @@ object Checker {
           } else {
             c
           }
-        
+
         case r: ReturnStmnt =>
           val methodType = TypeExpression(ancestor[MethodDefn].map(_.tname).flatMap(_.resolved).map(_.makeTypename).get)
           if (r.value.isDefined) {
@@ -458,9 +460,9 @@ object Checker {
             helper.addError(CheckerError(s"Non-void method must return a value", r.from))
           }
           r
-        
+
         case c: Callee => c
-        
+
         case sm@StaticMember(lhs, rhs) =>
           if (context.head != Callee(sm)) {
             val eqCls = (lhs +: lhs.superTypes)
@@ -478,25 +480,25 @@ object Checker {
             }
           }
           sm
-        
+
         case t: ThisVal =>
           if (isIn[MethodDefn]() && ancestor[MethodDefn].get.isStatic) {
             helper.addError(CheckerError(s"Reference to `this` in static context", t.from))
           }
           t.exprType = ancestor[ClassDefn].map(_.makeTypename)
           t
-        
+
         case ass: Assignee =>
           ass.exprType = ass.expr.exprType
           ass
-        
+
         case Parens(expr) =>
           expr
-        
+
         case ex: Expression =>
           helper.addError(CheckerError(s"Did not typecheck expression $ex", ex.from))
           ex
-        
+
         case _ => self
       }
     }).asInstanceOf[FileNode]
