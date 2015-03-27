@@ -77,7 +77,7 @@ abstract class Scope {
     if (children.length > 0)
       children.map(_.maxStackIndex).max
     else if (orderedDecls.length > 0)
-      localVarStackIndex(orderedDecls.last)
+      localVarStackIndex(orderedDecls.last) + 1
     else 0
   }
 

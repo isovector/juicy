@@ -1,7 +1,7 @@
 package juicy.codegen
 
 package object Implicits {
-  implicit def toRawInstr(u: String): RawInstr = RawInstr(u)
+  implicit def toRawInstr(u: String): RawInstr = RawInstr(s"    $u")
   implicit def toDataDefnInstrIns(u: (Label, Instruction)): DataDefnInstr =
     DataDefnInstr(u._1, u._2)
   implicit def toDataDefnInstrStr(u: (Label, String)): DataDefnInstr =

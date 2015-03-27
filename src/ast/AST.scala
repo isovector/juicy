@@ -188,6 +188,7 @@ trait TypeDefn extends Definition {
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   var resolved: Option[TypeDefn] = None
   lazy val r = resolved.get
+  lazy val rc = resolved.get.asInstanceOf[ClassDefn]
 
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
@@ -378,6 +379,22 @@ case class ClassDefn(
     fields.foreach { f =>
       Target.data.emit(s"resb ${f.tname.r.stackSize}")
     }
+  }
+
+  def getFieldIndex(name: String): Int = {
+    val index = fields.map(_.name).indexOf(name)
+    if (index < 0)
+      extnds(0).rc.getFieldIndex(name)
+    else
+      extnds(0).rc.maxFieldIndex + index + 1
+  }
+
+  lazy val maxFieldIndex: Int = {
+    val parentSize =
+      if (extnds.length == 0) 0
+      else extnds(0).rc.maxFieldIndex
+
+    parentSize + fields.length
   }
 }
 

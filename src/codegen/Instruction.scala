@@ -34,8 +34,7 @@ case class Prologue() extends Instruction {
 case class Epilogue() extends Instruction {
   def emitted =
     Seq(
-      "mov esp, ebp",
-      "pop ebp",
+      "leave",
       "ret"
     ).mkString("\n")
 }
