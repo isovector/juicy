@@ -1,17 +1,17 @@
 public class Codegen {
-    public int magic = 88;
+    public Codegen inner;
+    public int value;
 
     public Codegen() {
-        #YOLO "empty ctor";
+        this.value = 5;
     }
 
     public Codegen(boolean print) {
-        #YOLO "bool ctor";
-        this.magic = 10;
+        this.inner = new Codegen();
     }
 
     public static int test() {
         Codegen c = new Codegen(true);
-        return c.magic;
+        return c.inner.value;
     }
 }

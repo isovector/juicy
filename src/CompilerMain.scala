@@ -82,8 +82,8 @@ object CompilerMain {
 
   def main(args: Array[String]): Unit = {
     // HACK HACK HACK HACK HACK
-    val files = build(parseFiles(args.toList))
-    // val files = build(parseFiles("stdlib/io/OutputStream.java stdlib/io/PrintStream.java stdlib/io/Serializable.java stdlib/lang/Boolean.java stdlib/lang/Byte.java stdlib/lang/Character.java stdlib/lang/Class.java stdlib/lang/Cloneable.java stdlib/lang/Integer.java stdlib/lang/Number.java stdlib/lang/Object.java stdlib/lang/Short.java stdlib/lang/String.java stdlib/lang/System.java stdlib/util/Arrays.java joosc-test/Codegen.java".split(" ").toList))
+    //val files = build(parseFiles(args.toList))
+    val files = build(parseFiles("stdlib/io/OutputStream.java stdlib/io/PrintStream.java stdlib/io/Serializable.java stdlib/lang/Boolean.java stdlib/lang/Byte.java stdlib/lang/Character.java stdlib/lang/Class.java stdlib/lang/Cloneable.java stdlib/lang/Integer.java stdlib/lang/Number.java stdlib/lang/Object.java stdlib/lang/Short.java stdlib/lang/String.java stdlib/lang/System.java stdlib/util/Arrays.java joosc-test/Codegen.java".split(" ").toList))
 
     val codegen = files.last
 
@@ -97,6 +97,7 @@ object CompilerMain {
     }
 
     Some(new PrintWriter("asm/global.s")).foreach{p => p.write(Target.global.emitted); p.close}
+    Some(new PrintWriter("asm/types.cc")).foreach{p => p.write(Target.debug.toString); p.close}
 
     CompilerTerminate(0)
   }

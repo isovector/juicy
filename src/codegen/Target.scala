@@ -27,6 +27,24 @@ object Target {
   var file = new Target
   val global = new Target
 
+  object debug {
+    private val defns =
+      // typedefs for primitives
+      collection.mutable.MutableList[String](
+        "typedef int aligned_int __attribute__ ((aligned (4)));",
+        "typedef char aligned_byte __attribute__ ((aligned (4)));",
+        "typedef char aligned_char __attribute__ ((aligned (4)));",
+        "typedef short aligned_short __attribute__ ((aligned (4)));",
+        "typedef bool aligned_boolean __attribute__ ((aligned (4)));"
+      )
+
+    def add(t: juicy.source.ast.ClassDefn) = {
+      defns += t.debugTypeLayout
+    }
+
+    override def toString = defns.mkString("\n")
+  }
+
   def text = file.text
   def data = file.data
 

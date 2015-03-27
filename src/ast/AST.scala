@@ -183,6 +183,8 @@ trait TypeDefn extends Definition {
   def emitLayout = {
     Target.data.emit("; unimplemented layout")
   }
+
+  def debugTypeLayout = ""
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
@@ -214,6 +216,15 @@ case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = this
   var isFinal = false
+
+  lazy val debugType = {
+    if (isArray)
+      "void*" // TODO: arrays should not be void*
+    else if (isPrimitive)
+      "aligned_" + name
+    else
+      qname.last + "*"
+  }
 }
 
 case class FileNode(
@@ -393,6 +404,39 @@ case class ClassDefn(
       else extnds(0).rc.maxFieldIndex
 
     parentSize + fields.length
+  }
+
+  // Generate equivalent c++ structs for gdb debugging
+  override def debugTypeLayout = {
+    val parent =
+      extnds
+        .headOption
+        .map(me => s"${me.rc.name}_Layout parent")
+        .getOrElse("")
+
+    val layoutFields =
+      fields
+        .map(f => s"${f.tname.debugType} ${f.name};")
+        .mkString("\n")
+
+    val layout = name + "_Layout"
+
+    s"""
+struct $name;
+
+struct $layout {
+  $layoutFields
+};
+
+struct $name {
+  int classId;
+  // TODO: uncomment this when we attack stdlib
+  // $parent
+  $layout me;
+};
+
+$name __$name;
+"""
   }
 }
 

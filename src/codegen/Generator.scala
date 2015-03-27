@@ -140,6 +140,8 @@ object Generator {
         Target.file.export(c.initLabel)
         Target.file.export(c.defaultCtorLabel)
 
+        Target.debug.add(c)
+
         Target.text.emit(
           // ALLOCATOR:
           c.allocLabel,
