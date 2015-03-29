@@ -74,10 +74,12 @@ abstract class Scope {
   }
 
   def maxStackIndex: Int = {
-    if (children.length > 0)
-      children.map(_.maxStackIndex).max
-    else if (orderedDecls.length > 0)
-      localVarStackIndex(orderedDecls.last) + 1
+    var determinants = children.map(_.maxStackIndex)
+    if (orderedDecls.length > 0)
+      determinants :+= localVarStackIndex(orderedDecls.last) + 1
+
+    if (determinants.length > 0)
+      determinants.max
     else 0
   }
 

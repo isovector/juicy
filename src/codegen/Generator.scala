@@ -56,6 +56,26 @@ object Generator {
     Location("ebx", offset * 4)
   }
 
+  // Compare ebx to ecx, use jmpType to decide how they compare
+  def cmpHelper(lhs: Expression, rhs: Expression, jmpType: String) = {
+    val afterwards = AnonLabel()
+    val falseCase = AnonLabel()
+
+    emit(rhs)
+    Target.text.emit("push ebx")
+    emit(lhs)
+    Target.text.emit(
+      "pop ecx",
+      "cmp ebx, ecx",
+      s"jn$jmpType $falseCase",
+      "mov ebx, 1",
+      s"jmp $afterwards",
+      falseCase,
+      "mov ebx, 0",
+      afterwards
+      )
+  }
+
   def emit(v: Visitable): Unit = {
     v match {
       case BlockStmnt(body) =>
@@ -82,6 +102,25 @@ object Generator {
 
       case CharVal(value) =>
         Target.text.emit(s"mov ebx, ${value.asInstanceOf[Int]}")
+
+      case BoolVal(true) =>
+        Target.text.emit(s"mov ebx, 1")
+
+      case BoolVal(false) =>
+        Target.text.emit(s"mov ebx, 0")
+
+
+
+      case Eq(lhs, rhs) =>
+        cmpHelper(lhs, rhs, "e")
+      case GEq(lhs, rhs) =>
+        cmpHelper(lhs, rhs, "ge")
+      case LEq(lhs, rhs) =>
+        cmpHelper(lhs, rhs, "le")
+      case LThan(lhs, rhs) =>
+        cmpHelper(lhs, rhs, "l")
+      case GThan(lhs, rhs) =>
+        cmpHelper(lhs, rhs, "g")
 
 
 
@@ -117,6 +156,7 @@ object Generator {
         Target.global.data.emit((msglen, s"equ $$ - $msg"))
 
         Target.text.emit(
+          s"; begin debugger",
           "push eax",
           "push ebx",
           "push ecx",
@@ -124,13 +164,15 @@ object Generator {
           // Interrupt for stdout write
           "mov eax, 4",
           "mov ebx, 1",
+          s"; $msg: ''$debugWhat''",
           s"mov ecx, $msg",
           s"mov edx, $msglen",
           "int 0x80",
           "pop edx",
           "pop ecx",
           "pop ebx",
-          "pop eax"
+          "pop eax",
+          "; end debugger"
         )
 
 
@@ -265,16 +307,24 @@ object Generator {
 
 
       case i: IfStmnt =>
-        val elseL = AnonLabel("else")
+        val thenL = AnonLabel("then")
+        val afterL = AnonLabel("after")
+        val elseL =
+          if (i.otherwise.isDefined)
+            AnonLabel("else")
+          else
+            afterL
 
         // Condition, jump to else
         emit(i.cond)
-        Target.text.emit(RawInstr(s"jne $elseL"))
+        Target.text.emit(
+          "test ebx, 1",
+          s"jz $elseL",
+          thenL // not strictly necessary, but helpful for debugging
+        )
 
         emit(i.then)
         if (i.otherwise.isDefined) {
-          // We reuse our labels for posterity. or something
-          val afterL = AnonLabel("after")
           Target.text.emit(
             RawInstr(s"jmp $afterL"),
             elseL)
