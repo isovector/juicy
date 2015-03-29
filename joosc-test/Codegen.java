@@ -2,11 +2,15 @@ public class Codegen {
     public Codegen() {
     }
 
-    public static int test() {
-        int magic = 18;
+    public static boolean lazy(boolean b) {
+#YOLO "lazy called"
+        return b;
+    }
 
-        if (magic < 19) {
-            int a = 5;
+    public static int test() {
+        boolean b = false;
+
+        if (b || Codegen.lazy(true)) {
             #YOLO "good";
         }
 

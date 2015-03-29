@@ -56,6 +56,38 @@ object Generator {
     Location("ebx", offset * 4)
   }
 
+  // Eager/lazy and or logic operators
+  def logical(lhs: Expression, rhs: Expression, op: String, eager: Boolean) = {
+    if (eager) {
+      // Eager case is easy, just compute both and op them
+      emit(lhs)
+      Target.text.emit("push ebx")
+      emit(rhs)
+      Target.text.emit(
+        "pop ecx",
+        s"$op ebx, ecx"
+      )
+    } else {
+      // Lazy case is harder, first compute lhs, see if it is equal to
+      // shortValue, otherwise return value of rhs
+      val shortValue = op match {
+        case "and" => 0
+        case "or"  => 1
+        // explicitly missing a default case
+      }
+
+      val doneL = AnonLabel()
+      emit(lhs)
+      Target.text.emit(
+        s"mov ecx, $shortValue",
+        "cmp ebx, ecx",
+        s"je $doneL"
+      )
+      emit(rhs)
+      Target.text.emit(doneL)
+    }
+  }
+
   // Compare ebx to ecx, use jmpType to decide how they compare
   def cmpHelper(lhs: Expression, rhs: Expression, jmpType: String) = {
     val afterwards = AnonLabel()
@@ -97,30 +129,28 @@ object Generator {
 
 
 
-      case IntVal(value) =>
-        Target.text.emit(s"mov ebx, $value")
+      case IntVal(value) => Target.text.emit(s"mov ebx, $value")
+
+      case BoolVal(true)  => Target.text.emit(s"mov ebx, 1")
+      case BoolVal(false) => Target.text.emit(s"mov ebx, 0")
 
       case CharVal(value) =>
         Target.text.emit(s"mov ebx, ${value.asInstanceOf[Int]}")
 
-      case BoolVal(true) =>
-        Target.text.emit(s"mov ebx, 1")
-
-      case BoolVal(false) =>
-        Target.text.emit(s"mov ebx, 0")
 
 
+      case Eq(lhs, rhs)    => cmpHelper(lhs, rhs, "e")
+      case GEq(lhs, rhs)   => cmpHelper(lhs, rhs, "ge")
+      case LEq(lhs, rhs)   => cmpHelper(lhs, rhs, "le")
+      case LThan(lhs, rhs) => cmpHelper(lhs, rhs, "l")
+      case GThan(lhs, rhs) => cmpHelper(lhs, rhs, "g")
 
-      case Eq(lhs, rhs) =>
-        cmpHelper(lhs, rhs, "e")
-      case GEq(lhs, rhs) =>
-        cmpHelper(lhs, rhs, "ge")
-      case LEq(lhs, rhs) =>
-        cmpHelper(lhs, rhs, "le")
-      case LThan(lhs, rhs) =>
-        cmpHelper(lhs, rhs, "l")
-      case GThan(lhs, rhs) =>
-        cmpHelper(lhs, rhs, "g")
+      case LazyOr(lhs, rhs)   => logical(lhs, rhs, "or", false)
+      case LazyAnd(lhs, rhs)  => logical(lhs, rhs, "and", false)
+      case EagerOr(lhs, rhs)  => logical(lhs, rhs, "or", true)
+      case EagerAnd(lhs, rhs) => logical(lhs, rhs, "and", true)
+
+
 
       case Not(ghs) =>
         emit(ghs)
