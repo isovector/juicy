@@ -334,7 +334,7 @@ object Checker {
           }
           ind
 
-        case and@LogicAnd(lhs, rhs) =>
+        case and@LazyAnd(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             and
           } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
@@ -351,7 +351,7 @@ object Checker {
             and
           }
 
-        case or@LogicOr(lhs, rhs) =>
+        case or@LazyOr(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             or
           } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {

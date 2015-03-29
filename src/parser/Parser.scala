@@ -14,16 +14,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
 
   val operators = Seq(
     Map(
-      "||" -> (LogicOr.tupled _)
+      "||" -> (LazyOr.tupled _)
     ),
     Map(
-      "&&" -> (LogicAnd.tupled _)
+      "&&" -> (LazyAnd.tupled _)
     ),
     Map(
-      "|" -> (BitOr.tupled _)
+      "|" -> (EagerOr.tupled _)
     ),
     Map(
-      "&" -> (BitAnd.tupled _)
+      "&" -> (EagerAnd.tupled _)
     ),
     Map(
       "==" -> (Eq.tupled _),
@@ -329,7 +329,6 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       cur match {
         case StringLiteral(s) =>
           next()
-          ensure(";")
           Debugger(s)
         case _ => throw Expected("Expected a string literal")
       }

@@ -869,24 +869,24 @@ case class InstanceOf(
   }
 }
 
-case class LogicOr(lhs: Expression, rhs: Expression) extends BinOp {
+case class LazyOr(lhs: Expression, rhs: Expression) extends BinOp {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(LogicOr.apply _)(rule, context)
+    rewriter(LazyOr.apply _)(rule, context)
 }
 
-case class LogicAnd(lhs: Expression, rhs: Expression) extends BinOp {
+case class LazyAnd(lhs: Expression, rhs: Expression) extends BinOp {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(LogicAnd.apply _)(rule, context)
+    rewriter(LazyAnd.apply _)(rule, context)
 }
 
-case class BitOr(lhs: Expression, rhs: Expression) extends BinOp {
+case class EagerOr(lhs: Expression, rhs: Expression) extends BinOp {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(BitOr.apply _)(rule, context)
+    rewriter(EagerOr.apply _)(rule, context)
 }
 
-case class BitAnd(lhs: Expression, rhs: Expression) extends BinOp {
+case class EagerAnd(lhs: Expression, rhs: Expression) extends BinOp {
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(BitAnd.apply _)(rule, context)
+    rewriter(EagerAnd.apply _)(rule, context)
 }
 
 case class Eq(lhs: Expression, rhs: Expression) extends BinOp {
