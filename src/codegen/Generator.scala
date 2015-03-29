@@ -122,6 +122,14 @@ object Generator {
       case GThan(lhs, rhs) =>
         cmpHelper(lhs, rhs, "g")
 
+      case Not(ghs) =>
+        emit(ghs)
+        Target.text.emit(
+          "mov ecx, ebx",
+          "mov ebx, 1",
+          "sub ebx, ecx"
+          )
+
 
 
 
