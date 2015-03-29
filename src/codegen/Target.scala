@@ -47,6 +47,7 @@ object Target {
 
   def text = file.text
   def data = file.data
+  def rodata = file.rodata
 
   def withFile[T](fileName: String)(doWhat: => T) = {
     file = new Target
@@ -78,6 +79,7 @@ class Target extends Emittable {
 
   val text = new Section("text")
   val data = new Section("data", 4)
+  val rodata = new Section("rodata", 4)
 
   def emitted = {
     exports
@@ -90,7 +92,9 @@ class Target extends Emittable {
     "\n\n" +
     text.emitted +
     "\n\n" +
-    data.emitted
+    data.emitted +
+    "\n\n" +
+    rodata.emitted
   }
 }
 

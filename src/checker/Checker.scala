@@ -113,6 +113,8 @@ object Checker {
                   }
                 }
 
+                call.rawSignature = Some(sig)
+                // TODO: only if it is static
                 call.rawResolvedMethod = tn
                 helper.setType(call, tn.get.tname)
               }

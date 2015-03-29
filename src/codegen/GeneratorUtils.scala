@@ -44,13 +44,17 @@ trait GeneratorUtils {
   // Location of a reference's member
   def memLocation(m: Member) = {
     val t = m.lhs.t
-    if (!t.isInstanceOf[ClassDefn]) throw new Exception("array access?")
+    if (!t.isInstanceOf[ClassDefn]) {
+      // TODO: help
+      Target.text.emit("; array access mem location???")
+      Location("ebx", 0)
+    } else {
+      val c = t.asInstanceOf[ClassDefn]
+      val offset = c.getFieldIndex(m.rhs.name)
 
-    val c = t.asInstanceOf[ClassDefn]
-    val offset = c.getFieldIndex(m.rhs.name)
-
-    // TODO: broken if not in ebx, but should always be
-    Location("ebx", offset * 4)
+      // TODO: broken if not in ebx, but should always be
+      Location("ebx", offset * 4)
+    }
   }
 
   // Eager/lazy and or logic operators

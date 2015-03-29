@@ -185,6 +185,10 @@ trait TypeDefn extends Definition {
   }
 
   def debugTypeLayout = ""
+
+  def vmethodIndex(sig: Signature): Int = {
+    allMethods.indexWhere(_.signature == sig)
+  }
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
@@ -294,7 +298,7 @@ case class FileNode(
 }
 
 object ClassDefn {
-  private var autoIncr = 0
+  private var autoIncr = -1
   private var enableIncr = true
 
   def getNextEqualityComparitor: Int = {
@@ -349,7 +353,7 @@ case class ClassDefn(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    transfer(rule(
+    val result = transfer(rule(
       ClassDefn(
         name,
         pkg,
@@ -359,7 +363,9 @@ case class ClassDefn(
         fields.map(_.rewrite(rule, newContext).asInstanceOf[VarStmnt]),
         methods.map(_.rewrite(rule, newContext).asInstanceOf[MethodDefn]),
         isInterface
-      ), context))
+      ), context)).asInstanceOf[ClassDefn]
+    result.classId = classId
+    result
   }
 
   override def allocSize = {
@@ -375,8 +381,15 @@ case class ClassDefn(
   val allocLabel = NamedLabel(s"$labelName##new")
   val initLabel = NamedLabel(s"$labelName##init")
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
+  val vtableLabel = NamedLabel(s"$labelName##vtable")
 
-  val classId = ClassDefn.getNextEqualityComparitor
+  var classId =
+    if (!isInterface)
+      ClassDefn.getNextEqualityComparitor
+    else -1
+
+  def is(other: ClassDefn) = classId == other.classId
+  def isnt(other: ClassDefn) = classId != other.classId
 
   override def emitLayout = {
     if (extnds.length > 1)
@@ -772,6 +785,10 @@ case class Call(
 
   var rawResolvedMethod: Option[MethodDefn] = None
   lazy val resolvedMethod = rawResolvedMethod.get
+
+  var rawSignature: Option[Signature] = None
+  lazy val signature = rawSignature.get
+
   lazy val isStatic = resolvedMethod.isStatic
 }
 

@@ -85,16 +85,20 @@ object CompilerMain {
     //val files = build(parseFiles(args.toList))
     val files = build(parseFiles("stdlib/io/OutputStream.java stdlib/io/PrintStream.java stdlib/io/Serializable.java stdlib/lang/Boolean.java stdlib/lang/Byte.java stdlib/lang/Character.java stdlib/lang/Class.java stdlib/lang/Cloneable.java stdlib/lang/Integer.java stdlib/lang/Number.java stdlib/lang/Object.java stdlib/lang/Short.java stdlib/lang/String.java stdlib/lang/System.java stdlib/util/Arrays.java joosc-test/Codegen.java".split(" ").toList))
 
-    val codegen = files.last
-
     import java.io._
-    Target.withFile(codegen.toString) {
-      codegen.classes.foreach { c =>
-        Generator.emit(c)
+    files
+      .filter(_.classes.length > 0)
+      .sortBy(_.classes(0).classId)
+      .foreach { f =>
+        val fname = s"asm/${f.classes(0).name}.s"
+        Target.withFile(fname) {
+          f.classes.foreach { c =>
+            Generator.emit(c)
 
-        Some(new PrintWriter("asm/codegen.s")).foreach{p => p.write(Target.file.emitted); p.close}
+            Some(new PrintWriter(fname)).foreach{p => p.write(Target.file.emitted); p.close}
+          }
+        }
       }
-    }
 
     Some(new PrintWriter("asm/global.s")).foreach{p => p.write(Target.global.emitted); p.close}
     Some(new PrintWriter("asm/types.cc")).foreach{p => p.write(Target.debug.toString); p.close}

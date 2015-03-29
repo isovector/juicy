@@ -12,6 +12,11 @@ object Generator extends GeneratorUtils {
   var currentClass: ClassDefn = null
   var currentMethod: MethodDefn = null
 
+  val globalVtable = NamedLabel("__vtable")
+
+  Target.global.rodata.emit(globalVtable)
+  Target.global.export(globalVtable)
+
   def emit(v: Visitable): Unit = {
     v match {
       case BlockStmnt(body) =>
@@ -76,10 +81,28 @@ object Generator extends GeneratorUtils {
           Target.text.emit("push ebx")
         }
 
-        // TODO: this should check if it's static, and if so do this
-        // otherwise dynamic dispatch
-        val label = c.resolvedMethod.label
-        Target.text.emit(s"call $label")
+        if (c.isStatic) {
+          val label = c.resolvedMethod.label
+          if (c.resolvedMethod.containingClass isnt currentClass)
+            Target.file.reference(label)
+          Target.text.emit(s"call $label")
+        } else {
+          Target.file.reference(globalVtable)
+
+          val invokee = c.method.exprType.map(_.r).getOrElse(currentClass)
+          val classId =
+            if (invokee.isInstanceOf[ClassDefn])
+              invokee.asInstanceOf[ClassDefn].classId * 4
+            else
+              0 // TODO: this will fail for non-classes
+
+          val methodOffset = invokee.vmethodIndex(c.signature) * 4
+          Target.text.emit(
+            s"mov ecx, $globalVtable",
+            s"mov ecx, [ecx+$classId]",
+            s"call [ecx+$methodOffset]"
+            )
+        }
 
         // Revert stack to old position after call
         if (paramSize > 0)
@@ -120,7 +143,10 @@ object Generator extends GeneratorUtils {
 
 
 
-      case c: ClassDefn =>
+      case c: ClassDefn if c.isInterface =>
+        // do nothing
+
+      case c: ClassDefn if !c.isInterface =>
         currentClass = c
 
         Target.file.export(c.allocLabel)
@@ -138,7 +164,7 @@ object Generator extends GeneratorUtils {
           s"mov eax, ${c.allocSize + 4}",
           "call __malloc",
 
-          s"mov [eax], word ${c.classId}",
+          s"mov [eax], dword ${c.classId}",
           "push eax", // TODO: uhh so how do we do this passing?
           s"call ${c.initLabel}",
 
@@ -157,7 +183,7 @@ object Generator extends GeneratorUtils {
           Target.file.reference(parentInit)
 
           Target.text.emit(
-            "push word [ebp+4]"//,
+            "push dword [ebp+4]"//,
             // TODO: when we link back to stdlib, do this properly
             //s"call $parentInit"
           )
@@ -174,6 +200,30 @@ object Generator extends GeneratorUtils {
 
         // Emit methods
         c.methods.foreach(emit)
+
+        Target.file.export(c.vtableLabel)
+        Target.global.reference(c.vtableLabel)
+
+        Target.global.rodata.emit(
+          s"dd ${c.vtableLabel}"
+          )
+
+        Target.rodata.emit(
+          c.vtableLabel
+          )
+
+        c.allMethods.foreach { m =>
+          if (!m.isCxr) {
+            if (m.containingClass isnt c)
+              Target.file.reference(m.label)
+
+            Target.rodata.emit(
+              s"dd ${m.label}"
+            )
+          }
+        }
+
+
         currentClass = null
 
 
@@ -309,7 +359,12 @@ object Generator extends GeneratorUtils {
 
           // TODO: do static members (probably stupid easy, but we don't gen
           // them yet)
-          case sm: StaticMember => throw new Exception("static dont work sucka")
+          case sm: StaticMember =>
+            Target.data.emit("; unimplemented static assignment")
+
+          case idx: Index =>
+            // TODO
+            Target.data.emit("; unimplemented index assignment")
         }
 
         // lvalue is now in ebx, but it will get stomped by rhs, so push it
@@ -325,8 +380,15 @@ object Generator extends GeneratorUtils {
 
       case n: NewType =>
         // TODO: do we need to store anything?
-        val alloc = n.tname.rc.allocLabel
+        val c = n.tname.rc
+        val alloc = c.allocLabel
         val ctor = n.resolvedCxr.label
+
+        if (c isnt currentClass) {
+          Target.file.reference(alloc)
+          Target.file.reference(ctor)
+        }
+
         Target.text.emit(
           s"call $alloc",
           "push eax",

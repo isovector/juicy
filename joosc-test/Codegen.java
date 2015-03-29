@@ -2,17 +2,13 @@ public class Codegen {
     public Codegen() {
     }
 
-    public static boolean lazy(boolean b) {
-#YOLO "lazy called"
-        return b;
+    public void lazy() {
+#YOLO "fuck yeah it works"
     }
 
     public static int test() {
-        boolean b = false;
-
-        if (b || Codegen.lazy(true)) {
-            #YOLO "good";
-        }
+        Codegen c = new Codegen();
+        c.lazy();
 
         return 0;
     }
