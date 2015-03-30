@@ -192,12 +192,14 @@ trait TypeDefn extends Definition {
       .filter(!_.isCxr)
       .indexWhere(_.signature == sig)
   }
+
+  var classId = 0
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
   var resolved: Option[TypeDefn] = None
-  lazy val r = resolved.get
-  lazy val rc = resolved.get.asInstanceOf[ClassDefn]
+  def r = resolved.get
+  def rc = resolved.get.asInstanceOf[ClassDefn]
 
   val name = qname.mkString(".")
   val brackets = if (isArray) " []" else ""
@@ -304,18 +306,6 @@ object ClassDefn {
   private var autoIncr = -1
   private var enableIncr = true
 
-  def getNextEqualityComparitor: Int = {
-    if (enableIncr)
-      autoIncr += 1
-    autoIncr
-  }
-
-  def suspendUniqueness[T](c: => T) = {
-    enableIncr = false
-    c
-    enableIncr = true
-  }
-
   def filterClassDefns(l: Seq[TypeDefn]): Seq[ClassDefn] = {
     l.filter(t => t match {
       case c: ClassDefn => true
@@ -367,7 +357,9 @@ case class ClassDefn(
         methods.map(_.rewrite(rule, newContext).asInstanceOf[MethodDefn]),
         isInterface
       ), context)).asInstanceOf[ClassDefn]
-    result.classId = classId
+    result.methods.foreach { m =>
+      m.rawContainingClass = Some(result)
+    }
     result
   }
 
@@ -386,13 +378,8 @@ case class ClassDefn(
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
   val vtableLabel = NamedLabel(s"$labelName##vtable")
 
-  var classId =
-    if (!isInterface)
-      ClassDefn.getNextEqualityComparitor
-    else -1
-
-  def is(other: ClassDefn) = classId == other.classId
-  def isnt(other: ClassDefn) = classId != other.classId
+  def is(other: ClassDefn) = labelName == other.labelName
+  def isnt(other: ClassDefn) = !(this is other)
 
   override def emitLayout = {
     if (extnds.length > 1)
@@ -525,6 +512,8 @@ case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
   override val isInterface = false
 
   override def labelName = elemType.labelName + "#"
+
+  classId = elemType.classId + 1
 }
 
 case class NullDefn() extends TypeDefn {
@@ -617,8 +606,8 @@ case class MethodDefn(
   }
 
   var rawContainingClass: Option[ClassDefn] = None
-  lazy val containingClass = rawContainingClass.get
-  lazy val label =
+  def containingClass = rawContainingClass.get
+  def label =
     if (isCxr && params.length == 0)
       containingClass.defaultCtorLabel
     else

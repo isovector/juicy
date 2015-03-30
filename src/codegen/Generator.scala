@@ -40,7 +40,6 @@ object Generator extends GeneratorUtils {
     )
   }
 
-  Target.global.rodata.emit(globalVtable)
   Target.global.export(globalVtable)
   Target.global.export(globalArrayAlloc)
 
@@ -179,6 +178,7 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.allocLabel)
         Target.file.export(c.initLabel)
         Target.file.export(c.defaultCtorLabel)
+        Target.file.export(c.vtableLabel)
 
         Target.debug.add(c)
 
@@ -229,20 +229,10 @@ object Generator extends GeneratorUtils {
         // Emit methods
         c.methods.foreach(emit)
 
-        // Build vtable
-        Target.file.export(c.vtableLabel)
-        Target.global.reference(c.vtableLabel)
-
-        Target.global.rodata.emit(
-          s"dd ${c.vtableLabel}"
-          )
-
-        Target.rodata.emit(
-          c.vtableLabel
-          )
-
+        Target.rodata.emit(c.vtableLabel)
         c.allMethods.foreach { m =>
           if (!m.isCxr) {
+
             if (m.containingClass isnt c)
               Target.file.reference(m.label)
 

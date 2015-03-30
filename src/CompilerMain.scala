@@ -62,7 +62,7 @@ object CompilerMain {
     }.toList.flatten
   }
 
-  def build(asts: Seq[FileNode]): Seq[FileNode] = {
+  def build(asts: Seq[FileNode]): (PackageTree, Seq[FileNode]) = {
     handleErrors {
       val pkgtree = Resolver(asts)
       HardlyKnower(pkgtree)
@@ -74,16 +74,16 @@ object CompilerMain {
       newasts
         .foreach(AnalysisProbe(_))
 
-      return newasts
+      return (pkgtree, newasts)
     }
 
-    asts
+    throw new Exception("you should never get here")
   }
 
   def main(args: Array[String]): Unit = {
     // HACK HACK HACK HACK HACK
     //val files = build(parseFiles(args.toList))
-    val files = build(parseFiles(Seq(
+    val (pkgtree, files) = build(parseFiles(Seq(
 "stdlib/lang/Object.java",
 "stdlib/lang/Number.java",
 "stdlib/io/Serializable.java",
@@ -103,23 +103,7 @@ object CompilerMain {
 "joosc-test/Codegen2.java"
 )))
 
-    import java.io._
-    files
-      .filter(_.classes.length > 0)
-      .sortBy(_.classes(0).classId)
-      .foreach { f =>
-        val fname = s"asm/${f.classes(0).name}.s"
-        Target.withFile(fname) {
-          f.classes.foreach { c =>
-            Generator.emit(c)
-
-            Some(new PrintWriter(fname)).foreach{p => p.write(Target.file.emitted); p.close}
-          }
-        }
-      }
-
-    Some(new PrintWriter("asm/global.s")).foreach{p => p.write(Target.global.emitted); p.close}
-    Some(new PrintWriter("asm/types.cc")).foreach{p => p.write(Target.debug.toString); p.close}
+    Driver(pkgtree, files)
 
     CompilerTerminate(0)
   }
