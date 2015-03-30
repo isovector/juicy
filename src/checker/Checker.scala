@@ -86,7 +86,7 @@ object Checker {
             }
             // TODO: other setup labels
             case StaticMember(cls, right) => (Some(cls), right.name, true)
-            case Member(left, right) =>  (left.et.resolved, right.name, false)
+            case Member(left, right) =>  (left.exprType.map(_.r), right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
           if (cls.isDefined) {
