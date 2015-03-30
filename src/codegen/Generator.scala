@@ -98,43 +98,57 @@ object Generator extends GeneratorUtils {
 
 
 
-      case c: Call =>
+      case c: Call if c.isStatic =>
         // TODO: figure out how to 'this'
         val paramSize = c.args.map(_.t.stackSize).sum
+        
         c.args.foreach { arg =>
           emit(arg)
           Target.text.emit("push ebx")
         }
-
-        if (c.isStatic) {
-          val label = c.resolvedMethod.label
-          if (c.resolvedMethod.containingClass isnt currentClass)
+        
+        val label = c.resolvedMethod.label
+        if (c.resolvedMethod.containingClass isnt currentClass)
             Target.file.reference(label)
-          Target.text.emit(s"call $label")
-        } else {
-          Target.file.reference(globalVtable)
-
-          val invokee = c.method.exprType.map(_.r).getOrElse(currentClass)
-          val toBeThis = c.method.expr match {
-            case i: Id => varLocation("this", c.scope.get)
-            case m@Member(lhs, rhs) => 
-             emit(lhs)
-             Location("ebx", 0)
-          }
-          val methodOffset = invokee.vmethodIndex(c.signature) * 4
-          Target.text.emit(
-            s"mov ecx, $globalVtable",
-            s"mov edx, $toBeThis",
-            s"mov ecx, [ecx + edx * 4]",
-            s"call [ecx+$methodOffset]"
-            )
-        }
+        Target.text.emit(s"call $label")
+        
 
         // Revert stack to old position after call
         if (paramSize > 0)
           Target.text.emit(s"add esp, byte $paramSize")
 
+      case c: Call if !c.isStatic =>
+      
+        Target.file.reference(globalVtable)
 
+        val invokee = c.method.exprType.map(_.r).getOrElse(currentClass)
+        val toBeThis = c.method.expr match {
+          case i: Id => thisLocation
+          case m@Member(lhs, rhs) => 
+           emit(lhs)
+           Location("ebx", 0)
+        }
+        
+        Target.text.emit(
+            s"mov ebx, ${toBeThis.reg}",
+            s"add ebx, ${toBeThis.offset}",
+            s"push ebx")
+        
+        val paramSize = c.args.map(_.t.stackSize).sum + 4
+        
+        c.args.foreach { arg =>
+          emit(arg)
+          Target.text.emit("push ebx")
+        }
+        
+        val methodOffset = invokee.vmethodIndex(c.signature) * 4
+        Target.text.emit(
+          s"mov ecx, $globalVtable",
+          s"mov edx, ${toBeThis.deref}",
+          s"mov ecx, [ecx + edx * 4]",
+          s"call [ecx+$methodOffset]",
+          s"add esp, byte $paramSize"
+        )
 
 
       case Debugger(debugWhat) =>
@@ -310,7 +324,7 @@ object Generator extends GeneratorUtils {
 
 
       case t: ThisVal =>
-        val offset = varLocation("this", t.scope.get).deref
+        val offset = thisLocation.deref
         Target.text.emit(
           s"; load this",
           s"mov ebx, $offset")

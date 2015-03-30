@@ -8,9 +8,12 @@ public class Codegen {
         return 137;
     }
 
-    public static int test() {
-        Codegen c = new Codegen();
+    public int foo() {
+      return hashCode();
+    }
 
-        return c.hashCode();
+    public static int test() {
+        Codegen c = new Codegen2();
+        return c.foo();
     }
 }

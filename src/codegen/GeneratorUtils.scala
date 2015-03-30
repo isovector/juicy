@@ -20,16 +20,12 @@ trait GeneratorUtils {
       val params = currentMethod.params.length
 
       // `this` is always the first thing pushed
-      val stackOffset =
-        if (name == "this")
-          0
-        else
-          scope.localVarStackIndex(name)
+      val stackOffset = scope.localVarStackIndex(name)
 
       // Check if our offset number is < num of params, if so, we are up the
       // stack, otherwise down
       val offset =
-        if (stackOffset < params)
+        if (stackOffset <= params)
           params - stackOffset + 1
         else
           -(stackOffset - params + 1)
@@ -39,6 +35,13 @@ trait GeneratorUtils {
       val offset = currentClass.getFieldIndex(name)
       Location("eax", 4 * offset)
     }
+  }
+  
+  def thisLocation = {
+    // TODO: might fuck up for initializers
+    val params = currentMethod.params.length
+    val offset = (params + 2) * 4
+    Location("ebp", offset)
   }
 
   // Location of a reference's member
