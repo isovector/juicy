@@ -100,7 +100,6 @@ object Generator extends GeneratorUtils {
 
       case c: Call =>
         // TODO: figure out how to 'this'
-        // NOTE: put it in eax always i think is the plan
         val paramSize = c.args.map(_.t.stackSize).sum
         c.args.foreach { arg =>
           emit(arg)
@@ -116,16 +115,17 @@ object Generator extends GeneratorUtils {
           Target.file.reference(globalVtable)
 
           val invokee = c.method.exprType.map(_.r).getOrElse(currentClass)
-          val classId =
-            if (invokee.isInstanceOf[ClassDefn])
-              invokee.asInstanceOf[ClassDefn].classId * 4
-            else
-              0 // TODO: this will fail for non-classes
-
+          val toBeThis = c.method.expr match {
+            case i: Id => varLocation("this", c.scope.get)
+            case m@Member(lhs, rhs) => 
+             emit(lhs)
+             Location("ebx", 0)
+          }
           val methodOffset = invokee.vmethodIndex(c.signature) * 4
           Target.text.emit(
             s"mov ecx, $globalVtable",
-            s"mov ecx, [ecx+$classId]",
+            s"mov edx, $toBeThis",
+            s"mov ecx, [ecx + edx * 4]",
             s"call [ecx+$methodOffset]"
             )
         }
