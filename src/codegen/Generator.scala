@@ -183,9 +183,10 @@ object Generator extends GeneratorUtils {
           Target.file.reference(parentInit)
 
           Target.text.emit(
-            "push dword [ebp+4]"//,
+            "push dword [ebp+4]",
             // TODO: when we link back to stdlib, do this properly
-            //s"call $parentInit"
+            s"call $parentInit",
+            "add esp, 4"
           )
         }
 

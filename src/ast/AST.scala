@@ -188,7 +188,9 @@ trait TypeDefn extends Definition {
   def debugTypeLayout = ""
 
   def vmethodIndex(sig: Signature): Int = {
-    allMethods.indexWhere(_.signature == sig)
+    allMethods
+      .filter(!_.isCxr)
+      .indexWhere(_.signature == sig)
   }
 }
 
@@ -444,8 +446,7 @@ $layoutFields
 
 struct $name {
   int classId;
-  // TODO: uncomment this when we attack stdlib
-  // $parent;
+  $parent;
   $layout me;
 };
 
