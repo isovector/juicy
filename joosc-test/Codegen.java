@@ -1,15 +1,16 @@
 public class Codegen {
+    public int a = 5;
+
     public Codegen() {
     }
 
-    public void lazy() {
-#YOLO "fuck yeah it works"
+    public int hashCode() {
+        return 137;
     }
 
     public static int test() {
-        Codegen c = new Codegen();
-        c.lazy();
+        Codegen2 c = new Codegen2();
 
-        return 0;
+        return c.a;
     }
 }

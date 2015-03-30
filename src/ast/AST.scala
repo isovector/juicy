@@ -226,7 +226,7 @@ case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
 
   lazy val debugType = {
     if (isArray)
-      "void*" // TODO: arrays should not be void*
+      "Array*"
     else if (isPrimitive)
       "aligned_" + name
     else
@@ -435,6 +435,18 @@ case class ClassDefn(
         .map(f => s"${f.tname.debugType} ${f.name};")
         .mkString("\n")
 
+    val companion =
+      if (parent == "")
+        s"""
+struct Array {
+  int classId;
+  aligned_int length;
+  // use &data[x] to get array data
+  Object data;
+};
+"""
+      else ""
+
     val layout = name + "_Layout"
 
     s"""
@@ -451,6 +463,8 @@ struct $name {
 };
 
 $name __$name;
+
+$companion
 """
   }
 }

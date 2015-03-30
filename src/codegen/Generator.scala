@@ -183,8 +183,8 @@ object Generator extends GeneratorUtils {
           Target.file.reference(parentInit)
 
           Target.text.emit(
-            "push dword [ebp+4]",
-            // TODO: when we link back to stdlib, do this properly
+            // TODO: There is a bug here if the initializer changes eax
+            "push dword [ebp-4]",
             s"call $parentInit",
             "add esp, 4"
           )
@@ -202,6 +202,7 @@ object Generator extends GeneratorUtils {
         // Emit methods
         c.methods.foreach(emit)
 
+        // Build vtable
         Target.file.export(c.vtableLabel)
         Target.global.reference(c.vtableLabel)
 
@@ -268,8 +269,9 @@ object Generator extends GeneratorUtils {
             .extnds
             .headOption
             .map { parent =>
-              // TODO: when we have stdlib, uncomment this
-              // Target.text.emit(s"call ${parent.rc.defaultCtorLabel}")
+              val ctor = parent.rc.defaultCtorLabel
+              Target.file.reference(ctor)
+              Target.text.emit(s"call $ctor")
             }
         }
 
