@@ -338,6 +338,7 @@ object Checker {
 
         case and@LazyAnd(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
+            helper.setBoolean(and)
             and
           } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
             val res = (lhs, rhs) match {
@@ -350,11 +351,13 @@ object Checker {
             res
           } else {
             helper.addError(unsupported("&&", and.from, lhs.exprType.get, rhs.exprType.get))
+            helper.setBoolean(and)
             and
           }
 
         case or@LazyOr(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
+            helper.setBoolean(or)
             or
           } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
             val res = (lhs, rhs) match {
@@ -365,6 +368,41 @@ object Checker {
             res
           } else {
             helper.addError(unsupported("||", or.from, lhs.exprType.get, rhs.exprType.get))
+            helper.setBoolean(or)
+            or
+          }
+        
+        case and@EagerAnd(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
+            helper.setBoolean(and)
+            and
+          } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
+            val res = (lhs, rhs) match {
+              case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value && b2.value)
+              case _ => and
+            }
+            helper.setBoolean(res)
+            res
+          } else {
+            helper.addError(unsupported("&", and.from, lhs.exprType.get, rhs.exprType.get))
+            helper.setBoolean(and)
+            and
+          }
+
+        case or@EagerOr(lhs, rhs) =>
+          if (!lhs.hasType || !rhs.hasType) {
+            helper.setBoolean(or)
+            or
+          } else if (helper.isBoolean(lhs) && helper.isBoolean(rhs)) {
+            val res = (lhs, rhs) match {
+              case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value || b2.value)
+              case _ => or
+            }
+            helper.setBoolean(res)
+            res
+          } else {
+            helper.addError(unsupported("|", or.from, lhs.exprType.get, rhs.exprType.get))
+            helper.setBoolean(or)
             or
           }
 
