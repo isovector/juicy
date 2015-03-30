@@ -12,10 +12,37 @@ object Generator extends GeneratorUtils {
   var currentClass: ClassDefn = null
   var currentMethod: MethodDefn = null
 
-  val globalVtable = NamedLabel("__vtable")
+  val globalVtable = NamedLabel("_vtable")
+  val globalArrayAlloc = NamedLabel("_aalloc")
+
+  // array allocation
+  {
+    val loop = AnonLabel()
+    Target.global.text.emit(
+      // Array alloc assumes size will be in eax, returns alloc in eax
+      // TODO: maybe make this extend from object ehhh fuckit
+      globalArrayAlloc,
+      Prologue(),
+      "mov ecx, eax",
+      "imul eax, 4",
+      "add eax, 8",
+      "call __malloc",
+      "mov [eax+4], ecx",
+      "mov edx, eax",
+      "add edx, 8",
+      loop,
+      "mov [edx], dword 0",
+      "add edx, 4",
+      "sub ecx, 1",
+      "cmp ecx, 0",
+      s"jne $loop",
+      Epilogue()
+    )
+  }
 
   Target.global.rodata.emit(globalVtable)
   Target.global.export(globalVtable)
+  Target.global.export(globalArrayAlloc)
 
   def emit(v: Visitable): Unit = {
     v match {
@@ -400,6 +427,19 @@ object Generator extends GeneratorUtils {
           // allocator returns this in eax
           "mov ebx, eax"
           )
+
+
+      case na@NewArray(t: Typename, len: Expression) =>
+        Target.file.reference(globalArrayAlloc)
+
+        emit(len)
+        Target.text.emit(
+          "mov eax, ebx",
+          s"call $globalArrayAlloc",
+          //s"mov [eax], ${t.r.classId}",
+          "mov ebx, eax"
+          )
+
 
 
       case m: Member =>

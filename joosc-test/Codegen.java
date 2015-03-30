@@ -9,8 +9,8 @@ public class Codegen {
     }
 
     public static int test() {
-        Codegen2 c = new Codegen2();
+        Codegen2[] c = new Codegen2[10];
 
-        return c.a;
+        return 5;
     }
 }
