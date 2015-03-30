@@ -25,7 +25,7 @@ trait GeneratorUtils {
       // Check if our offset number is < num of params, if so, we are up the
       // stack, otherwise down
       val offset =
-        if (stackOffset <= params)
+        if (stackOffset < params)
           params - stackOffset + 1
         else
           -(stackOffset - params + 1)
@@ -36,7 +36,7 @@ trait GeneratorUtils {
       Location("eax", 4 * offset)
     }
   }
-  
+
   def thisLocation = {
     // TODO: might fuck up for initializers
     val params = currentMethod.params.length
