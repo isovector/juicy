@@ -295,27 +295,14 @@ object Checker {
 
             helper.setString(newString)
             newString
-          } else if (helper.isString(lhs)) {
-            if (helper.isVoid(rhs)) {
-              helper.addError(unsupported("+", add.from, rhs.et))
+          } else if (helper.isString(lhs) || helper.isString(rhs)) {
+            if (helper.isVoid(lhs) || helper.isVoid(rhs)) {
+              helper.addError(unsupported("+", add.from, lhs.et, rhs.et))
               helper.setString(add)
               add
             } else {
-              val strExpr = ToString(rhs)
-              helper.setString(strExpr)
-              val res = StringConcat(lhs, strExpr)
+              val res = StringConcat(lhs, rhs)
               helper.setString(res)
-              res
-            }
-          } else if (helper.isString(rhs)) {
-            if (helper.isVoid(lhs)) {
-              helper.addError(unsupported("+", add.from, lhs.et))
-              helper.setString(add)
-              add
-            } else {
-              val strExpr = ToString(lhs)
-              helper.setString(strExpr)
-              val res = StringConcat(strExpr, rhs)
               res
             }
           } else {
