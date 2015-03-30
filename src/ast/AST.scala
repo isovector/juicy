@@ -977,6 +977,70 @@ case class StringConcat(lhs: Expression, rhs: Expression) extends BinOp {
     rewriter(StringConcat.apply _)(rule, context)
 }
 
+case class BoolToStr(sub: Expression) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      BoolToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[Expression]
+    ), context))
+}
+
+
+case class ByteToStr(sub: Expression) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      ByteToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[Expression]
+    ), context))
+}
+
+case class CharToStr(sub: Expression) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      CharToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[Expression]
+    ), context))
+}
+
+case class IntToStr(sub: Expression) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      IntToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[Expression]
+    ), context))
+}
+
+case class ShortToStr(sub: Expression) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      ShortToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[Expression]
+    ), context))
+}
+
+case class StrToStr(sub: StringVal) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      StrToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[StringVal]
+    ), context))
+}
+
+case class RefToStr(sub: Expression) extends Expression {
+  val children = Seq(sub)
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+    transfer(rule(
+      StrToStr(
+       sub.rewrite(rule, this +: context).asInstanceOf[StringVal]
+    ), context))
+}
+
 case class Member(lhs: Expression, rhs: Id) extends Expression {
   val children = Seq(lhs, rhs)
 

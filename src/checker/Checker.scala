@@ -301,7 +301,7 @@ object Checker {
               helper.setString(add)
               add
             } else {
-              val res = StringConcat(lhs, rhs)
+              val res = StringConcat(helper.wrapAsString(lhs), helper.wrapAsString(rhs))
               helper.setString(res)
               res
             }

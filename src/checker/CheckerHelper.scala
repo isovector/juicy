@@ -2,17 +2,7 @@ package juicy.source.checker
 
 import juicy.source.PackageTree
 import juicy.source.tokenizer.SourceLocation
-import juicy.source.ast.ArrayDefn
-import juicy.source.ast.BinOp
-import juicy.source.ast.BoolVal
-import juicy.source.ast.CharVal
-import juicy.source.ast.ClassDefn
-import juicy.source.ast.Expression
-import juicy.source.ast.Id
-import juicy.source.ast.IntVal
-import juicy.source.ast.NullDefn
-import juicy.source.ast.TypeDefn
-import juicy.source.ast.Typename
+import juicy.source.ast._
 import juicy.utils.CompilerError
 import juicy.utils.visitor.VisitError
 
@@ -52,10 +42,6 @@ object CheckerHelper {
   }
 }
 
-class CheckerTypes (pkgTree: PackageTree, val ThisCls: ClassDefn) {
-
-}
-
 class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
     import CheckerHelper._
     var errors = Seq[CompilerError]()
@@ -72,6 +58,26 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
     )
     private val bools = Set(pkgTree.getTypename(Seq("boolean")).get,
       pkgTree.getTypename(Seq("java", "lang", "Boolean")).get)
+ 
+    private val primitives: Map[Typename, Typename] = Map(
+      "boolean" -> Seq("java", "lang", "Boolean"), 
+      "byte" -> Seq("java", "lang", "Byte"), 
+      "char" -> Seq("java", "lang", "Character"),
+      "int" -> Seq("java", "lang", "Integer"), 
+      "short" -> Seq("java", "lang", "Short")
+    ).map(_ match {
+      case (tnp, tnr) => pkgTree.getTypename(Seq(tnp)).get -> pkgTree.getTypename(tnr).get
+    })
+    
+    private val primitiveStrs = Map(
+      "boolean" -> { e => BoolToStr(e)},
+      "byte" -> { e => ByteToStr(e)},
+      "char" -> { e => CharToStr(e)},
+      "int" -> { e => IntToStr(e)},
+      "short" -> { e => ShortToStr(e)}
+    ).map(_ match {
+      case (tn, fn) => (pkgTree.getTypename(Seq(tn)).get -> fn)
+    })
       
     private val StringType = pkgTree.getTypename(Seq("java", "lang", "String")).get
     private val BoolType = pkgTree.getTypename(Seq("boolean")).get
@@ -83,6 +89,7 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
     private val ObjectCls = pkgTree.getType(Seq("java", "lang", "Object")).get
     
     def isNumeric(e: Expression) = numerics contains e.et
+    def isPrimitive(e: Expression) = primitives contains e.et
     def isBoolean(e: Expression) = bools contains e.et
     def isString(e: Expression) = e.exprType == Some(StringType)
     def isVoid(e: Expression) = e.exprType == Some(VoidType)
@@ -207,6 +214,26 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
       } else {
         false
       }
+    }
+    
+    def wrapAsString(e: Expression): Expression = {
+      val strVal = if (isPrimitive(e)) {
+        primitiveStrs(e.et)(e)
+      } else if (isNull(e)) {
+        val sub = StringVal("null")
+        setString(sub)
+        StrToStr(sub)
+      } else {
+        e match {
+          case lit: StringVal => {
+            setString(lit)
+            StrToStr(lit)
+          }
+          case _ => RefToStr(e)
+        }
+      }
+      setString(strVal)
+      strVal
     }
     
     def addError (err: CompilerError) {
