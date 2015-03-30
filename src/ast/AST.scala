@@ -746,7 +746,9 @@ case class SuperVal()               extends NullOp
 case class IntVal(value: Int)       extends NullOp
 case class CharVal(value: Char)     extends NullOp
 case class BoolVal(value: Boolean)  extends NullOp
-case class StringVal(value: String) extends NullOp
+case class StringVal(value: String) extends NullOp {
+  var interned: Label = null
+}
 
 case class Id(name: String)         extends NullOp {
   var status: AmbiguousStatus.Value = AmbiguousStatus.AMBIGUOUS
