@@ -39,7 +39,8 @@ object Modifiers {
 
 trait Expression extends Visitable {
   var exprType: Option[Typename] = None
-  lazy val t = exprType.get.r
+  lazy val et = exprType.get
+  lazy val t = et.r
   def hasType = exprType.isDefined
   def typeScope = exprType.flatMap(_.resolved).map(_.classScope)
 }

@@ -58,10 +58,10 @@ object Checker {
            }
             if (!isInCall && left.hasType) {
                 val rname = right.name
-                val curType = left.exprType.flatMap(_.resolved).get
+                val curType = left.t
                 val definedIn = (curType +: curType.superTypes).find(_.classScope.resolve(rname) != None)
                 if (definedIn.isEmpty) {
-                  helper.addError(undefined(right, left.exprType.get))
+                  helper.addError(undefined(right, left.et))
                 } else {
                   val field = definedIn.get.fields.filter(_.name == rname)(0)
                   if (!field.isPublic && !hasInstanceProtectedAccess(helper.ThisCls, curType, definedIn.get)) {
@@ -86,12 +86,12 @@ object Checker {
             }
             // TODO: other setup labels
             case StaticMember(cls, right) => (Some(cls), right.name, true)
-            case Member(left, right) =>  (left.exprType.flatMap(_.resolved), right.name, false)
+            case Member(left, right) =>  (left.et.resolved, right.name, false)
             case e: Expression => throw new CheckerError(s"How the fuck did $e you get here?", e.from)
           }
           if (cls.isDefined) {
             if(fields.filter(!_.hasType).isEmpty) {
-              val argtypes = fields.map(_.exprType.get)
+              val argtypes = fields.map(_.et)
               val sig = Signature(ident, argtypes)
               val declCls = cls.get.origTypeForMethod(sig)
               val tn = declCls.flatMap(m => m.methods.find(_.signature == sig))
@@ -154,7 +154,7 @@ object Checker {
             newNeg.exprType = expr.exprType
             newNeg
           } else {
-            helper.addError(unsupported("unary -", neg.from, expr.exprType.get))
+            helper.addError(unsupported("unary -", neg.from, expr.et))
             neg
           }
         }
@@ -163,11 +163,11 @@ object Checker {
           if (!lhs.hasType || !rhs.hasType) {
             eq
           } else if (helper.isVoid(lhs) || helper.isVoid(rhs)) {
-            helper.addError(unsupported("==", eq.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("==", eq.from, lhs.et, rhs.et))
             eq
           } else if (helper.isNumeric(lhs) && helper.isNumeric(rhs)) {
             helper.doComp(eq, (a, b) => a == b, "==")
-          } else if (lhs.exprType.get == rhs.exprType.get) {
+          } else if (lhs.et == rhs.et) {
             val expr = (lhs, rhs) match {
               case (s1: StringVal, s2: StringVal) => BoolVal(s1.value == s2.value)
               case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value == b2.value)
@@ -180,7 +180,7 @@ object Checker {
             helper.setBoolean(eq)
             eq
           } else {
-            helper.addError(unsupported("==", eq.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("==", eq.from, lhs.et, rhs.et))
             eq
           }
         }
@@ -191,7 +191,7 @@ object Checker {
             neq
           } else if (helper.isNumeric(lhs) && helper.isNumeric(rhs)) {
             helper.doComp(neq, (a, b) => a != b, "!=")
-          } else if (lhs.exprType.get == rhs.exprType.get) {
+          } else if (lhs.et == rhs.et) {
             val expr = (lhs, rhs) match {
               case (s1: StringVal, s2: StringVal) => BoolVal(s1.value != s2.value)
               case (b1: BoolVal, b2: BoolVal) => BoolVal(b1.value != b2.value)
@@ -204,7 +204,7 @@ object Checker {
             helper.setBoolean(neq)
             neq
           } else {
-            helper.addError(unsupported("!=", neq.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("!=", neq.from, lhs.et, rhs.et))
             helper.setBoolean(neq)
             neq
           }
@@ -214,7 +214,7 @@ object Checker {
           if (!lhs.hasType) {
             helper.setBoolean(inst)
             inst
-          } else if (!lhs.exprType.get.r.nullable ||
+          } else if (!lhs.t.nullable ||
               !tname.r.nullable) {
             helper.addError(CheckerError("Operands of instanceOf cannot be value types", inst.from))
             helper.setBoolean(inst)
@@ -227,7 +227,7 @@ object Checker {
             helper.setBoolean(inst)
             inst
           } else {
-            helper.addError(unsupported("instanceof", inst.from, lhs.exprType.get, tname))
+            helper.addError(unsupported("instanceof", inst.from, lhs.et, tname))
             helper.setBoolean(inst)
             inst
           }
@@ -262,7 +262,7 @@ object Checker {
           } else if (helper.isNumeric(size)) {
             helper.setType(newArr, tname)
           } else {
-            val t = size.exprType.get.name
+            val t = size.et.name
             helper.addError(CheckerError(s"Array size cannot be of type $t", newArr.from))
           }
           newArr
@@ -297,7 +297,7 @@ object Checker {
             newString
           } else if (helper.isString(lhs)) {
             if (helper.isVoid(rhs)) {
-              helper.addError(unsupported("+", add.from, rhs.exprType.get))
+              helper.addError(unsupported("+", add.from, rhs.et))
               helper.setString(add)
               add
             } else {
@@ -309,7 +309,7 @@ object Checker {
             }
           } else if (helper.isString(rhs)) {
             if (helper.isVoid(lhs)) {
-              helper.addError(unsupported("+", add.from, lhs.exprType.get))
+              helper.addError(unsupported("+", add.from, lhs.et))
               helper.setString(add)
               add
             } else {
@@ -326,12 +326,12 @@ object Checker {
           if (!lhs.hasType || !rhs.hasType) {
             // Nothing to do
           } else if (!helper.isNumeric(rhs)) {
-            helper.addError(unsupported("[]", ind.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("[]", ind.from, lhs.et, rhs.et))
           } else {
-            val t = lhs.exprType.get.r
+            val t = lhs.t
             t match {
               case arr@ArrayDefn(elem) => helper.setType(ind, elem.makeTypename)
-              case _ => helper.addError(unsupported("[]", ind.from, lhs.exprType.get, rhs.exprType.get))
+              case _ => helper.addError(unsupported("[]", ind.from, lhs.et, rhs.et))
             }
           }
           ind
@@ -350,7 +350,7 @@ object Checker {
             helper.setBoolean(res)
             res
           } else {
-            helper.addError(unsupported("&&", and.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("&&", and.from, lhs.et, rhs.et))
             helper.setBoolean(and)
             and
           }
@@ -367,7 +367,7 @@ object Checker {
             helper.setBoolean(res)
             res
           } else {
-            helper.addError(unsupported("||", or.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("||", or.from, lhs.et, rhs.et))
             helper.setBoolean(or)
             or
           }
@@ -384,7 +384,7 @@ object Checker {
             helper.setBoolean(res)
             res
           } else {
-            helper.addError(unsupported("&", and.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("&", and.from, lhs.et, rhs.et))
             helper.setBoolean(and)
             and
           }
@@ -401,7 +401,7 @@ object Checker {
             helper.setBoolean(res)
             res
           } else {
-            helper.addError(unsupported("|", or.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("|", or.from, lhs.et, rhs.et))
             helper.setBoolean(or)
             or
           }
@@ -417,28 +417,28 @@ object Checker {
             helper.setBoolean(newVal)
             newVal
           } else {
-            helper.addError(unsupported("unary-!", n.from, n.ghs.exprType.get))
+            helper.addError(unsupported("unary-!", n.from, n.ghs.et))
             n
           }
 
         case ass@Assignment(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             ass
-          } else if (lhs.exprType.get.isFinal) {
+          } else if (lhs.et.isFinal) {
             helper.addError(CheckerError(s"Invalid assignment to final expression $lhs", ass.from))
             ass
           } else if (helper.isAssignable(lhs, rhs)) {
             ass.exprType = lhs.exprType
             ass
           } else {
-            helper.addError(unsupported("assignment", ass.from, lhs.exprType.get, rhs.exprType.get))
+            helper.addError(unsupported("assignment", ass.from, lhs.et, rhs.et))
             ass
           }
 
         case v: VarStmnt =>
           if (v.value.isDefined && v.value.get.hasType) {
             if (!helper.isAssignable(TypeExpression(v.tname), v.value.get)) {
-              helper.addError(unsupported("assignment", v.from, v.tname, v.value.flatMap(_.exprType).get))
+              helper.addError(unsupported("assignment", v.from, v.tname, v.value.get.et))
             }
           }
           v
@@ -449,7 +449,7 @@ object Checker {
           } else if (helper.isBoolean(i.cond)) {
             i
           } else {
-            val t = i.cond.exprType.map(_.qname.mkString(".")).get
+            val t = i.cond.et.qname.mkString(".")
             helper.addError(CheckerError(s"Branch Condition must be a boolean, received $t", i.from))
             i
           }
@@ -457,14 +457,14 @@ object Checker {
         case f: ForStmnt =>
           if (f.cond.isDefined && f.cond.get.hasType &&
               (!(helper.isBoolean(f.cond.get)))) {
-            val t = f.cond.flatMap(_.exprType).map(_.qname.mkString(".")).get
+            val t = f.cond.get.et.qname.mkString(".")
             helper.addError(CheckerError(s"Loop condition must be a boolean, received $t", f.from))
           }
           f
 
         case w: WhileStmnt =>
           if (w.cond.hasType && !helper.isBoolean(w.cond)) {
-            val t = w.cond.exprType.map(_.qname.mkString(".")).get
+            val t = w.cond.et.qname.mkString(".")
             helper.addError(CheckerError(s"Loop condition must be a boolean, received $t", w.from))
           }
           w
@@ -477,7 +477,7 @@ object Checker {
               helper.setType(c, tname)
               c
             } else {
-              helper.addError(unsupported("cast", c.from, tname, value.exprType.get))
+              helper.addError(unsupported("cast", c.from, tname, value.et))
               c
             }
           } else {
@@ -491,8 +491,8 @@ object Checker {
               helper.addError(CheckerError("Void method cannot return value", r.from))
             } else if (r.value.flatMap(_.exprType).isDefined) {
               if(!helper.isAssignable(methodType, r.value.get)) {
-                val rt = r.value.flatMap(_.exprType).get.qname.mkString(".")
-                val mt = methodType.exprType.get.qname.mkString(".")
+                val rt = r.value.get.et.qname.mkString(".")
+                val mt = methodType.et.qname.mkString(".")
                 helper.addError(CheckerError(s"Return type $rt cannot be converted to expected type $mt", r.from))
               }
             }

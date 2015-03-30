@@ -82,8 +82,8 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
     private val CharType = pkgTree.getTypename(Seq("char")).get
     private val ObjectCls = pkgTree.getType(Seq("java", "lang", "Object")).get
     
-    def isNumeric(e: Expression) = numerics contains e.exprType.get
-    def isBoolean(e: Expression) = bools contains e.exprType.get
+    def isNumeric(e: Expression) = numerics contains e.et
+    def isBoolean(e: Expression) = bools contains e.et
     def isString(e: Expression) = e.exprType == Some(StringType)
     def isVoid(e: Expression) = e.exprType == Some(VoidType)
     def isNull(e: Expression) = e.exprType == Some(NullType)
@@ -141,7 +141,7 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
         }
       } else {
         if (expr.lhs.exprType.isDefined && expr.rhs.exprType.isDefined) {
-          addError(unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get))
+          addError(unsupported(symbol, expr.from, expr.lhs.et, expr.rhs.et))
         }
         expr
       }
@@ -149,6 +149,7 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
     
     def doComp(expr: BinOp, fold: (Int, Int) => Boolean, symbol: String): Expression = {
       if (expr.lhs.exprType.isEmpty || expr.rhs.exprType.isEmpty) {
+        setBoolean(expr)
         expr
       } else if (isNumeric(expr.lhs) && isNumeric(expr.rhs)) {
         val newExpr = (expr.lhs, expr.rhs) match {
@@ -161,14 +162,15 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
         setBoolean(newExpr)
         newExpr
       } else {
-        addError(unsupported(symbol, expr.from, expr.lhs.exprType.get, expr.rhs.exprType.get))
+        addError(unsupported(symbol, expr.from, expr.lhs.et, expr.rhs.et))
+        setBoolean(expr)
         expr
       }
     }
     
     def isWidening(lhs: Expression, rhs: Expression): Boolean = {
-      val lhsT = numerics(lhs.exprType.get)
-      val rhsT = numerics(rhs.exprType.get)
+      val lhsT = numerics(lhs.et)
+      val rhsT = numerics(rhs.et)
       if (lhsT == rhsT) {
         true
       } else if (lhsT == NumericType.INT) {
@@ -186,8 +188,8 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
     }
 
     def isAssignable(lhs: Expression, rhs: Expression): Boolean = {
-      val lhsT = lhs.exprType.get.r
-      val rhsT = rhs.exprType.get.r
+      val lhsT = lhs.t
+      val rhsT = rhs.t
       if (lhsT resolvesTo rhsT) {
         true
       } else if (lhsT resolvesTo ObjectCls) {
