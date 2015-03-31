@@ -23,10 +23,11 @@ object Runtime {
   def numericBoxes = Seq(intBox, byteBox, charBox, shortBox)
 
   def setClass(c: ClassDefn): Unit = {
+    val id = c.classId
+    tLookup(c.labelName) = id
     if (c.pkg != Seq("java", "lang"))
       return
 
-    val id = c.classId
     c.name match {
       case "Object"    => obj = id
       case "Boolean"   => boolBox = id
@@ -37,11 +38,12 @@ object Runtime {
       case "String"    => string = id
       case _           =>
     }
-    tLookup(c.labelName) = id
   }
 
   def setPrimitive(c: PrimitiveDefn): Unit = {
     val id = c.classId
+    tLookup(c.labelName) = id
+
     c.name match {
       case "int"     => int = id
       case "byte"    => byte = id
@@ -50,7 +52,6 @@ object Runtime {
       case "boolean" => bool = id
       case _         =>
     }
-    tLookup(c.labelName) = id
   }
 
   private val tLookup = collection.mutable.Map[String, Int]()

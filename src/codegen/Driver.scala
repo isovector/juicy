@@ -64,6 +64,7 @@ object Driver {
             Runtime.setPrimitive(p)
             "0"
 
+          // TODO: we need to generate vtables for arrays
           case _ =>
             "0"
         }
