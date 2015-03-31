@@ -15,7 +15,6 @@ object Generator extends GeneratorUtils {
   val globalVtable = NamedLabel("_vtable")
   val hierarchyTable = NamedLabel("_hierarchy")
   val globalArrayAlloc = NamedLabel("_aalloc")
-  val gInstanceOf = NamedLabel("_instanceof")
 
   // array allocation
   {
@@ -49,8 +48,7 @@ object Generator extends GeneratorUtils {
     Target.global.text.emit(
       gInstanceOf,
       Prologue(),
-      // TODO: update when jacob's table shows up
-      "mov ecx, __hierarcy",
+      "mov ecx, __hierarchy",
       "mov edx, eax",
       "imul edx, 4",
       "mov ecx, [ecx+edx]",
@@ -70,6 +68,9 @@ object Generator extends GeneratorUtils {
 
   Target.global.export(globalVtable)
   Target.global.export(globalArrayAlloc)
+  Target.global.export(gInstanceOf)
+
+
 
   def emit(v: Visitable): Unit = {
     v match {
@@ -167,11 +168,12 @@ object Generator extends GeneratorUtils {
         }
 
         val methodOffset = invokee.vmethodIndex(c.signature) * 4
-        val tableLabel = if (invokee.isInterface) {
-          invokee.itableLabel
-        } else {
-          globalVtable
-        }
+        val tableLabel =
+          if (invokee.isInterface)
+            invokee.itableLabel
+          else
+            globalVtable
+
         Target.file.reference(tableLabel)
         Target.text.emit(
           s"; ${invokee.name} => ${methodOffset}",
@@ -229,8 +231,9 @@ object Generator extends GeneratorUtils {
         // Build the class hierarchy
         Target.file.export(c.hierarchyLabel)
         Target.rodata.emit(c.hierarchyLabel)
+
         Target.rodata.emit(s"; hierarchy for ${c.name}")
-        (c +: c.superTypes).distinct.map { t => 
+        (c +: c.superTypes).distinct.map { t =>
           Target.rodata.emit(s"dd ${Runtime.lookup(t)}; id for ${t.name}")
         }
         Target.rodata.emit(s"dd -1; end of hierarchy")
@@ -239,17 +242,21 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.initLabel)
         Target.file.export(c.defaultCtorLabel)
         Target.file.export(c.vtableLabel)
+
         c.allInterfaces.foreach { int =>
           Target.file.export(c itableFor int)
           Target.rodata.emit(c itableFor int)
+
           int.allMethods.map(_.signature).foreach { sig =>
             val meth = c.allMethods.find(_.signature == sig).get
             if (c isnt meth.containingClass) {
               Target.file.reference(meth.label)
             }
+
             Target.rodata.emit(s"dd ${meth.label}")
           }
         }
+
         Target.debug.add(c)
 
         Target.text.emit(
@@ -568,15 +575,25 @@ object Generator extends GeneratorUtils {
         Target.text.emit("mov ebx, [ebx+eax*4+8]")
 
 
+
+
       case io: InstanceOf =>
-        Target.file.reference(gInstanceOf)
         emit(io.lhs)
+        instanceOfHelper(io.tname.r)
+
+
+      case c: Cast =>
+        emit(c.value)
+        Target.text.emit("push ebx")
+        instanceOfHelper(c.tname.r)
+
         Target.text.emit(
-          "; instanceof",
-          "mov eax, [ebx]",
-          s"mov ebx, dword ${Runtime.lookup(io.tname.r)}",
-          s"call $gInstanceOf"
+          Guard(
+            "cmp ebx, 0", "jne",
+            "good_cast"),
+          "pop ebx"
         )
+
 
 
 

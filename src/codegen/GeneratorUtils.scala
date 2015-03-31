@@ -70,6 +70,8 @@ trait GeneratorUtils {
   var currentClass: ClassDefn
   var currentMethod: MethodDefn
 
+  val gInstanceOf = NamedLabel("_instanceof")
+
   case class Location(reg: String, offset: Int) {
     lazy val deref = s"[$reg+$offset]"
   }
@@ -161,12 +163,11 @@ trait GeneratorUtils {
     emit(ghs)
 
     val t = ghs.et.r
-    // TODO: this doesn't work because t.classId isn't the same as the
-    // runtime classId... SMH
     if (Runtime.numericBoxes contains Runtime.lookup(t)) {
       val c = t.asInstanceOf[ClassDefn]
       val offset = c.getFieldIndex("value")
       val loc = Location("ebx", offset * 4).deref
+      // TODO: null check
 
       Target.text.emit(
         "; unbox numeric",
@@ -227,6 +228,16 @@ trait GeneratorUtils {
       Guard(
         "cmp eax, [ebx+4]", "jl",
         "idx_bounded")
+    )
+  }
+
+  def instanceOfHelper(t: TypeDefn) = {
+    Target.file.reference(gInstanceOf)
+    Target.text.emit(
+      "; instanceof",
+      "mov eax, [ebx]",
+      s"mov ebx, dword ${Runtime.lookup(t)}",
+      s"call $gInstanceOf"
     )
   }
 
