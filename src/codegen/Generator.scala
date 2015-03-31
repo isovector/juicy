@@ -152,15 +152,19 @@ object Generator extends GeneratorUtils {
         }
 
         val methodOffset = invokee.vmethodIndex(c.signature) * 4
-        Target.text.emit(
-          s"; ${invokee.name} => ${methodOffset}",
-          s"; call ${c.signature}",
-          s"mov ecx, $globalVtable",
-          s"mov edx, [esp+${paramSize}]",
-          s"mov ecx, [ecx + edx * 4]",
-          s"call [ecx+$methodOffset]",
-          s"add esp, byte ${paramSize + 4}"
-        )
+        if (invokee.isInterface) {
+          // TODO: interface dispatch
+        } else {
+          Target.text.emit(
+            s"; ${invokee.name} => ${methodOffset}",
+            s"; call ${c.signature}",
+            s"mov ecx, $globalVtable",
+            s"mov edx, [esp+${paramSize}]",
+            s"mov ecx, [ecx + edx * 4]",
+            s"call [ecx+$methodOffset]",
+            s"add esp, byte ${paramSize + 4}"
+          )
+        }
 
 
 
