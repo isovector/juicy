@@ -83,6 +83,7 @@ object Driver {
       defn match {
         case c: ClassDefn if !c.isInterface =>
           Target.global.reference(c.hierarchyLabel)
+          Target.global.reference(c.arrayOf.hierarchyLabel)
           Target.global.rodata.emit(s"dd ${c.hierarchyLabel}; hierarchy for ${c.name}")
         case t: TypeDefn =>
           Target.global.rodata.emit(s"dd 0; no hierarchy for ${t.name}")
@@ -93,6 +94,7 @@ object Driver {
     
     defns.foreach { defn => 
       defn match {
+        case c: ClassDefn if !c.isInterface => 
         case t: TypeDefn => 
           val arrT = t.arrayOf
           Target.global.rodata.emit(arrT.hierarchyLabel)

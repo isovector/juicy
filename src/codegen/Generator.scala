@@ -237,6 +237,15 @@ object Generator extends GeneratorUtils {
           Target.rodata.emit(s"dd ${Runtime.lookup(t)}; id for ${t.name}")
         }
         Target.rodata.emit(s"dd -1; end of hierarchy")
+        
+        // Build the array's class hierarchy
+        Target.file.export(c.arrayOf.hierarchyLabel)
+        Target.rodata.emit(c.arrayOf.hierarchyLabel)
+        Target.rodata.emit(s"; hierarchy for arrays of ${c.name}")
+        ((c.arrayOf +: c.arrayOf.superTypes) ++ c.superTypes.map(_.arrayOf)).distinct.map { t =>
+          Target.rodata.emit(s"dd ${Runtime.lookup(t)}; id for ${t.name}")
+        }
+        Target.rodata.emit(s"dd -1; end of hierarchy")
 
         Target.file.export(c.allocLabel)
         Target.file.export(c.initLabel)
