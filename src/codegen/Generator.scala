@@ -14,13 +14,13 @@ object Generator extends GeneratorUtils {
 
   val globalVtable = NamedLabel("_vtable")
   val globalArrayAlloc = NamedLabel("_aalloc")
+  val gInstanceOf = NamedLabel("_instanceof")
 
   // array allocation
   {
     val loop = AnonLabel()
     Target.global.text.emit(
       // Array alloc assumes size will be in eax, returns alloc in eax
-      // TODO: maybe make this extend from object ehhh fuckit
       globalArrayAlloc,
       Prologue(),
       "mov ecx, eax",
@@ -36,6 +36,33 @@ object Generator extends GeneratorUtils {
       "sub ecx, 1",
       "cmp ecx, 0",
       s"jne $loop",
+      Epilogue()
+    )
+  }
+
+  // instance of
+  {
+    // NOTE: pass var's runtime type in eax, desired runtime type in ebx
+    val loop = AnonLabel()
+    val noret = AnonLabel("different")
+    Target.global.text.emit(
+      gInstanceOf,
+      Prologue(),
+      // TODO: update when jacob's table shows up
+      "mov ecx, __hierarcy",
+      "mov edx, eax",
+      "imul edx, 4",
+      "mov ecx, [ecx+edx]",
+      loop,
+      "cmp ebx, [ecx]",
+      s"jne $noret",
+      "mov ebx, dword 1",
+      Epilogue(),
+      noret,
+      "add ecx, 4",
+      "cmp [ecx], dword -1",
+      s"jne $loop",
+      "mov ebx, dword 0",
       Epilogue()
     )
   }
@@ -525,9 +552,21 @@ object Generator extends GeneratorUtils {
         emit(m.lhs)
         Target.text.emit(s"mov ebx, ${memLocation(m).deref}")
 
+
       case idx: Index =>
         idxHelper(idx)
         Target.text.emit("mov ebx, [ebx+eax*4+8]")
+
+
+      case io: InstanceOf =>
+        Target.file.reference(gInstanceOf)
+        emit(io.lhs)
+        Target.text.emit(
+          "; instanceof",
+          "mov eax, [ebx]",
+          s"mov ebx, dword ${Runtime.lookup(io.tname.r)}",
+          s"call $gInstanceOf"
+        )
 
 
 

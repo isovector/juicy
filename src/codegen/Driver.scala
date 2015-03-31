@@ -52,12 +52,14 @@ object Driver {
 
       val vtableEntry =
         defn match {
-          case c: ClassDefn if !c.isInterface =>
+          case c: ClassDefn =>
             Runtime.setClass(c)
 
-            val label = c.vtableLabel
-            Target.global.reference(label)
-            label.toString
+            if (!c.isInterface) {
+              val label = c.vtableLabel
+              Target.global.reference(label)
+              label.toString
+            } else "0"
 
           case p: PrimitiveDefn =>
             Runtime.setPrimitive(p)
@@ -77,7 +79,7 @@ object Driver {
     }
 
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
-    interfaces.foreach{ int => 
+    interfaces.foreach{ int =>
       val label = int.itableLabel
       Target.global.export(label)
       Target.global.rodata.emit(label)
@@ -96,7 +98,7 @@ object Driver {
         }
       }
     }
-    
+
     val objectType = pkgtree.getType(Seq("java", "lang", "Object")).get
     ArrayDefn.sharedImpls.map(_.r.asInstanceOf[ClassDefn]).foreach { interface =>
       Target.global.rodata.emit(ArrayDefn itableFor interface)
@@ -117,7 +119,7 @@ object Driver {
         charArrayL,
         s"dd ${Runtime.charArray}",
         s"dd ${str.length}"
-      )      
+      )
       if (str.length > 0)
         Target.global.rodata.emit(s"dd ${str.map(_.toInt).mkString(", ")}")
     }
