@@ -207,7 +207,7 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.initLabel)
         Target.file.export(c.defaultCtorLabel)
         Target.file.export(c.vtableLabel)
-        c.allInterfaces.foreach { int => 
+        c.allInterfaces.foreach { int =>
           Target.file.export(c itableFor int)
           Target.text.emit(c itableFor int)
           int.allMethods.map(_.signature).foreach { sig =>
@@ -424,8 +424,13 @@ object Generator extends GeneratorUtils {
             Target.text.emit("; unimplemented static assignment")
 
           case idx: Index =>
-            // TODO
-            Target.text.emit("; unimplemented index assignment")
+            idxHelper(idx)
+            Target.text.emit(
+              "imul eax, 4",
+              "add ebx, eax",
+              "add ebx, 8"
+            )
+
         }
 
         // lvalue is now in ebx, but it will get stomped by rhs, so push it
@@ -485,23 +490,8 @@ object Generator extends GeneratorUtils {
         Target.text.emit(s"mov ebx, ${memLocation(m).deref}")
 
       case idx: Index =>
-        val except = NamedLabel("_exception")
-        Target.file.reference(except)
-        val otherwise = AnonLabel("idx_ok")
-
-        emit(idx.rhs)
-        Target.text.emit("push ebx")
-        emit(idx.lhs)
-        Target.text.emit(
-          "pop eax",
-          "cmp eax, [ebx+4]",
-          s"jl $otherwise",
-          s"call $except",
-          otherwise,
-          "mov ebx, [ebx+eax*4+8]"
-        )
-
-
+        idxHelper(idx)
+        Target.text.emit("mov ebx, [ebx+eax*4+8]")
 
 
 

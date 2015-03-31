@@ -222,5 +222,22 @@ trait GeneratorUtils {
       )
   }
 
+  def idxHelper(idx: Index) = {
+    val except = NamedLabel("_exception")
+    Target.file.reference(except)
+    val otherwise = AnonLabel("idx_ok")
+
+    emit(idx.rhs)
+    Target.text.emit("push ebx")
+    emit(idx.lhs)
+    Target.text.emit(
+      "pop eax",
+      "cmp eax, [ebx+4]",
+      s"jl $otherwise",
+      s"call $except",
+      otherwise
+    )
+  }
+
   def emit(v: Visitable): Unit
 }
