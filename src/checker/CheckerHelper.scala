@@ -133,12 +133,16 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
         case _ => expr.lhs.exprType
       }
       if (expr.exprType.isDefined) {
-        val collapsed = (expr.lhs, expr.rhs) match {
-          case (l: IntVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
-          case (l: CharVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
-          case (l: IntVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
-          case (l: CharVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
-          case _ => None
+        val collapsed = try { 
+          (expr.lhs, expr.rhs) match {
+            case (l: IntVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
+            case (l: CharVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
+            case (l: IntVal, r: CharVal) => Some(IntVal(fold(l.value, r.value)))
+            case (l: CharVal, r: IntVal) => Some(IntVal(fold(l.value, r.value)))
+            case _ => None
+          }
+        } catch {
+          case _: Exception => None
         }
         if (collapsed.isDefined) {
           collapsed.get.exprType = Some(IntType)
