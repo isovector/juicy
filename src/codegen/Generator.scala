@@ -125,8 +125,6 @@ object Generator extends GeneratorUtils {
 
       case c: Call if !c.isStatic =>
 
-        Target.file.reference(globalVtable)
-
         val invokee =
           c.resolvedMethod.containingClass
 
@@ -152,19 +150,21 @@ object Generator extends GeneratorUtils {
         }
 
         val methodOffset = invokee.vmethodIndex(c.signature) * 4
-        if (invokee.isInterface) {
-          // TODO: interface dispatch
+        val tableLabel = if (invokee.isInterface) {
+          invokee.itableLabel
         } else {
-          Target.text.emit(
-            s"; ${invokee.name} => ${methodOffset}",
-            s"; call ${c.signature}",
-            s"mov ecx, $globalVtable",
-            s"mov edx, [esp+${paramSize}]",
-            s"mov ecx, [ecx + edx * 4]",
-            s"call [ecx+$methodOffset]",
-            s"add esp, byte ${paramSize + 4}"
-          )
+          globalVtable
         }
+        Target.file.reference(tableLabel)
+        Target.text.emit(
+          s"; ${invokee.name} => ${methodOffset}",
+          s"; call ${c.signature}",
+          s"mov ecx, $tableLabel",
+          s"mov edx, [esp+${paramSize}]",
+          s"mov ecx, [ecx + edx * 4]",
+          s"call [ecx+$methodOffset]",
+          s"add esp, byte ${paramSize + 4}"
+        )
 
 
 
