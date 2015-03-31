@@ -21,5 +21,4 @@ project/.sbtserver.lock
 project/play-fork-run.sbt
 project/sbt-ui.sbt
 /asm
-joosc-test/Codegen.java
-joosc-test/Codegen2.java
+joosc-test/
