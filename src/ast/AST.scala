@@ -495,6 +495,7 @@ object ArrayDefn {
     Typename(Seq("java", "lang", "Cloneable")),
     Typename(Seq("java", "io", "Serializable"))
   )
+  def itableFor(c: ClassDefn) = NamedLabel(s"_##_ARRAY_##itable##${c.labelName}")
 }
 
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {

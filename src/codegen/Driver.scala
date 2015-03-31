@@ -77,20 +77,33 @@ object Driver {
     }
 
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
-    val allTypes = defns.flatMap(cls => Seq(cls, cls.arrayOf))
-    interfaces.foreach{ int =>
+    interfaces.foreach{ int => 
       val label = int.itableLabel
-      //Target.global.export(label)
-      //Target.global.rodata.emit(label)
-      allTypes.foreach{ t =>
+      Target.global.reference(label)
+      Target.global.rodata.emit(label)
+      defns.foreach{ t =>
         if (t implements int) {
-          //Target.global.rodata.emit(s"dd ${t itableFor int}")
+          Target.global.rodata.emit(s"dd ${t itableFor int}")
+        } else {
+          Target.global.rodata.emit(s"dd 0")
+        }
+        if (ArrayDefn.sharedImpls.find(_.r resolvesTo int) != None) {
+          Target.global.export(ArrayDefn itableFor int)
+          Target.global.rodata.emit(s"dd ${ArrayDefn itableFor int}")
         } else {
           Target.global.rodata.emit(s"dd 0")
         }
       }
     }
-
+    
+    val objectType = pkgtree.getType(Seq("java", "lang", "Object")).get
+    ArrayDefn.sharedImpls.map(_.r.asInstanceOf[ClassDefn]).foreach { interface =>
+      Target.global.rodata.emit(ArrayDefn itableFor interface)
+      interface.allMethods.map(_.signature).foreach { sig =>
+        val methLabel = objectType.methods.find(_.signature == sig).get.label
+        Target.global.rodata.emit(s"dd $methLabel")
+      }
+    }
 
     // Generate string tables
     strings.foreach { case (str, label) =>
@@ -102,8 +115,7 @@ object Driver {
         charArrayL,
         s"dd ${Runtime.charArray}",
         s"dd ${str.length}"
-        )
-
+      )      
       if (str.length > 0)
         Target.global.rodata.emit(s"dd ${str.map(_.toInt).mkString(", ")}")
     }
