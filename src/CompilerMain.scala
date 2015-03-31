@@ -100,7 +100,8 @@ object CompilerMain {
 "stdlib/lang/System.java",
 "stdlib/util/Arrays.java",
 "joosc-test/Codegen.java",
-"joosc-test/Codegen2.java"
+"joosc-test/Codegen2.java",
+"joosc-test/FunInterface.java"
 )))
 
     Driver(pkgtree, files)

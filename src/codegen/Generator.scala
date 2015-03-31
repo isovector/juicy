@@ -207,7 +207,15 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.initLabel)
         Target.file.export(c.defaultCtorLabel)
         Target.file.export(c.vtableLabel)
-
+        c.allInterfaces.foreach { int => 
+          Target.file.export(c itableFor int)
+          Target.text.emit(c itableFor int)
+          int.allMethods.map(_.signature).foreach { sig =>
+            val methLabel = c.allMethods.find(_.signature == sig).get.label
+            Target.text.emit(s"dd $methLabel")
+          }
+        }
+        c.arrayOf.allInterfaces.foreach(int => Target.file.export(c.arrayOf itableFor int))
         Target.debug.add(c)
 
         Target.text.emit(
