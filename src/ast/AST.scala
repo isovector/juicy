@@ -1078,14 +1078,20 @@ case class RefToStr(sub: Expression) extends Expression {
 
 case class Member(lhs: Expression, rhs: Id) extends Expression {
   val children = Seq(lhs, rhs)
-
+  var decl: Option[VarStmnt] = None
+  
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    transfer(rule(
+    val result = transfer(rule(
       Member(
         lhs.rewrite(rule, newContext).asInstanceOf[Expression],
         rhs.rewrite(rule, newContext).asInstanceOf[Id]
       ), context))
+    result match {
+      case m: Member => m.decl = decl
+      case _ => 
+    }
+    result
   }
 
   def fold[T](rule: Expression => T): Seq[T] = {
@@ -1102,13 +1108,20 @@ case class Member(lhs: Expression, rhs: Id) extends Expression {
 case class StaticMember(lhs: ClassDefn, rhs: Id) extends Expression {
   val children = Seq(rhs)
 
+  var decl: Option[VarStmnt] = None
+
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    transfer(rule(
+    val res = transfer(rule(
       StaticMember(
         lhs,
         rhs.rewrite(rule, newContext).asInstanceOf[Id]
       ), context))
+    res match {
+      case sm: StaticMember => sm.decl = decl
+      case _ =>
+    }
+    res
   }
 }
 

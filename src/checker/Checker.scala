@@ -73,16 +73,17 @@ object Checker {
                 val rname = right.name
                 val curType = left.t
                 val definedIn = (curType +: curType.superTypes).find(_.classScope.resolve(rname) != None)
-                if (definedIn.isEmpty) {
+                val field = definedIn.map(_.fields).flatMap(f => f.find(_.name == rname))
+                if (field.isEmpty) {
                   helper.addError(undefined(right, left.et))
                 } else {
-                  val field = definedIn.get.fields.filter(_.name == rname)(0)
-                  if (!field.isPublic && !hasInstanceProtectedAccess(helper.ThisCls, curType, definedIn.get)) {
+                  if (!field.get.isPublic && !hasInstanceProtectedAccess(helper.ThisCls, curType, definedIn.get)) {
                     helper.addError(protectedAccess(right.name, helper.ThisType, curType.makeTypename))
-                  } else if (field.isStatic) {
+                  } else if (field.get.isStatic) {
                     helper.addError(CheckerError(s"Static Symbol $rname accessed from nonstatic context", member.from))
                   }
                   helper.setType(member, definedIn.get.classScope.resolve(rname).get)
+                  member.decl = field
                 }
             }
           member
@@ -506,16 +507,17 @@ object Checker {
           if (context.head != Callee(sm)) {
             val eqCls = (lhs +: lhs.superTypes)
                             .find(s => !s.fields.filter(f => f.name == rhs.name && f.isStatic).isEmpty)
-            val eqId = eqCls.flatMap(c => c.fields.find(_.name == rhs.name))
-            if (eqId.isEmpty) {
+            val field = eqCls.flatMap(c => c.fields.find(_.name == rhs.name))
+            if (field.isEmpty) {
               helper.addError(undefined(rhs, lhs.makeTypename))
-            } else if (!eqId.get.isStatic) {
+            } else if (!field.get.isStatic) {
               val name = rhs.name
               helper.addError(CheckerError(s"Accessing non-static member $name from static context", sm.from))
-            } else if (!eqId.get.isPublic && !hasStaticProtectedAccess(helper.ThisCls, lhs, eqCls.get)) {
+            } else if (!field.get.isPublic && !hasStaticProtectedAccess(helper.ThisCls, lhs, eqCls.get)) {
               helper.addError(protectedAccess(rhs.name, helper.ThisType, lhs.makeTypename))
             } else {
-              helper.setType(sm, eqId.get.tname)
+              helper.setType(sm, field.get.tname)
+              sm.decl = field
             }
           }
           sm
