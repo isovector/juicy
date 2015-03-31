@@ -115,7 +115,7 @@ trait TypeDefn extends Definition {
     superTypes.filter(_.isInterface)
   }
   
-  def implements(c: ClassDefn) = !isInterface && (allInterfaces contains c)
+  def implements(c: ClassDefn) = !isInterface && (allInterfaces.find(_ resolvesTo c) != None)
 
   lazy val allMethods: Seq[MethodDefn] = {
     val interfaceMethods =

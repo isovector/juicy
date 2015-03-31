@@ -1,4 +1,4 @@
-public class Codegen {
+public class Codegen implements Cloneable {
     public Codegen inner;
     public int val;
 

@@ -82,11 +82,12 @@ object Driver {
     interfaces.foreach{ int => 
       val label = int.itableLabel
       Target.global.reference(label)
+      Target.global.rodata.emit(label)
       allTypes.foreach{ t =>
         if (t implements int) {
           Target.global.rodata.emit(s"dd ${t itableFor int}")
         } else {
-          Target.global.rodata.emit("dd 0")
+          Target.global.rodata.emit(s"dd 0")
         }
       }
     }
