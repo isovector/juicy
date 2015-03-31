@@ -24,7 +24,7 @@ object Runtime {
 
   def setClass(c: ClassDefn): Unit = {
     val id = c.classId
-    tLookup(c.labelName) = id
+    tLookup += c.labelName -> id
     if (c.pkg != Seq("java", "lang"))
       return
 
@@ -42,7 +42,7 @@ object Runtime {
 
   def setPrimitive(c: PrimitiveDefn): Unit = {
     val id = c.classId
-    tLookup(c.labelName) = id
+    tLookup += c.labelName -> id
 
     c.name match {
       case "int"     => int = id
@@ -56,9 +56,13 @@ object Runtime {
 
   private val tLookup = collection.mutable.Map[String, Int]()
   def lookup(t: TypeDefn): Int = {
-    // TODO: dont think this works for arrays but it is easy to
-    // make it work for arrays
-    tLookup(t.labelName)
+    val ln = t.labelName
+    val isArray = t.isInstanceOf[ArrayDefn]
+
+    if (isArray)
+      tLookup(t.labelName.init) + 1
+    else
+      tLookup(t.labelName)
   }
 }
 

@@ -5,7 +5,6 @@ import juicy.codegen.Implicits._
 import juicy.source.ast._
 import juicy.source.PackageTree
 import juicy.utils.visitor._
-import org.apache.commons.lang3.{StringEscapeUtils => Escape}
 
 object Driver {
   def writeFile(path: String, contents: String) {
@@ -104,9 +103,9 @@ object Driver {
         s"dd ${Runtime.charArray}",
         s"dd ${str.length}"
         )
-      str.foreach { c =>
-        Target.global.rodata.emit( s"dd '${Escape.escapeJava(c.toString)}'")
-      }
+
+      if (str.length > 0)
+        Target.global.rodata.emit(s"dd ${str.map(_.toInt).mkString(", ")}")
     }
 
 

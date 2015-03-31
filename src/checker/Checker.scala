@@ -127,7 +127,6 @@ object Checker {
                 }
 
                 call.rawSignature = Some(sig)
-                // TODO: only if it is static
                 call.rawResolvedMethod = tn
                 helper.setType(call, tn.get.tname)
               }
@@ -371,7 +370,7 @@ object Checker {
             helper.setBoolean(or)
             or
           }
-        
+
         case and@EagerAnd(lhs, rhs) =>
           if (!lhs.hasType || !rhs.hasType) {
             helper.setBoolean(and)

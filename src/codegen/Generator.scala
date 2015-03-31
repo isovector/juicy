@@ -72,6 +72,10 @@ object Generator extends GeneratorUtils {
       case CharVal(value) =>
         Target.text.emit(s"mov ebx, ${value.asInstanceOf[Int]}")
 
+      case s: StringVal =>
+        Target.file.reference(s.interned)
+        Target.text.emit(s"mov ebx, ${s.interned}")
+
 
 
       case Eq(lhs, rhs)    => cmpHelper(lhs, rhs, "e")
@@ -123,7 +127,8 @@ object Generator extends GeneratorUtils {
 
         Target.file.reference(globalVtable)
 
-        val invokee = c.method.exprType.map(_.r).getOrElse(currentClass)
+        val invokee =
+          c.resolvedMethod.containingClass
 
         Target.text.emit(
           "; load the toBeThis")
@@ -148,6 +153,8 @@ object Generator extends GeneratorUtils {
 
         val methodOffset = invokee.vmethodIndex(c.signature) * 4
         Target.text.emit(
+          s"; ${invokee.name} => ${methodOffset}",
+          s"; call ${c.signature}",
           s"mov ecx, $globalVtable",
           s"mov edx, [esp+${paramSize}]",
           s"mov ecx, [ecx + edx * 4]",
@@ -278,8 +285,6 @@ object Generator extends GeneratorUtils {
           Target.file.export(startLabel)
           Target.text.emit(
             startLabel,
-            // TODO: refactor this out if we need to generate vtables here
-
             // Call test()
             s"call ${m.label}",
 
@@ -295,7 +300,7 @@ object Generator extends GeneratorUtils {
           Prologue()
         )
 
-        // Reserve local stack space if necessary
+        // Reserve local stack space if necess ary
         val stackSize =
           (m.scope.get.maxStackIndex - m.params.length) * 4
         if (stackSize > 0)
@@ -408,11 +413,11 @@ object Generator extends GeneratorUtils {
           // TODO: do static members (probably stupid easy, but we don't gen
           // them yet)
           case sm: StaticMember =>
-            Target.data.emit("; unimplemented static assignment")
+            Target.text.emit("; unimplemented static assignment")
 
           case idx: Index =>
             // TODO
-            Target.data.emit("; unimplemented index assignment")
+            Target.text.emit("; unimplemented index assignment")
         }
 
         // lvalue is now in ebx, but it will get stomped by rhs, so push it
@@ -461,7 +466,7 @@ object Generator extends GeneratorUtils {
         Target.text.emit(
           "mov eax, ebx",
           s"call $globalArrayAlloc",
-          //s"mov [eax], ${t.r.classId}",
+          s"mov [eax], dword ${Runtime.lookup(t.r)}",
           "mov ebx, eax"
           )
 
@@ -470,6 +475,25 @@ object Generator extends GeneratorUtils {
       case m: Member =>
         emit(m.lhs)
         Target.text.emit(s"mov ebx, ${memLocation(m).deref}")
+
+      case idx: Index =>
+        val except = NamedLabel("_exception")
+        Target.file.reference(except)
+        val otherwise = AnonLabel("idx_ok")
+
+        emit(idx.rhs)
+        Target.text.emit("push ebx")
+        emit(idx.lhs)
+        Target.text.emit(
+          "pop eax",
+          "cmp eax, [ebx+4]",
+          s"jl $otherwise",
+          s"call $except",
+          otherwise,
+          "mov ebx, [ebx+eax*4+8]"
+        )
+
+
 
 
 
