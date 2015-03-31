@@ -358,6 +358,21 @@ object Generator extends GeneratorUtils {
 
 
 
+      case w: WhileStmnt =>
+        val loop = AnonLabel("while_body")
+        val after = AnonLabel("while_end")
+        Target.text.emit(loop)
+        emit(w.cond)
+        Target.text.emit(
+          "cmp ebx, 1",
+          s"jne $after"
+          )
+        emit(w.body)
+        Target.text.emit(
+          s"jmp $loop",
+          after)
+
+
 
       case i: IfStmnt =>
         val thenL = AnonLabel("then")
