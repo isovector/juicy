@@ -209,13 +209,15 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.vtableLabel)
         c.allInterfaces.foreach { int =>
           Target.file.export(c itableFor int)
-          Target.text.emit(c itableFor int)
+          Target.rodata.emit(c itableFor int)
           int.allMethods.map(_.signature).foreach { sig =>
-            val methLabel = c.allMethods.find(_.signature == sig).get.label
-            Target.text.emit(s"dd $methLabel")
+            val meth = c.allMethods.find(_.signature == sig).get
+            if (c isnt meth.containingClass) {
+              Target.file.reference(meth.label)
+            }
+            Target.rodata.emit(s"dd ${meth.label}")
           }
         }
-        c.arrayOf.allInterfaces.foreach(int => Target.file.export(c.arrayOf itableFor int))
         Target.debug.add(c)
 
         Target.text.emit(
@@ -368,32 +370,6 @@ object Generator extends GeneratorUtils {
           s"jne $after"
           )
         emit(w.body)
-        Target.text.emit(
-          s"jmp $loop",
-          after)
-
-
-
-      case f: ForStmnt =>
-        val loop = AnonLabel("for_body")
-        val after = AnonLabel("for_end")
-
-        f.first.map(emit)
-        Target.text.emit(loop)
-
-        f.cond match {
-          case Some(cond) => emit(cond)
-          case None =>
-            Target.text.emit("mov ebx, dword 1")
-        }
-
-        Target.text.emit(
-          "cmp ebx, 1",
-          s"jne $after"
-          )
-        emit(f.body)
-
-        f.after.map(emit)
         Target.text.emit(
           s"jmp $loop",
           after)

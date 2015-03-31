@@ -102,6 +102,7 @@ object Driver {
       Target.global.rodata.emit(ArrayDefn itableFor interface)
       interface.allMethods.map(_.signature).foreach { sig =>
         val methLabel = objectType.methods.find(_.signature == sig).get.label
+        Target.global.reference(methLabel)
         Target.global.rodata.emit(s"dd $methLabel")
       }
     }
