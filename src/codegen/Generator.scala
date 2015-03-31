@@ -335,7 +335,7 @@ object Generator extends GeneratorUtils {
 
 
 
-      case m: MethodDefn =>
+      case m: MethodDefn if !m.isNative =>
         currentMethod = m
 
         // Are we `public static int test()`? If so, generate a _start symbol
@@ -388,6 +388,21 @@ object Generator extends GeneratorUtils {
         Target.text.emit(Epilogue())
 
         currentMethod = null
+
+
+      case m: MethodDefn if m.isNative =>
+        val label = ExplicitLabel(s"NATIVE${m.canonicalName}")
+
+        Target.file.reference(label)
+        Target.file.export(m.label)
+        Target.text.emit(
+          m.label,
+          Prologue(),
+          "mov eax, [ebp+8]",
+          s"call $label",
+          "mov ebx, eax",
+          Epilogue()
+          )
 
 
 
@@ -592,16 +607,23 @@ object Generator extends GeneratorUtils {
 
 
       case c: Cast =>
-        emit(c.value)
-        Target.text.emit("push ebx")
-        instanceOfHelper(c.tname.r)
+        if (c.tname.r.isPrimitive && c.value.et.isPrimitive) {
+          // TODO: sign extension
+          val mask = c.value.t.asInstanceOf[PrimitiveDefn].clampMask
+          emit(c.value)
+          Target.text.emit(s"and ebx, dword $mask")
+        } else {
+          emit(c.value)
+          Target.text.emit("push ebx")
+          instanceOfHelper(c.tname.r)
 
-        Target.text.emit(
-          Guard(
-            "cmp ebx, 0", "jne",
-            "good_cast"),
-          "pop ebx"
-        )
+          Target.text.emit(
+            Guard(
+              "cmp ebx, 0", "jne",
+              "good_cast"),
+            "pop ebx"
+          )
+        }
 
 
 

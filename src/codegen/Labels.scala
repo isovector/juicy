@@ -50,3 +50,5 @@ case class NamedLabel(earlyName: String) extends Label {
   val name = s"_$earlyName"
 }
 
+case class ExplicitLabel(name: String) extends Label
+

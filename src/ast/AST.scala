@@ -98,6 +98,8 @@ trait TypeDefn extends Definition {
   val mods: Modifiers.Value
   val isInterface: Boolean
 
+  val isPrimitive = this.isInstanceOf[PrimitiveDefn]
+
   val nullable = true
 
   lazy val (inheritedMethods: Seq[MethodDefn], hidesMethods: Seq[MethodDefn]) = {
@@ -480,6 +482,16 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   override val isInterface = false
 
   override def labelName = name
+
+  lazy val clampMask =
+    name match {
+      case "int"     => (1 << 32) - 1
+      case "byte"    => (1 <<  8) - 1
+      case "char"    => (1 <<  8) - 1
+      case "short"   => (1 << 16) - 1
+      case "boolean" => 1
+      case _         => throw new Exception("uhhh whacha doing " + name)
+    }
 }
 
 object ArrayDefn {
@@ -598,6 +610,7 @@ case class MethodDefn(
   val children = Seq(tname) ++ params ++ body.toList
 
   val isStatic = (mods & Modifiers.STATIC) == Modifiers.STATIC
+  val isNative = (mods & Modifiers.NATIVE) == Modifiers.NATIVE
   val isPublic = (mods & Modifiers.PUBLIC) == Modifiers.PUBLIC
 
   val signature = Signature(name, params.map(_.tname))
@@ -629,6 +642,9 @@ case class MethodDefn(
       containingClass.defaultCtorLabel
     else
       NamedLabel(s"${containingClass.labelName}@$signature")
+
+  lazy val canonicalName =
+    (containingClass.pkg ++ Seq(containingClass.name, name)).mkString(".")
 
 }
 
