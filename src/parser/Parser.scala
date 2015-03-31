@@ -162,7 +162,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     val members = kleene("}".asToken)(parseClassMember(name))
 
     // Separate members into fields and methods
-    val (fields, rawFunctionMembers) = members.partition { member =>
+    val (rawFields, rawFunctionMembers) = members.partition { member =>
       member match {
         case (_: VarStmnt)   => true
         case (_: MethodDefn) => false
@@ -171,6 +171,7 @@ class Parser(tokens: TokenStream) extends ParserUtils {
     }
 
     val methods = rawFunctionMembers.map(_.asInstanceOf[MethodDefn])
+    val fields = rawFields.map(_.asInstanceOf[VarStmnt])
 
     ensure("}")
 
@@ -180,12 +181,16 @@ class Parser(tokens: TokenStream) extends ParserUtils {
       mods,
       extnds,
       impls,
-      fields.map(_.asInstanceOf[VarStmnt]),
+      fields,
       methods,
       isInterface)
 
     methods.foreach { method =>
       method.rawContainingClass = Some(result)
+    }
+
+    fields.foreach { field =>
+      field.rawContainingClass = Some(result)
     }
 
     result

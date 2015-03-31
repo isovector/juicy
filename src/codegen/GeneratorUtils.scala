@@ -110,6 +110,11 @@ trait GeneratorUtils {
     Location("ebp", offset)
   }
 
+  def staticLocation(v: VarStmnt) = {
+    Target.text.emit(s"mov ebx, ${v.staticLabel}")
+    Location("ebx", 0)
+  }
+
   // Location of a reference's member
   def memLocation(m: Member) = {
     val t = m.lhs.t

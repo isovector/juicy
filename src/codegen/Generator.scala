@@ -237,7 +237,7 @@ object Generator extends GeneratorUtils {
           Target.rodata.emit(s"dd ${Runtime.lookup(t)}; id for ${t.name}")
         }
         Target.rodata.emit(s"dd -1; end of hierarchy")
-        
+
         // Build the array's class hierarchy
         Target.file.export(c.arrayOf.hierarchyLabel)
         Target.rodata.emit(c.arrayOf.hierarchyLabel)
@@ -251,6 +251,7 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.initLabel)
         Target.file.export(c.defaultCtorLabel)
         Target.file.export(c.vtableLabel)
+        Target.file.export(c.staticInitLabel)
 
         c.allInterfaces.foreach { int =>
           Target.file.export(c itableFor int)
@@ -305,13 +306,29 @@ object Generator extends GeneratorUtils {
         }
 
         // Initialize each field
-        c.fields.foreach { f =>
-          emit(f)
-        }
+        c
+          .fields
+          .filter(!_.isStatic)
+          .foreach { f =>
+            emit(f)
+          }
 
         Target.text.emit(
-          Epilogue()
+          Epilogue(),
+
+          // Static initializer
+          c.staticInitLabel,
+          Prologue()
           )
+
+        c
+          .fields
+          .filter(_.isStatic)
+          .foreach { f =>
+            emit(f)
+          }
+
+        Target.text.emit(Epilogue())
 
         // Emit methods
         c.methods.foreach(emit)
@@ -439,6 +456,7 @@ object Generator extends GeneratorUtils {
           after)
 
 
+
       case f: ForStmnt =>
         val loop = AnonLabel("for_body")
         val after = AnonLabel("for_end")
@@ -462,6 +480,8 @@ object Generator extends GeneratorUtils {
         Target.text.emit(
           s"jmp $loop",
           after)
+
+
 
       case i: IfStmnt =>
         val thenL = AnonLabel("then")
@@ -495,7 +515,11 @@ object Generator extends GeneratorUtils {
 
       case v: VarStmnt =>
         if (v.value.isDefined) {
-          val offset = varLocation(v.name, v.scope.get).deref
+          val offset =
+            if (v.isStatic)
+              staticLocation(v)
+            else
+              varLocation(v.name, v.scope.get).deref
 
           Target.text.emit(s"; init var ${v.name}")
           v.value.map(emit)

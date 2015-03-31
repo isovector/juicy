@@ -381,6 +381,7 @@ case class ClassDefn(
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
   val vtableLabel = NamedLabel(s"$labelName##vtable")
   val itableLabel = NamedLabel(s"$labelName##itable")
+  val staticInitLabel = NamedLabel(s"$labelName##static")
 
   def is(other: ClassDefn) = labelName == other.labelName
   def isnt(other: ClassDefn) = !(this is other)
@@ -398,7 +399,7 @@ case class ClassDefn(
   }
 
   def getFieldIndex(name: String): Int = {
-    val index = fields.map(_.name).indexOf(name)
+    val index = fields.filter(!_.isStatic).map(_.name).indexOf(name)
     if (index < 0)
       extnds(0).rc.getFieldIndex(name)
     else
@@ -658,16 +659,22 @@ case class VarStmnt(
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    transfer(rule(
+    val result = transfer(rule(
       VarStmnt(
         name,
         mods,
         tname.rewrite(rule, newContext).asInstanceOf[Typename],
         value.map(_.rewrite(rule, newContext).asInstanceOf[Expression])
-      ), context))
+      ), context)).asInstanceOf[VarStmnt]
+    result.rawContainingClass = rawContainingClass
+    result
   }
   val isStatic = (mods & Modifiers.STATIC) == Modifiers.STATIC
   val isPublic = (mods & Modifiers.PUBLIC) == Modifiers.PUBLIC
+
+  var rawContainingClass: Option[ClassDefn] = None
+  def containingClass = rawContainingClass.get
+  lazy val staticLabel = NamedLabel(s"${containingClass.labelName}@#$name")
 }
 
 case class IfStmnt(
