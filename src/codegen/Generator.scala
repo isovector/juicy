@@ -230,7 +230,7 @@ object Generator extends GeneratorUtils {
         Target.file.export(c.hierarchyLabel)
         Target.rodata.emit(c.hierarchyLabel)
         Target.rodata.emit(s"; hierarchy for ${c.name}")
-        (c +: c.superTypes).map { t => 
+        (c +: c.superTypes).distinct.map { t => 
           Target.rodata.emit(s"dd ${Runtime.lookup(t)}; id for ${t.name}")
         }
         Target.rodata.emit(s"dd -1; end of hierarchy")

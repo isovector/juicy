@@ -87,6 +87,8 @@ object Driver {
         case t: TypeDefn =>
           Target.global.rodata.emit(s"dd 0; no hierarchy for ${t.name}")
       }
+      // TODO: ARRAYS
+      Target.global.rodata.emit(s"dd 0; no hierarchy for ${defn.name}")
     }
 
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
