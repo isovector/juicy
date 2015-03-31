@@ -375,6 +375,29 @@ object Generator extends GeneratorUtils {
           after)
 
 
+      case f: ForStmnt =>
+        val loop = AnonLabel("for_body")
+        val after = AnonLabel("for_end")
+
+        f.first.map(emit)
+        Target.text.emit(loop)
+
+        f.cond match {
+          case Some(cond) => emit(cond)
+          case None =>
+            Target.text.emit("mov ebx, dword 1")
+        }
+
+        Target.text.emit(
+          "cmp ebx, 1",
+          s"jne $after"
+          )
+        emit(f.body)
+
+        f.after.map(emit)
+        Target.text.emit(
+          s"jmp $loop",
+          after)
 
       case i: IfStmnt =>
         val thenL = AnonLabel("then")
