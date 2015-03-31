@@ -167,10 +167,11 @@ trait GeneratorUtils {
       val c = t.asInstanceOf[ClassDefn]
       val offset = c.getFieldIndex("value")
       val loc = Location("ebx", offset * 4).deref
-      // TODO: null check
 
       Target.text.emit(
         "; unbox numeric",
+        Guard("cmp ebx, 0", "jne",
+          "not_null"),
         s"mov ebx, $loc"
       )
     }
