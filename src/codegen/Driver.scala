@@ -2,8 +2,10 @@ package juicy.codegen
 
 import java.io._
 import juicy.codegen.Implicits._
-import juicy.source.ast.{ClassDefn, PrimitiveDefn, FileNode}
+import juicy.source.ast._
 import juicy.source.PackageTree
+import juicy.utils.visitor._
+import org.apache.commons.lang3.{StringEscapeUtils => Escape}
 
 object Driver {
   def writeFile(path: String, contents: String) {
@@ -14,6 +16,26 @@ object Driver {
   }
 
   def apply(pkgtree: PackageTree, files: Seq[FileNode]) = {
+    val strings = collection.mutable.Map[String, Label]()
+
+    // Give each string a unique string id
+    files.foreach { f =>
+      f.visit { (node, context) =>
+        node match {
+          case Before(s@StringVal(str)) =>
+            if (!(strings contains str)) {
+              val label = GlobalAnonLabel("string")
+              strings += str -> label
+              Target.global.export(label)
+            }
+
+            s.interned = strings(str)
+
+          case _ =>
+        }
+      }
+    }
+
     val defns =
       files
         .flatMap(_.classes) ++
@@ -32,11 +54,16 @@ object Driver {
       val vtableEntry =
         defn match {
           case c: ClassDefn if !c.isInterface =>
+            CommonClassIds.setClass(c)
+
             val label = c.vtableLabel
             Target.global.reference(label)
             label.toString
 
-          // only classes have vtable entries
+          case p: PrimitiveDefn =>
+            CommonClassIds.setPrimitive(p)
+            "0"
+
           case _ =>
             "0"
         }
@@ -48,6 +75,24 @@ object Driver {
 
       classId += 2
     }
+
+
+    // Generate string tables
+    strings.foreach { case (str, label) =>
+      val charArrayL = AnonLabel("charArray")
+      Target.global.rodata.emit(
+        label,
+        s"dd ${CommonClassIds.string}",
+        s"dd $charArrayL",
+        charArrayL,
+        s"dd ${CommonClassIds.charArray}",
+        s"dd ${str.length}"
+        )
+      str.foreach { c =>
+        Target.global.rodata.emit( s"dd '${Escape.escapeJava(c.toString)}'")
+      }
+    }
+
 
     files
       .filter(_.classes.length > 0)

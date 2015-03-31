@@ -5,6 +5,53 @@ import juicy.source.ast._
 import juicy.source.scoper.Scope
 import juicy.utils.visitor._
 
+object CommonClassIds {
+  var int = -1
+  var obj = -1
+  var bool = -1
+  var byte = -1
+  var char = -1
+  var short = -1
+  var intBox = -1
+  var string = -1
+  var boolBox = -1
+  var byteBox = -1
+  var charBox = -1
+  var shortBox = -1
+  def charArray = char + 1
+
+  def numericBoxes = Seq(intBox, byteBox, charBox, shortBox)
+
+  def setClass(c: ClassDefn): Unit = {
+    if (c.pkg != Seq("java", "lang"))
+      return
+
+    val id = c.classId
+    c.name match {
+      case "Object"    => obj = id
+      case "Boolean"   => boolBox = id
+      case "Byte"      => byteBox = id
+      case "Character" => charBox = id
+      case "Integer"   => intBox = id
+      case "Short"     => shortBox = id
+      case "String"    => string = id
+      case _           =>
+    }
+  }
+
+  def setPrimitive(c: PrimitiveDefn): Unit = {
+    val id = c.classId
+    c.name match {
+      case "int"     => int = id
+      case "byte"    => byte = id
+      case "char"    => char = id
+      case "short"   => short = id
+      case "boolean" => bool = id
+      case _         =>
+    }
+  }
+}
+
 trait GeneratorUtils {
   var currentClass: ClassDefn
   var currentMethod: MethodDefn
@@ -90,6 +137,49 @@ trait GeneratorUtils {
       emit(rhs)
       Target.text.emit(doneL)
     }
+  }
+
+  def unboxNumeric(ghs: Expression) = {
+    emit(ghs)
+
+    val t = ghs.et.r
+    // TODO: this doesn't work because t.classId isn't the same as the
+    // runtime classId... SMH
+    if (CommonClassIds.numericBoxes contains t.classId) {
+      val c = t.asInstanceOf[ClassDefn]
+      val offset = c.getFieldIndex("value")
+      val loc = Location("ebx", offset * 4).deref
+
+      Target.text.emit(
+        "; unbox numeric",
+        s"mov ebx, $loc"
+      )
+    }
+  }
+
+  def arithmetic(b: BinOp, op: String) = {
+    unboxNumeric(b.lhs)
+    Target.text.emit("push ebx")
+    unboxNumeric(b.rhs)
+
+    if (op == "idiv") {
+      val except = NamedLabel("_exception")
+      val onwards = AnonLabel("div_safe")
+
+      Target.file.reference(except)
+      Target.text.emit(
+        "cmp edx, 0",
+        s"jne $onwards",
+        s"call $except",
+        onwards
+        )
+    }
+
+    Target.text.emit(
+      "pop ecx",
+      "mov edx, 0",
+      s"$op ebx, ecx"
+    )
   }
 
   // Compare ebx to ecx, use jmpType to decide how they compare

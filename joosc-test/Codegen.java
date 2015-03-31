@@ -4,16 +4,7 @@ public class Codegen {
     public Codegen() {
     }
 
-    public int hashCode() {
-        return 137;
-    }
-
-    public int foo() {
-      return hashCode();
-    }
-
     public static int test() {
-        Codegen c = new Codegen2();
-        return c.foo();
+        return new Integer(30) - 7 * 2;
     }
 }

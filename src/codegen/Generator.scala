@@ -432,9 +432,17 @@ object Generator extends GeneratorUtils {
 
         Target.text.emit(
           s"call $alloc",
-          "push eax",
+          "push eax"
+        )
+
+        n.args.foreach { arg =>
+          emit(arg)
+          Target.text.emit("push ebx")
+        }
+
+        Target.text.emit(
           s"call $ctor",
-          "add esp, 4",
+          s"add esp, ${4 + n.args.length * 4}",
           // allocator returns this in eax
           "mov ebx, eax"
           )
@@ -456,6 +464,15 @@ object Generator extends GeneratorUtils {
       case m: Member =>
         emit(m.lhs)
         Target.text.emit(s"mov ebx, ${memLocation(m).deref}")
+
+
+
+      case op: Sub => arithmetic(op, "sub")
+      case op: Mul => arithmetic(op, "sub")
+      case op: Div => arithmetic(op, "idiv")
+      case op: Mod =>
+        arithmetic(op, "idiv")
+        Target.text.emit("mov ebx, edx")
 
 
 
