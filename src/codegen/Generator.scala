@@ -48,21 +48,12 @@ object Generator extends GeneratorUtils {
       case BlockStmnt(body) =>
         body.foreach(emit)
 
-
-
-
       case ReturnStmnt(value) =>
         value.map(emit)
         Target.text.emit(Epilogue())
 
-
-
-
       case ExprStmnt(expr) =>
         emit(expr)
-
-
-
 
       case IntVal(value) => Target.text.emit(s"mov ebx, $value")
 
@@ -76,8 +67,6 @@ object Generator extends GeneratorUtils {
         Target.file.reference(s.interned)
         Target.text.emit(s"mov ebx, ${s.interned}")
 
-
-
       case Eq(lhs, rhs)    => cmpHelper(lhs, rhs, "e")
       case GEq(lhs, rhs)   => cmpHelper(lhs, rhs, "ge")
       case LEq(lhs, rhs)   => cmpHelper(lhs, rhs, "le")
@@ -89,8 +78,6 @@ object Generator extends GeneratorUtils {
       case EagerOr(lhs, rhs)  => logical(lhs, rhs, "or", true)
       case EagerAnd(lhs, rhs) => logical(lhs, rhs, "and", true)
 
-
-
       case Not(ghs) =>
         emit(ghs)
         Target.text.emit(
@@ -100,7 +87,11 @@ object Generator extends GeneratorUtils {
           )
 
 
-
+      case Neg(ghs) =>
+        emit(ghs)
+        Target.text.emit(
+          "neg ebx"
+        )
 
       case c: Call if c.isStatic =>
         // TODO: figure out how to 'this'
