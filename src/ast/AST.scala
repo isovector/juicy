@@ -413,8 +413,10 @@ case class ClassDefn(
   override def debugTypeLayout = {
     val parent =
       extnds
+        .map(_.rc)
+        .filter(_.allocSize > 0)
         .headOption
-        .map(me => s"${me.rc.name}_Layout parent")
+        .map(me => s"${me.name}_Layout parent;")
         .getOrElse("")
 
     val layoutFields =
@@ -423,7 +425,7 @@ case class ClassDefn(
         .mkString("\n")
 
     val companion =
-      if (parent == "")
+      if (extnds.headOption.isEmpty)
         s"""
 struct Array {
   int classId;
@@ -445,7 +447,7 @@ $layoutFields
 
 struct $name {
   int classId;
-  $parent;
+  $parent
   $layout me;
 };
 

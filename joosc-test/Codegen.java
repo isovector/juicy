@@ -1,17 +1,17 @@
 public class Codegen {
-    public int a = 40;
+    public Codegen inner;
+    public int val;
 
     public Codegen() {
     }
 
-    public void mutate() {
-        a = a / 2;
+    public Codegen(int x) {
+        inner = new Codegen();
+        inner.val = x;
     }
 
     public static int test() {
-        Codegen c = new Codegen();
-        c.mutate();
-        c.mutate();
-        return c.a;
+        Codegen c = new Codegen(5);
+        return c.inner.val;
     }
 }

@@ -192,7 +192,8 @@ trait GeneratorUtils {
     } else {
       Target.text.emit(
         "pop ecx",
-        s"$op ebx, ecx"
+        s"$op ecx, ebx",
+        "mov ebx, ecx"
       )
     }
   }

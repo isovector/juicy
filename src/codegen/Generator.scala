@@ -309,7 +309,13 @@ object Generator extends GeneratorUtils {
             .map { parent =>
               val ctor = parent.rc.defaultCtorLabel
               Target.file.reference(ctor)
-              Target.text.emit(s"call $ctor")
+
+              emit(ThisVal())
+              Target.text.emit(
+                "push ebx",
+                s"call $ctor",
+                "add esp, 4"
+              )
             }
         }
 
@@ -331,10 +337,11 @@ object Generator extends GeneratorUtils {
 
 
       case t: ThisVal =>
-        val offset = thisLocation.deref
+        val loc = thisLocation.deref
         Target.text.emit(
           s"; load this",
-          s"mov ebx, $offset")
+          s"mov ebx, $loc"
+        )
 
 
 
@@ -420,7 +427,6 @@ object Generator extends GeneratorUtils {
 
 
       case n: NewType =>
-        // TODO: do we need to store anything?
         val c = n.tname.rc
         val alloc = c.allocLabel
         val ctor = n.resolvedCxr.label
@@ -442,9 +448,9 @@ object Generator extends GeneratorUtils {
 
         Target.text.emit(
           s"call $ctor",
-          s"add esp, ${4 + n.args.length * 4}",
-          // allocator returns this in eax
-          "mov ebx, eax"
+          s"add esp, ${n.args.length * 4}",
+          // `this` is still on the stack
+          "pop ebx"
           )
 
 
