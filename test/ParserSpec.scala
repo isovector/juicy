@@ -348,7 +348,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
   }
 
   it should "parse multiple extends" in {
-    ClassDefn.suspendUniqueness {
     mkParser("""
       interface A extends IA, IB { }
       """)
@@ -359,7 +358,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
         NONE,
         Seq(typename("IA"), typename("IB")),
         Seq(), Seq(), Seq(), true)
-    }
   }
 
   it should "parse files" in {
@@ -372,7 +370,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
       public interface Jello { }
       """)
 
-    ClassDefn.suspendUniqueness {
     val result = parser.parseFile()
 
     result should be ===
@@ -385,7 +382,6 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
           new ClassDefn("Hello", Seq("look", "mom"), NONE, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq()),
           new ClassDefn(
             "Jello", Seq("look", "mom"), PUBLIC, Seq(typename("java.lang.Object")), Seq(), Seq(), Seq(), true)))
-    }
   }
 
   it should "not parse multiple stars in imports" in {

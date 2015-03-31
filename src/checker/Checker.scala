@@ -33,6 +33,7 @@ object Checker {
             val varScope =  (Seq(id.scope.get) ++ helper.ThisCls.superTypes.map(_.classScope)).find(_.resolve(name) != None)
             if (varScope.isEmpty) {
               helper.addError(undefined(id, helper.ThisType))
+              id
             } else if (isIn[MethodDefn]()) {
               val isStatic = ancestor[MethodDefn].get.isStatic
               val nonStaticVar = {
@@ -47,9 +48,21 @@ object Checker {
                 helper.addError(CheckerError(s"Reference to instance variable $name in static context", id.from))
               }
               helper.setType(id, varScope.flatMap(_.resolve(name)).get)
+              if (nonStaticVar) {
+                val thval = ThisVal()
+                helper.setType(thval, helper.ThisType)
+                val member = Member(thval, id)
+                helper.setType(member, id.et)
+                member
+              } else {
+                id
+              }
+            } else {
+              id
             }
+          } else {
+            id
           }
-          id
 
         case member@Member(left, right) =>
            val isInCall = context.head match {
