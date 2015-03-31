@@ -194,6 +194,7 @@ trait TypeDefn extends Definition {
 
   var classId = 0
   def itableFor(int: TypeDefn) = NamedLabel(s"$labelName##itable##${int.labelName}")
+  lazy val hierarchyLabel = NamedLabel(s"$labelName##hierarchy###")
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
@@ -378,7 +379,6 @@ case class ClassDefn(
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
   val vtableLabel = NamedLabel(s"$labelName##vtable")
   val itableLabel = NamedLabel(s"$labelName##itable")
-  val hierarchyLabel = NamedLabel(s"$labelName##hierarchy###")
 
   def is(other: ClassDefn) = labelName == other.labelName
   def isnt(other: ClassDefn) = !(this is other)

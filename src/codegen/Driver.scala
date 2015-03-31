@@ -86,11 +86,23 @@ object Driver {
           Target.global.rodata.emit(s"dd ${c.hierarchyLabel}; hierarchy for ${c.name}")
         case t: TypeDefn =>
           Target.global.rodata.emit(s"dd 0; no hierarchy for ${t.name}")
+          Target.global.export(defn.arrayOf.hierarchyLabel)
       }
-      // TODO: ARRAYS
-      Target.global.rodata.emit(s"dd 0; no hierarchy for ${defn.name}")
+      Target.global.rodata.emit(s"dd ${defn.arrayOf.hierarchyLabel}; hierarchy for ${defn.arrayOf.name}")
     }
-
+    
+    defns.foreach { defn => 
+      defn match {
+        case t: TypeDefn => 
+          val arrT = t.arrayOf
+          Target.global.rodata.emit(arrT.hierarchyLabel)
+          (arrT +: arrT.superTypes).distinct.map( sup =>
+            Target.global.rodata.emit(s"dd ${Runtime.lookup(sup)}; hierarchy for ${sup.name}")
+          )
+          Target.global.rodata.emit(s"dd -1; end of hierarchy")
+      }
+    }
+    
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
     interfaces.foreach{ int =>
       val label = int.itableLabel
