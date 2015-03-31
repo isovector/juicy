@@ -209,6 +209,8 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
          val elemL = lhsT.asInstanceOf[ArrayDefn].elemType
          val elemR = rhsT.asInstanceOf[ArrayDefn].elemType
          (elemL resolvesTo elemR) || (elemL.nullable && (elemR isSubtypeOf elemL))
+      } else if (isBoolean(lhs) && isBoolean(rhs)) {
+        true
       } else if (isNumeric(lhs) && isNumeric(rhs)) {
         isWidening(lhs, rhs)
       } else if (isNull(rhs) && lhsT.nullable) {
