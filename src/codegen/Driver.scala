@@ -54,14 +54,14 @@ object Driver {
       val vtableEntry =
         defn match {
           case c: ClassDefn if !c.isInterface =>
-            CommonClassIds.setClass(c)
+            Runtime.setClass(c)
 
             val label = c.vtableLabel
             Target.global.reference(label)
             label.toString
 
           case p: PrimitiveDefn =>
-            CommonClassIds.setPrimitive(p)
+            Runtime.setPrimitive(p)
             "0"
 
           case _ =>
@@ -82,10 +82,10 @@ object Driver {
       val charArrayL = AnonLabel("charArray")
       Target.global.rodata.emit(
         label,
-        s"dd ${CommonClassIds.string}",
+        s"dd ${Runtime.string}",
         s"dd $charArrayL",
         charArrayL,
-        s"dd ${CommonClassIds.charArray}",
+        s"dd ${Runtime.charArray}",
         s"dd ${str.length}"
         )
       str.foreach { c =>

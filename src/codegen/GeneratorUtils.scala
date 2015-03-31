@@ -5,7 +5,7 @@ import juicy.source.ast._
 import juicy.source.scoper.Scope
 import juicy.utils.visitor._
 
-object CommonClassIds {
+object Runtime {
   var int = -1
   var obj = -1
   var bool = -1
@@ -37,6 +37,7 @@ object CommonClassIds {
       case "String"    => string = id
       case _           =>
     }
+    tLookup(c.labelName) = id
   }
 
   def setPrimitive(c: PrimitiveDefn): Unit = {
@@ -49,6 +50,12 @@ object CommonClassIds {
       case "boolean" => bool = id
       case _         =>
     }
+    tLookup(c.labelName) = id
+  }
+
+  private val tLookup = collection.mutable.Map[String, Int]()
+  def lookup(t: TypeDefn): Int = {
+    tLookup(t.labelName)
   }
 }
 
@@ -145,7 +152,7 @@ trait GeneratorUtils {
     val t = ghs.et.r
     // TODO: this doesn't work because t.classId isn't the same as the
     // runtime classId... SMH
-    if (CommonClassIds.numericBoxes contains t.classId) {
+    if (Runtime.numericBoxes contains Runtime.lookup(t)) {
       val c = t.asInstanceOf[ClassDefn]
       val offset = c.getFieldIndex("value")
       val loc = Location("ebx", offset * 4).deref
