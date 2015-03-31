@@ -378,7 +378,7 @@ case class ClassDefn(
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
   val vtableLabel = NamedLabel(s"$labelName##vtable")
   val itableLabel = NamedLabel(s"$labelName##itable")
-
+  val hierarchyLabel = NamedLabel(s"$labelName##hierarchy###")
 
   def is(other: ClassDefn) = labelName == other.labelName
   def isnt(other: ClassDefn) = !(this is other)

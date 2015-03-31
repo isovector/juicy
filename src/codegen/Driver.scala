@@ -77,6 +77,17 @@ object Driver {
 
       classId += 2
     }
+    
+    Target.global.rodata.emit(Generator.hierarchyTable)
+    defns.foreach { defn =>
+      defn match {
+        case c: ClassDefn if !c.isInterface =>
+          Target.global.reference(c.hierarchyLabel)
+          Target.global.rodata.emit(s"dd ${c.hierarchyLabel}; hierarchy for ${c.name}")
+        case t: TypeDefn =>
+          Target.global.rodata.emit(s"dd 0; no hierarchy for ${t.name}")
+      }
+    }
 
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
     interfaces.foreach{ int =>

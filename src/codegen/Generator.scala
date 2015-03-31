@@ -13,6 +13,7 @@ object Generator extends GeneratorUtils {
   var currentMethod: MethodDefn = null
 
   val globalVtable = NamedLabel("_vtable")
+  val hierarchyTable = NamedLabel("_hierarchy")
   val globalArrayAlloc = NamedLabel("_aalloc")
   val gInstanceOf = NamedLabel("_instanceof")
 
@@ -224,6 +225,15 @@ object Generator extends GeneratorUtils {
 
       case c: ClassDefn if !c.isInterface =>
         currentClass = c
+
+        // Build the class hierarchy
+        Target.file.export(c.hierarchyLabel)
+        Target.rodata.emit(c.hierarchyLabel)
+        Target.rodata.emit(s"; hierarchy for ${c.name}")
+        (c +: c.superTypes).map { t => 
+          Target.rodata.emit(s"dd ${Runtime.lookup(t)}; id for ${t.name}")
+        }
+        Target.rodata.emit(s"dd -1; end of hierarchy")
 
         Target.file.export(c.allocLabel)
         Target.file.export(c.initLabel)
