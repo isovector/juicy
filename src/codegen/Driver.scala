@@ -76,7 +76,21 @@ object Driver {
 
       classId += 2
     }
-
+    
+    val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
+    val allTypes = defns.flatMap(cls => Seq(cls, cls.arrayOf))
+    interfaces.foreach{ int => 
+      val label = int.itableLabel
+      Target.global.reference(label)
+      allTypes.foreach{ t =>
+        if (t implements int) {
+          Target.global.rodata.emit(s"dd ${t itableFor int}")
+        } else {
+          Target.global.rodata.emit("dd 0")
+        }
+      }
+    }
+    
 
     // Generate string tables
     strings.foreach { case (str, label) =>

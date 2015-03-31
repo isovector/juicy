@@ -61,6 +61,14 @@ object CheckerSpec {
     class Short {
       public Short() {}
     }
+    """,
+    """
+    package java.lang;
+    interface Cloneable {}
+    """,
+    """
+    package java.io;
+    interface Serializable {}
     """)
   def check(sources: String*): Seq[FileNode] = {
     val srcs = sources.toList ++ stdlib

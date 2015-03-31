@@ -114,6 +114,8 @@ trait TypeDefn extends Definition {
   lazy val allInterfaces: Seq[ClassDefn] = {
     superTypes.filter(_.isInterface)
   }
+  
+  def implements(c: ClassDefn) = !isInterface && (allInterfaces contains c)
 
   lazy val allMethods: Seq[MethodDefn] = {
     val interfaceMethods =
@@ -154,13 +156,10 @@ trait TypeDefn extends Definition {
 
   def isSubtypeOf (other: TypeDefn) = (this resolvesTo other) || (superTypes contains other)
 
-  def getArrayOf(pkgtree: PackageTree): ArrayDefn = {
+  private var arrayOfImpl: Option[ArrayDefn] = None
+  lazy val arrayOf = {
     val arr = ArrayDefn(this)
-    arr.scope = Some(new ClassScope())
-
-    val intType  = pkgtree.getTypename(Seq("int")).get
-    intType.isFinal = true
-    arr.scope.get.define("length", intType)
+    arr.scope = ArrayDefn.sharedScope
     arr
   }
 
@@ -194,6 +193,7 @@ trait TypeDefn extends Definition {
   }
 
   var classId = 0
+  def itableFor(int: TypeDefn) = NamedLabel(s"$labelName##itable##${int.labelName}")
 }
 
 case class Typename(qname: QName, isArray: Boolean=false) extends Visitable {
@@ -377,6 +377,8 @@ case class ClassDefn(
   val initLabel = NamedLabel(s"$labelName##init")
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
   val vtableLabel = NamedLabel(s"$labelName##vtable")
+  val itableLabel = NamedLabel(s"$labelName##itable")
+  
 
   def is(other: ClassDefn) = labelName == other.labelName
   def isnt(other: ClassDefn) = !(this is other)
@@ -480,16 +482,28 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
   override def labelName = name
 }
 
+object ArrayDefn {
+  var sharedScope: Option[ClassScope] = None
+  def InitScope(pkgtree: PackageTree) = {
+    sharedScope = Some(new ClassScope)
+    
+    val intType  = pkgtree.getTypename(Seq("int")).get
+    intType.isFinal = true
+    sharedScope.get.define("length", intType)
+  }
+  val sharedImpls = Seq(
+    Typename(Seq("java", "lang", "Cloneable")),
+    Typename(Seq("java", "io", "Serializable"))
+  )
+}
+
 case class ArrayDefn(elemType: TypeDefn) extends TypeDefn {
   val name = elemType.name + "[]"
   val pkg = elemType.pkg
 
   val extnds = Seq()
 
-  val impls = Seq(
-    Typename(Seq("java", "lang", "Cloneable")),
-    Typename(Seq("java", "io", "Serializable"))
-  )
+  val impls = ArrayDefn.sharedImpls
 
   val fields =
     Seq(

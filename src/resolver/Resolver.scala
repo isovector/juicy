@@ -177,16 +177,7 @@ object Resolver {
 
             if (tname.isArray) {
               tname.resolved =
-                tname.resolved.map(_.getArrayOf(pkgtree))
-
-              // resolve array's interfaces
-              tname.resolved.get.impls.map { itname =>
-                val iqname = itname.qname
-                itname.resolved =
-                  node.resolve(iqname, pkgtree, itname.from)
-                if (!itname.resolved.isDefined)
-                  throw UnresolvedTypeError(iqname, itname.from)
-              }
+                tname.resolved.map(_.arrayOf)
             }
 
           case _ =>
@@ -195,6 +186,12 @@ object Resolver {
         l => throw VisitError(l),
         r => r
       )
+      ArrayDefn.InitScope(pkgtree)
+      ArrayDefn.sharedImpls.foreach{ tname =>
+        tname.resolved = node.resolve(tname.qname, pkgtree, tname.from)
+        if (!tname.resolved.isDefined)
+          throw UnresolvedTypeError(tname.qname, tname.from)
+      }
     }
 
     pkgtree
