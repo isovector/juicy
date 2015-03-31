@@ -108,13 +108,13 @@ trait TypeDefn extends Definition {
       sigs.contains(parMeth.signature)
     }
 
-    (methods ++ keeps, hides)
+    (keeps ++ methods, hides)
   }
 
   lazy val allInterfaces: Seq[ClassDefn] = {
     superTypes.filter(_.isInterface)
   }
-  
+
   def implements(c: ClassDefn) = !isInterface && (allInterfaces.find(_ resolvesTo c) != None)
 
   lazy val allMethods: Seq[MethodDefn] = {
@@ -378,7 +378,7 @@ case class ClassDefn(
   val defaultCtorLabel = NamedLabel(s"$labelName##ctor")
   val vtableLabel = NamedLabel(s"$labelName##vtable")
   val itableLabel = NamedLabel(s"$labelName##itable")
-  
+
 
   def is(other: ClassDefn) = labelName == other.labelName
   def isnt(other: ClassDefn) = !(this is other)
@@ -486,7 +486,7 @@ object ArrayDefn {
   var sharedScope: Option[ClassScope] = None
   def InitScope(pkgtree: PackageTree) = {
     sharedScope = Some(new ClassScope)
-    
+
     val intType  = pkgtree.getTypename(Seq("int")).get
     intType.isFinal = true
     sharedScope.get.define("length", intType)

@@ -39,3 +39,21 @@ case class Epilogue() extends Instruction {
     ).mkString("\n")
 }
 
+case class Guard(
+    check: Instruction,
+    jump: String,
+    name: String) extends Instruction {
+  val except = NamedLabel("_exception")
+  val onwards = AnonLabel(name)
+
+  Target.file.reference(except)
+
+  def emitted =
+    Seq(
+      check.emitted,
+      s"$jump $onwards",
+      s"call $except",
+      onwards.emitted
+    ).mkString("\n")
+}
+

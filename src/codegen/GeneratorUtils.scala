@@ -181,15 +181,10 @@ trait GeneratorUtils {
     unboxNumeric(b.rhs)
 
     if (op == "idiv") {
-      val except = NamedLabel("_exception")
-      val onwards = AnonLabel("div_safe")
-
-      Target.file.reference(except)
       Target.text.emit(
-        "cmp ebx, 0",
-        s"jne $onwards",
-        s"call $except",
-        onwards,
+        Guard(
+          "cmp ebx, 0", "jne",
+          "div_safe"),
         "mov edx, 0",
         "pop eax",
         s"$op ebx"
@@ -224,19 +219,14 @@ trait GeneratorUtils {
   }
 
   def idxHelper(idx: Index) = {
-    val except = NamedLabel("_exception")
-    Target.file.reference(except)
-    val otherwise = AnonLabel("idx_ok")
-
     emit(idx.rhs)
     Target.text.emit("push ebx")
     emit(idx.lhs)
     Target.text.emit(
       "pop eax",
-      "cmp eax, [ebx+4]",
-      s"jl $otherwise",
-      s"call $except",
-      otherwise
+      Guard(
+        "cmp eax, [ebx+4]", "jl",
+        "idx_bounded")
     )
   }
 

@@ -55,6 +55,11 @@ object Generator extends GeneratorUtils {
       case ExprStmnt(expr) =>
         emit(expr)
 
+
+
+
+      case NullVal() => Target.text.emit(s"mov ebx, dword 0")
+
       case IntVal(value) => Target.text.emit(s"mov ebx, $value")
 
       case BoolVal(true)  => Target.text.emit(s"mov ebx, 1")
@@ -94,9 +99,7 @@ object Generator extends GeneratorUtils {
         )
 
       case c: Call if c.isStatic =>
-        // TODO: figure out how to 'this'
         val paramSize = c.args.map(_.t.stackSize).sum
-
         c.args.foreach { arg =>
           emit(arg)
           Target.text.emit("push ebx")
@@ -107,7 +110,6 @@ object Generator extends GeneratorUtils {
             Target.file.reference(label)
         Target.text.emit(s"call $label")
 
-
         // Revert stack to old position after call
         if (paramSize > 0)
           Target.text.emit(s"add esp, byte $paramSize")
@@ -115,26 +117,22 @@ object Generator extends GeneratorUtils {
 
 
       case c: Call if !c.isStatic =>
+        Target.file.reference(globalVtable)
+        val invokee = c.resolvedMethod.containingClass
 
-        val invokee =
-          c.resolvedMethod.containingClass
-
-        Target.text.emit(
-          "; load the toBeThis")
-
-        val toBeThis = c.method.expr match {
-          case i: Id => thisLocation
+        c.method.expr match {
+          case i: Id => emit(ThisVal())
           case m@Member(lhs, rhs) =>
             emit(lhs)
-            Location("ebx", 0)
         }
 
         Target.text.emit(
-            s"mov ebx, ${toBeThis.deref}",
+            Guard(
+              "cmp ebx, 0", "jne",
+              "ref_ok"),
             s"push ebx")
 
         val paramSize = c.args.map(_.t.stackSize).sum
-
         c.args.foreach { arg =>
           emit(arg)
           Target.text.emit("push ebx")
@@ -152,7 +150,9 @@ object Generator extends GeneratorUtils {
           s"; call ${c.signature}",
           s"mov ecx, $tableLabel",
           s"mov edx, [esp+${paramSize}]",
+          s"mov edx, [edx]",
           s"mov ecx, [ecx + edx * 4]",
+          s"; ${c.signature}",
           s"call [ecx+$methodOffset]",
           s"add esp, byte ${paramSize + 4}"
         )
@@ -223,6 +223,7 @@ object Generator extends GeneratorUtils {
           // Size to malloc. add 4 for the class id
           s"mov eax, ${c.allocSize + 4}",
           "call __malloc",
+
 
           s"mov [eax], dword ${c.classId}",
           "push eax", // TODO: uhh so how do we do this passing?
@@ -530,6 +531,7 @@ object Generator extends GeneratorUtils {
 
 
 
+      case op: Add => arithmetic(op, "add")
       case op: Sub => arithmetic(op, "sub")
       case op: Mul => arithmetic(op, "imul")
       case op: Div =>
