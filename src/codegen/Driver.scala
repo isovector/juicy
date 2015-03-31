@@ -79,10 +79,11 @@ object Driver {
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
     interfaces.foreach{ int => 
       val label = int.itableLabel
-      Target.global.reference(label)
+      Target.global.export(label)
       Target.global.rodata.emit(label)
       defns.foreach{ t =>
         if (t implements int) {
+          Target.global.reference(t itableFor int)
           Target.global.rodata.emit(s"dd ${t itableFor int}")
         } else {
           Target.global.rodata.emit(s"dd 0")
