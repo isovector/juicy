@@ -468,8 +468,10 @@ object Generator extends GeneratorUtils {
 
 
       case op: Sub => arithmetic(op, "sub")
-      case op: Mul => arithmetic(op, "sub")
-      case op: Div => arithmetic(op, "idiv")
+      case op: Mul => arithmetic(op, "imul")
+      case op: Div =>
+        arithmetic(op, "idiv")
+        Target.text.emit("mov ebx, eax")
       case op: Mod =>
         arithmetic(op, "idiv")
         Target.text.emit("mov ebx, edx")

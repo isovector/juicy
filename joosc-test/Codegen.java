@@ -1,10 +1,17 @@
 public class Codegen {
-    public int a = 5;
+    public int a = 40;
 
     public Codegen() {
     }
 
+    public void mutate() {
+        a = a / 2;
+    }
+
     public static int test() {
-        return new Integer(30) - 7 * 2;
+        Codegen c = new Codegen();
+        c.mutate();
+        c.mutate();
+        return c.a;
     }
 }

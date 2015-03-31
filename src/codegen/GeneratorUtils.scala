@@ -55,6 +55,8 @@ object Runtime {
 
   private val tLookup = collection.mutable.Map[String, Int]()
   def lookup(t: TypeDefn): Int = {
+    // TODO: dont think this works for arrays but it is easy to
+    // make it work for arrays
     tLookup(t.labelName)
   }
 }
@@ -70,7 +72,7 @@ trait GeneratorUtils {
   // Get the memory location of a variable
   def varLocation(name: String, scope: Scope) = {
     // TODO: this fails for non-static fields
-    if (currentMethod != null) {
+    if (currentMethod != null && scope.isLocalScope(name)) {
       val params = currentMethod.params.length
 
       // `this` is always the first thing pushed
@@ -93,7 +95,10 @@ trait GeneratorUtils {
 
   def thisLocation = {
     // TODO: might fuck up for initializers
-    val params = currentMethod.params.length
+    val params =
+      if (currentMethod != null)
+        currentMethod.params.length
+      else 0
     val offset = (params + 2) * 4
     Location("ebp", offset)
   }
@@ -175,18 +180,20 @@ trait GeneratorUtils {
 
       Target.file.reference(except)
       Target.text.emit(
-        "cmp edx, 0",
+        "cmp ebx, 0",
         s"jne $onwards",
         s"call $except",
-        onwards
+        onwards,
+        "mov edx, 0",
+        "pop eax",
+        s"$op ebx"
         )
+    } else {
+      Target.text.emit(
+        "pop ecx",
+        s"$op ebx, ecx"
+      )
     }
-
-    Target.text.emit(
-      "pop ecx",
-      "mov edx, 0",
-      s"$op ebx, ecx"
-    )
   }
 
   // Compare ebx to ecx, use jmpType to decide how they compare

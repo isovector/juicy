@@ -981,7 +981,7 @@ case class StringConcat(lhs: Expression, rhs: Expression) extends BinOp {
 
 case class BoolToStr(sub: Expression) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       BoolToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[Expression]
@@ -991,7 +991,7 @@ case class BoolToStr(sub: Expression) extends Expression {
 
 case class ByteToStr(sub: Expression) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       ByteToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[Expression]
@@ -1000,7 +1000,7 @@ case class ByteToStr(sub: Expression) extends Expression {
 
 case class CharToStr(sub: Expression) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       CharToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[Expression]
@@ -1009,7 +1009,7 @@ case class CharToStr(sub: Expression) extends Expression {
 
 case class IntToStr(sub: Expression) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       IntToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[Expression]
@@ -1018,7 +1018,7 @@ case class IntToStr(sub: Expression) extends Expression {
 
 case class ShortToStr(sub: Expression) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       ShortToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[Expression]
@@ -1027,7 +1027,7 @@ case class ShortToStr(sub: Expression) extends Expression {
 
 case class StrToStr(sub: StringVal) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       StrToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[StringVal]
@@ -1036,7 +1036,7 @@ case class StrToStr(sub: StringVal) extends Expression {
 
 case class RefToStr(sub: Expression) extends Expression {
   val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) = 
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
       StrToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[StringVal]
