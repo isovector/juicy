@@ -226,26 +226,17 @@ object Checker {
         }
 
         case inst@InstanceOf(lhs, tname) => {
+          val rhs = TypeExpression(tname)
           if (!lhs.hasType) {
-            helper.setBoolean(inst)
-            inst
+            // do nothing
           } else if (!lhs.t.nullable ||
               !tname.r.nullable) {
             helper.addError(CheckerError("Operands of instanceOf cannot be value types", inst.from))
-            helper.setBoolean(inst)
-            inst
-        } else if (helper.isAssignable(TypeExpression(tname), lhs)){
-             val expr = BoolVal(true)
-             helper.setBoolean(expr)
-             expr
-          } else if (helper.isAssignable(lhs, TypeExpression(tname))) {
-            helper.setBoolean(inst)
-            inst
-          } else {
+          } else if (!helper.isAssignable(rhs, lhs) && !helper.isAssignable(lhs, rhs)) {
             helper.addError(unsupported("instanceof", inst.from, lhs.et, tname))
-            helper.setBoolean(inst)
-            inst
           }
+          helper.setBoolean(inst)
+          inst
         }
 
         case nt: NewType => {

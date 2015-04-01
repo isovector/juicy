@@ -125,10 +125,10 @@ class CheckerSpec extends FlatSpec with ShouldMatchers {
       }
       expr should be === Some(e)
     }
-    verifyConcat[StrToStr, StrToStr](retExpr(1))
-    verifyConcat[StrToStr, IntToStr](retExpr(2))
-    verifyConcat[RefToStr, StrToStr](retExpr(3))
-    verifyConcat[ByteToStr, StrToStr](retExpr(4))
+    verifyConcat[StringVal, StringVal](retExpr(1))
+    verifyConcat[StringVal, IntToStr](retExpr(2))
+    verifyConcat[RefToStr, StringVal](retExpr(3))
+    verifyConcat[ByteToStr, StringVal](retExpr(4))
     verifyConcat[BoolToStr, RefToStr](retExpr(5))
   }
 }
