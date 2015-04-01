@@ -691,7 +691,7 @@ object Generator extends GeneratorUtils {
           s"call ${Runtime.stringConcat}",
           s"add esp, 8"
         )
-      
+
       case btos: BoolToStr =>
         emit(btos.sub)
         Target.file.reference(Runtime.boolToString)
@@ -716,7 +716,7 @@ object Generator extends GeneratorUtils {
           s"call ${Runtime.charToString}",
           s"add esp, 4"
         )
-      
+
       case itos: IntToStr =>
         emit(itos.sub)
         Target.file.reference(Runtime.intToString)
@@ -725,7 +725,7 @@ object Generator extends GeneratorUtils {
           s"call ${Runtime.intToString}",
           s"add esp, 4"
         )
-      
+
       case stos: ShortToStr =>
         emit(stos.sub)
         Target.file.reference(Runtime.shortToString)
@@ -734,7 +734,7 @@ object Generator extends GeneratorUtils {
           s"call ${Runtime.shortToString}",
           s"add esp, 4"
         )
-        
+
       case otos: RefToStr =>
         emit(otos.sub)
         Target.file.reference(Runtime.objToString)
@@ -743,7 +743,7 @@ object Generator extends GeneratorUtils {
           s"call ${Runtime.objToString}",
           s"add esp, 4"
         )
-        
+
       case otherwise =>
         Target.text.emit(
           s"; not implemented: ${otherwise.toString.takeWhile(_ != '(')}")

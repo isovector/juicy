@@ -19,19 +19,19 @@ object Runtime {
   var charBox = -1
   var shortBox = -1
   def charArray = char + 1
-  
+
   var stringConcat: Label = null
-  
+
   var boolToString: Label = null
   var byteToString: Label = null
   var charToString: Label = null
   var objToString: Label = null
   var intToString: Label = null
   var shortToString: Label = null
-  
-  
+
+
   def numericBoxes = Seq(intBox, byteBox, charBox, shortBox)
- 
+
   def setClass(c: ClassDefn): Unit = {
     val id = c.classId
     tLookup += c.labelName -> id
@@ -45,7 +45,7 @@ object Runtime {
       case "Character" => charBox = id
       case "Integer"   => intBox = id
       case "Short"     => shortBox = id
-      case "String"    => 
+      case "String"    =>
         string = id
         stringConcat = c.methods.find(_.name == "concat").get.label
         val valuesOf = c.methods.filter(_.name == "valueOf")
@@ -242,13 +242,19 @@ trait GeneratorUtils {
     val afterwards = AnonLabel()
     val falseCase = AnonLabel()
 
+    val jmp =
+      if (jmpType.head == 'n')
+        "j" + jmpType.tail
+      else
+        "jn" + jmpType
+
     emit(rhs)
     Target.text.emit("push ebx")
     emit(lhs)
     Target.text.emit(
       "pop ecx",
       "cmp ebx, ecx",
-      s"jn$jmpType $falseCase",
+      s"$jmp $falseCase",
       "mov ebx, 1",
       s"jmp $afterwards",
       falseCase,
