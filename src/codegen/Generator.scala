@@ -701,57 +701,12 @@ object Generator extends GeneratorUtils {
           s"add esp, 8"
         )
 
-      case btos: BoolToStr =>
-        emit(btos.sub)
-        Target.file.reference(Runtime.boolToString)
-        Target.text.emit(
-          s"push ebx",
-          s"call ${Runtime.boolToString}",
-          s"add esp, 4"
-        )
-      case btos: ByteToStr =>
-        emit(btos.sub)
-        Target.file.reference(Runtime.byteToString)
-        Target.text.emit(
-          s"push ebx",
-          s"call ${Runtime.byteToString}",
-          s"add esp, 4"
-        )
-      case ctos: CharToStr =>
-        emit(ctos.sub)
-        Target.file.reference(Runtime.charToString)
-        Target.text.emit(
-          s"push ebx",
-          s"call ${Runtime.charToString}",
-          s"add esp, 4"
-        )
-
-      case itos: IntToStr =>
-        emit(itos.sub)
-        Target.file.reference(Runtime.intToString)
-        Target.text.emit(
-          s"push ebx",
-          s"call ${Runtime.intToString}",
-          s"add esp, 4"
-        )
-
-      case stos: ShortToStr =>
-        emit(stos.sub)
-        Target.file.reference(Runtime.shortToString)
-        Target.text.emit(
-          s"push ebx",
-          s"call ${Runtime.shortToString}",
-          s"add esp, 4"
-        )
-
-      case otos: RefToStr =>
-        emit(otos.sub)
-        Target.file.reference(Runtime.objToString)
-        Target.text.emit(
-          s"push ebx",
-          s"call ${Runtime.objToString}",
-          s"add esp, 4"
-        )
+      case toS: BoolToStr  => toStringHelper(toS, Runtime.boolToString)
+      case toS: ByteToStr  => toStringHelper(toS, Runtime.byteToString)
+      case toS: CharToStr  => toStringHelper(toS, Runtime.charToString)
+      case toS: IntToStr   => toStringHelper(toS, Runtime.intToString)
+      case toS: ShortToStr => toStringHelper(toS, Runtime.shortToString)
+      case toS: RefToStr   => toStringHelper(toS, Runtime.objToString)
 
       case otherwise =>
         Target.text.emit(

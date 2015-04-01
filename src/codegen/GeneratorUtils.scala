@@ -304,5 +304,15 @@ trait GeneratorUtils {
     )
   }
 
+  def toStringHelper(toS: ToStringNode, call: Label) = {
+    emit(toS.sub)
+    Target.file.reference(call)
+    Target.text.emit(
+      s"push ebx",
+      s"call $call",
+      s"add esp, 4"
+    )
+  }
+
   def emit(v: Visitable): Unit
 }
