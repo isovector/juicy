@@ -509,7 +509,12 @@ class Parser(tokens: TokenStream) extends ParserUtils {
         next()
         val tname = qualifiedName()
         ensure(")")
-        val value = parseUnaryNot()
+
+        val value =
+          if (tname.isPrimitive)
+            parseUnaryMinus()
+          else
+            parseUnaryNot()
 
         val result = new Cast(tname, value)
         tokens.unsetBacktrace()

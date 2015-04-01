@@ -313,6 +313,15 @@ class ParserSpec extends FlatSpec with ShouldMatchers {
       Sub(Parens(Id("X")), IntVal(42))
   }
 
+  it should "parse (primitive)-y as a unary" in {
+    val parser = mkParser("(byte)-42 (byte)-x")
+    parser.parseExpr() should be ===
+      Cast(typename("byte", false), IntVal(-42))
+
+    parser.parseExpr() should be ===
+      Cast(typename("byte", false), Neg(Id("x")))
+  }
+
   it should "parse (X)!-y as a cast" in {
     val parser = mkParser("(X)!-42")
     val result = parser.parseExpr()
