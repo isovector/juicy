@@ -226,6 +226,7 @@ trait GeneratorUtils {
           "div_safe"),
         "mov edx, 0",
         "pop eax",
+        "cdq",
         s"$op ebx"
         )
     } else {
