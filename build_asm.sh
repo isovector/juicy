@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-cd asm
-g++ -m32 -g -c types.cc
+cd output
+g++ -m32 -g -c gdb.types.cc
 for f in *.s; do
     nasm -O1 -f elf -g -F dwarf $f
 done

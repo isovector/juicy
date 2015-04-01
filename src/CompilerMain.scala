@@ -81,31 +81,35 @@ object CompilerMain {
   }
 
   def main(args: Array[String]): Unit = {
-    // HACK HACK HACK HACK HACK
-    //val files = build(parseFiles(args.toList))
-    val (pkgtree, files) = build(parseFiles(Seq(
-"stdlib/lang/Object.java",
-"stdlib/lang/Number.java",
-"stdlib/io/Serializable.java",
-"stdlib/io/OutputStream.java",
-"stdlib/io/PrintStream.java",
-"stdlib/lang/Boolean.java",
-"stdlib/lang/Byte.java",
-"stdlib/lang/Character.java",
-"stdlib/lang/Class.java",
-"stdlib/lang/Cloneable.java",
-"stdlib/lang/Integer.java",
-"stdlib/lang/Short.java",
-"stdlib/lang/String.java",
-"stdlib/lang/System.java",
-"stdlib/util/Arrays.java",
-"joosc-test/Codegen.java",
-"joosc-test/Codegen2.java",
-"joosc-test/FunInterface.java"
-)))
+    val run_debug = false
 
-    Driver(pkgtree, files)
+    val (pkgtree, files) =
+      if (!run_debug)
+        build(parseFiles(args.toList))
+      else
+        build(parseFiles(Seq(
+          "stdlib/lang/Object.java",
+          "stdlib/lang/Number.java",
+          "stdlib/io/Serializable.java",
+          "stdlib/io/OutputStream.java",
+          "stdlib/io/PrintStream.java",
+          "stdlib/lang/Boolean.java",
+          "stdlib/lang/Byte.java",
+          "stdlib/lang/Character.java",
+          "stdlib/lang/Class.java",
+          "stdlib/lang/Cloneable.java",
+          "stdlib/lang/Integer.java",
+          "stdlib/lang/Short.java",
+          "stdlib/lang/String.java",
+          "stdlib/lang/System.java",
+          "stdlib/util/Arrays.java",
+          "joosc-test/Codegen.java",
+          "joosc-test/Codegen2.java",
+          "joosc-test/FunInterface.java"
+        )))
 
+    if (files.length > 0)
+      Driver(pkgtree, files)
     CompilerTerminate(0)
   }
 }

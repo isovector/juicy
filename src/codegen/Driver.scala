@@ -171,7 +171,7 @@ object Driver {
       .filter(_.classes.length > 0)
       .sortBy(_.classes(0).classId)
       .foreach { f =>
-        val fname = s"asm/${f.classes(0).name}.s"
+        val fname = s"output/${f.classes(0).labelName}.s"
         Target.withFile(fname) {
           f.classes.foreach { c =>
             Generator.emit(c)
@@ -181,7 +181,7 @@ object Driver {
         }
       }
 
-    writeFile("asm/global.s", Target.global.emitted)
-    writeFile("asm/types.cc", Target.debug.toString)
+    writeFile("output/global.s", Target.global.emitted)
+    writeFile("output/gdb.types.cc", Target.debug.toString)
   }
 }
