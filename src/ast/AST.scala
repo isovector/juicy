@@ -45,6 +45,8 @@ trait Expression extends Visitable {
   def typeScope = exprType.flatMap(_.resolved).map(_.classScope)
 }
 
+trait Stringable extends Expression
+
 trait Statement extends Visitable {
   // TODO: do we need these?
   var reachable: Option[Boolean] = None
@@ -790,7 +792,7 @@ case class SuperVal()               extends NullOp
 case class IntVal(value: Int)       extends NullOp
 case class CharVal(value: Char)     extends NullOp
 case class BoolVal(value: Boolean)  extends NullOp
-case class StringVal(value: String) extends NullOp {
+case class StringVal(value: String) extends NullOp with Stringable {
   var interned: Label = null
 }
 
@@ -1018,12 +1020,19 @@ case class Index(lhs: Expression, rhs: Expression) extends BinOp {
 }
 
 
-case class StringConcat(lhs: Expression, rhs: Expression) extends BinOp {
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    rewriter(StringConcat.apply _)(rule, context)
+case class StringConcat(lhs: Stringable, rhs: Stringable) extends BinOp {
+  def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
+    val newCtx = this +: context
+    transfer(rule(
+      StringConcat(
+        lhs.rewrite(rule, newCtx).asInstanceOf[Stringable],
+        rhs.rewrite(rule, newCtx).asInstanceOf[Stringable]
+      ), context
+    ))
+  }
 }
 
-case class BoolToStr(sub: Expression) extends Expression {
+case class BoolToStr(sub: Expression) extends Expression with Stringable {
   val children = Seq(sub)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
@@ -1033,7 +1042,7 @@ case class BoolToStr(sub: Expression) extends Expression {
 }
 
 
-case class ByteToStr(sub: Expression) extends Expression {
+case class ByteToStr(sub: Expression) extends Expression with Stringable {
   val children = Seq(sub)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
@@ -1042,7 +1051,7 @@ case class ByteToStr(sub: Expression) extends Expression {
     ), context))
 }
 
-case class CharToStr(sub: Expression) extends Expression {
+case class CharToStr(sub: Expression) extends Expression with Stringable {
   val children = Seq(sub)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
@@ -1051,7 +1060,7 @@ case class CharToStr(sub: Expression) extends Expression {
     ), context))
 }
 
-case class IntToStr(sub: Expression) extends Expression {
+case class IntToStr(sub: Expression) extends Expression with Stringable {
   val children = Seq(sub)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
@@ -1060,7 +1069,7 @@ case class IntToStr(sub: Expression) extends Expression {
     ), context))
 }
 
-case class ShortToStr(sub: Expression) extends Expression {
+case class ShortToStr(sub: Expression) extends Expression with Stringable {
   val children = Seq(sub)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
@@ -1069,20 +1078,11 @@ case class ShortToStr(sub: Expression) extends Expression {
     ), context))
 }
 
-case class StrToStr(sub: StringVal) extends Expression {
+case class RefToStr(sub: Expression) extends Expression with Stringable {
   val children = Seq(sub)
   def rewrite(rule: Rewriter, context: Seq[Visitable]) =
     transfer(rule(
-      StrToStr(
-       sub.rewrite(rule, this +: context).asInstanceOf[StringVal]
-    ), context))
-}
-
-case class RefToStr(sub: Expression) extends Expression {
-  val children = Seq(sub)
-  def rewrite(rule: Rewriter, context: Seq[Visitable]) =
-    transfer(rule(
-      StrToStr(
+      RefToStr(
        sub.rewrite(rule, this +: context).asInstanceOf[StringVal]
     ), context))
 }

@@ -680,8 +680,69 @@ object Generator extends GeneratorUtils {
         arithmetic(op, "idiv")
         Target.text.emit("mov ebx, edx")
 
-
-
+      case concat: StringConcat =>
+        emit(concat.lhs)
+        Target.text.emit("push ebx")
+        emit(concat.rhs)
+        Target.file.reference(Runtime.stringConcat)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.stringConcat}",
+          s"add esp, 8"
+        )
+      
+      case btos: BoolToStr =>
+        emit(btos.sub)
+        Target.file.reference(Runtime.boolToString)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.boolToString}",
+          s"add esp, 4"
+        )
+      case btos: ByteToStr =>
+        emit(btos.sub)
+        Target.file.reference(Runtime.byteToString)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.byteToString}",
+          s"add esp, 4"
+        )
+      case ctos: CharToStr =>
+        emit(ctos.sub)
+        Target.file.reference(Runtime.charToString)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.charToString}",
+          s"add esp, 4"
+        )
+      
+      case itos: IntToStr =>
+        emit(itos.sub)
+        Target.file.reference(Runtime.intToString)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.intToString}",
+          s"add esp, 4"
+        )
+      
+      case stos: ShortToStr =>
+        emit(stos.sub)
+        Target.file.reference(Runtime.shortToString)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.shortToString}",
+          s"add esp, 4"
+        )
+        
+      case otos: RefToStr =>
+        emit(otos.sub)
+        Target.file.reference(Runtime.objToString)
+        Target.text.emit(
+          s"push ebx",
+          s"call ${Runtime.objToString}",
+          s"add esp, 4"
+        )
+        
       case otherwise =>
         Target.text.emit(
           s"; not implemented: ${otherwise.toString.takeWhile(_ != '(')}")

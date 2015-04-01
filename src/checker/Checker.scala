@@ -303,7 +303,7 @@ object Checker {
           } else if (helper.isString(lhs) && helper.isString(rhs)) {
             val newString = (lhs, rhs) match {
               case (l: StringVal, r: StringVal) => StringVal(l.value + r.value)
-              case _ => StringConcat(lhs, rhs)
+              case _ => StringConcat(helper.wrapAsString(lhs), helper.wrapAsString(rhs))
             }
 
             helper.setString(newString)

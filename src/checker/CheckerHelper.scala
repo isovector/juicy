@@ -222,18 +222,15 @@ class CheckerHelper (pkgTree: PackageTree, val ThisCls: ClassDefn) {
       }
     }
     
-    def wrapAsString(e: Expression): Expression = {
+    def wrapAsString(e: Expression): Stringable = {
       val strVal = if (isPrimitive(e)) {
         primitiveStrs(e.et)(e)
       } else if (isNull(e)) {
-        val sub = StringVal("null")
-        setString(sub)
-        StrToStr(sub)
+        StringVal("null")
       } else {
         e match {
           case lit: StringVal => {
-            setString(lit)
-            StrToStr(lit)
+            lit
           }
           case _ => RefToStr(e)
         }

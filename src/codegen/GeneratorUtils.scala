@@ -19,9 +19,19 @@ object Runtime {
   var charBox = -1
   var shortBox = -1
   def charArray = char + 1
-
+  
+  var stringConcat: Label = null
+  
+  var boolToString: Label = null
+  var byteToString: Label = null
+  var charToString: Label = null
+  var objToString: Label = null
+  var intToString: Label = null
+  var shortToString: Label = null
+  
+  
   def numericBoxes = Seq(intBox, byteBox, charBox, shortBox)
-
+ 
   def setClass(c: ClassDefn): Unit = {
     val id = c.classId
     tLookup += c.labelName -> id
@@ -35,7 +45,25 @@ object Runtime {
       case "Character" => charBox = id
       case "Integer"   => intBox = id
       case "Short"     => shortBox = id
-      case "String"    => string = id
+      case "String"    => 
+        string = id
+        stringConcat = c.methods.find(_.name == "concat").get.label
+        val valuesOf = c.methods.filter(_.name == "valueOf")
+        valuesOf.foreach { func =>
+          val label = func.label
+          val name = func.params(0).tname.r.name
+          println(name)
+          name match {
+            case "boolean" => boolToString = label
+            case "byte" => byteToString = label
+            case "char" => charToString = label
+            case "int" => intToString = label
+            case "short" => shortToString = label
+            case "Object" => objToString = label
+            case "String" =>
+            case _ => throw new Exception("What the actual fuck is going on?")
+          }
+        }
       case _           =>
     }
   }
