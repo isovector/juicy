@@ -583,7 +583,7 @@ object Generator extends GeneratorUtils {
         emit(a.rhs)
         Target.text.emit(
           "pop ecx",
-          // *ecx = ebx
+          "; *ecx = ebx",
           "mov [ecx], ebx"
         )
 
@@ -649,7 +649,7 @@ object Generator extends GeneratorUtils {
       case c: Cast =>
         if (c.tname.r.isPrimitive && c.value.et.isPrimitive) {
           // TODO: sign extension
-          val mask = c.value.t.asInstanceOf[PrimitiveDefn].clampMask
+          val mask = c.tname.r.asInstanceOf[PrimitiveDefn].clampMask
           emit(c.value)
           Target.text.emit(s"and ebx, dword $mask")
         } else {
