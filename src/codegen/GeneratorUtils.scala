@@ -251,5 +251,15 @@ trait GeneratorUtils {
     )
   }
 
+  def staticHelper(v: VarStmnt) = {
+    val loc = staticLocation(v)
+    if (v.containingClass isnt currentClass)
+      Target.file.reference(ExplicitLabel(loc.deref))
+
+    Target.text.emit(
+      s"mov ebx, ${loc.deref}"
+    )
+  }
+
   def emit(v: Visitable): Unit
 }

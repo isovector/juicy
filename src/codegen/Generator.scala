@@ -561,10 +561,8 @@ object Generator extends GeneratorUtils {
             Target.text.emit(
               s"add ebx, ${offset.offset}")
 
-          // TODO: do static members (probably stupid easy, but we don't gen
-          // them yet)
-          case sm: StaticMember =>
-            Target.text.emit("; unimplemented static assignment")
+          case s: StaticMember =>
+            staticHelper(s.decl.get)
 
           case idx: Index =>
             idxHelper(idx)
@@ -666,17 +664,8 @@ object Generator extends GeneratorUtils {
 
 
       case s: StaticMember =>
-        val v = s.decl.get
-
-
-        val loc = staticLocation(s.decl.get)
-        if (v.containingClass isnt currentClass)
-          Target.file.reference(ExplicitLabel(loc.deref))
-
-        Target.text.emit(
-          s"mov ebx, ${loc.deref}",
-          "mov ebx, [ebx]"
-        )
+        staticHelper(s.decl.get)
+        Target.text.emit("mov ebx, [ebx]")
 
 
 
