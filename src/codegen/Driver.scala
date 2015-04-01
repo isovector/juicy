@@ -77,7 +77,22 @@ object Driver {
 
       classId += 2
     }
-    
+
+
+    Target.global.export(Generator.gStaticInit)
+    Target.global.rodata.emit(Generator.gStaticInit)
+    Target.global.rodata.emit(Prologue())
+    defns
+      .filter(_.isInstanceOf[ClassDefn])
+      .map(_.asInstanceOf[ClassDefn])
+      .filter(!_.isInterface)
+      .foreach { defn =>
+        Target.global.reference(defn.staticInitLabel)
+        Target.global.rodata.emit(s"call ${defn.staticInitLabel}")
+      }
+    Target.global.rodata.emit(Epilogue())
+
+
     Target.global.rodata.emit(Generator.hierarchyTable)
     defns.foreach { defn =>
       defn match {
@@ -91,11 +106,11 @@ object Driver {
       }
       Target.global.rodata.emit(s"dd ${defn.arrayOf.hierarchyLabel}; hierarchy for ${defn.arrayOf.name}")
     }
-    
-    defns.foreach { defn => 
+
+    defns.foreach { defn =>
       defn match {
-        case c: ClassDefn if !c.isInterface => 
-        case t: TypeDefn => 
+        case c: ClassDefn if !c.isInterface =>
+        case t: TypeDefn =>
           val arrT = t.arrayOf
           Target.global.rodata.emit(arrT.hierarchyLabel)
           (arrT +: arrT.superTypes).distinct.map( sup =>
@@ -104,7 +119,7 @@ object Driver {
           Target.global.rodata.emit(s"dd -1; end of hierarchy")
       }
     }
-    
+
     val interfaces = defns.filter(c => c.isInterface).map(_.asInstanceOf[ClassDefn])
     interfaces.foreach{ int =>
       val label = int.itableLabel

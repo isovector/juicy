@@ -15,6 +15,7 @@ object Generator extends GeneratorUtils {
   val globalVtable = NamedLabel("_vtable")
   val hierarchyTable = NamedLabel("_hierarchy")
   val globalArrayAlloc = NamedLabel("_aalloc")
+  val gStaticInit = NamedLabel("_static")
 
   // array allocation
   {
@@ -325,6 +326,10 @@ object Generator extends GeneratorUtils {
           .fields
           .filter(_.isStatic)
           .foreach { f =>
+            Target.file.export(f.staticLabel)
+            Target.data.emit(
+              (f.staticLabel, s"dw 0")
+            )
             emit(f)
           }
 
@@ -358,10 +363,12 @@ object Generator extends GeneratorUtils {
         // Are we `public static int test()`? If so, generate a _start symbol
         if (m.isEntry) {
           val startLabel = NamedLabel("start")
+          Target.file.reference(gStaticInit)
           Target.file.export(startLabel)
           Target.text.emit(
             startLabel,
-            // Call test()
+
+            s"call ${gStaticInit}",
             s"call ${m.label}",
 
             // unix return interrupt
@@ -519,11 +526,19 @@ object Generator extends GeneratorUtils {
             if (v.isStatic)
               staticLocation(v)
             else
-              varLocation(v.name, v.scope.get).deref
+              varLocation(v.name, v.scope.get)
 
           Target.text.emit(s"; init var ${v.name}")
           v.value.map(emit)
-          Target.text.emit(s"mov $offset, ebx")
+          if (offset.isMagic) {
+            Target.text.emit(
+              "push ecx",
+              s"mov ecx, ${offset.deref}",
+              "mov [ecx], ebx",
+              "pop ecx"
+            )
+          } else
+            Target.text.emit(s"mov ${offset.deref}, ebx")
         }
 
 

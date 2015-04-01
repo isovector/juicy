@@ -73,7 +73,12 @@ trait GeneratorUtils {
   val gInstanceOf = NamedLabel("_instanceof")
 
   case class Location(reg: String, offset: Int) {
-    lazy val deref = s"[$reg+$offset]"
+    lazy val isMagic = reg.head == ':'
+    lazy val deref =
+      if (isMagic)
+        reg.tail
+      else
+        s"[$reg+$offset]"
   }
 
   // Get the memory location of a variable
@@ -111,8 +116,7 @@ trait GeneratorUtils {
   }
 
   def staticLocation(v: VarStmnt) = {
-    Target.text.emit(s"mov ebx, ${v.staticLabel}")
-    Location("ebx", 0)
+    Location(s":${v.staticLabel}", 0)
   }
 
   // Location of a reference's member
