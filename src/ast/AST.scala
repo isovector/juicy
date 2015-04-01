@@ -511,7 +511,7 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
     name match {
       case "int"     => 0xFFFFFFFF
       case "byte"    => 0xFF
-      case "char"    => 0xFF
+      case "char"    => 0xFFFF
       case "short"   => 0xFFFF
       case "boolean" => 1
       case _         => throw new Exception("uhhh whacha doing " + name)

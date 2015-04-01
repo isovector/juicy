@@ -653,15 +653,22 @@ object Generator extends GeneratorUtils {
           emit(c.value)
           Target.text.emit(s"and ebx, dword $mask")
         } else {
-          emit(c.value)
-          Target.text.emit("push ebx")
-          instanceOfHelper(c.tname.r)
+          val after = AnonLabel("null_cast");
 
+          emit(c.value)
+          Target.text.emit(
+            "cmp ebx, 0",
+            s"je $after",
+            "push ebx"
+          )
+
+          instanceOfHelper(c.tname.r)
           Target.text.emit(
             Guard(
               "cmp ebx, 0", "jne",
               "good_cast"),
-            "pop ebx"
+            "pop ebx",
+            after
           )
         }
 

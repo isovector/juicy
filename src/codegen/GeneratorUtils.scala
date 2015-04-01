@@ -52,7 +52,7 @@ object Runtime {
         valuesOf.foreach { func =>
           val label = func.label
           val name = func.params(0).tname.r.name
-          println(name)
+
           name match {
             case "boolean" => boolToString = label
             case "byte" => byteToString = label
@@ -276,12 +276,21 @@ trait GeneratorUtils {
   }
 
   def instanceOfHelper(t: TypeDefn) = {
+    val label = AnonLabel("not_null")
+    val after = AnonLabel()
+
     Target.file.reference(gInstanceOf)
     Target.text.emit(
       "; instanceof",
+      "cmp ebx, 0",
+      s"jne $label",
+      "mov ebx, 0",
+      s"jmp $after",
+      label,
       "mov eax, [ebx]",
       s"mov ebx, dword ${Runtime.lookup(t)}",
-      s"call $gInstanceOf"
+      s"call $gInstanceOf",
+      after
     )
   }
 
