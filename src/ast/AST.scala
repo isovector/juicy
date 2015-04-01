@@ -643,8 +643,8 @@ case class MethodDefn(
       containingClass.defaultCtorLabel
     else {
       val thisName =
-        if (isStatic) ""
-        else "this@"
+        if (isStatic) "static@"
+        else ""
       NamedLabel(s"${containingClass.labelName}@$thisName$signature")
     }
 
