@@ -641,8 +641,12 @@ case class MethodDefn(
   def label =
     if (isCxr && params.length == 0)
       containingClass.defaultCtorLabel
-    else
-      NamedLabel(s"${containingClass.labelName}@$signature")
+    else {
+      val thisName =
+        if (isStatic) ""
+        else "this@"
+      NamedLabel(s"${containingClass.labelName}@$thisName$signature")
+    }
 
   lazy val canonicalName =
     (containingClass.pkg ++ Seq(containingClass.name, name)).mkString(".")
@@ -1086,7 +1090,7 @@ case class RefToStr(sub: Expression) extends Expression {
 case class Member(lhs: Expression, rhs: Id) extends Expression {
   val children = Seq(lhs, rhs)
   var decl: Option[VarStmnt] = None
-  
+
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
     val result = transfer(rule(
@@ -1096,7 +1100,7 @@ case class Member(lhs: Expression, rhs: Id) extends Expression {
       ), context))
     result match {
       case m: Member => m.decl = decl
-      case _ => 
+      case _ =>
     }
     result
   }
