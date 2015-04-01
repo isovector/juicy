@@ -77,9 +77,14 @@ object Resolver {
     defaultType("short")
     defaultType("byte")
     defaultType("void")
+    
 
     createPkg(Seq("java", "lang"))
 
+    ArrayDefn.InitScope(PackageTree(
+      packages.toSeq.map(_._1),
+      types.toMap))
+    
     // Add all new fully qualified types to a big dictionary
     nodes.foreach { node =>
       val pkg = node.pkg
@@ -186,7 +191,6 @@ object Resolver {
         l => throw VisitError(l),
         r => r
       )
-      ArrayDefn.InitScope(pkgtree)
       ArrayDefn.sharedImpls.foreach{ tname =>
         tname.resolved = node.resolve(tname.qname, pkgtree, tname.from)
         if (!tname.resolved.isDefined)
