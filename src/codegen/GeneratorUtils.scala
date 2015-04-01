@@ -264,13 +264,17 @@ trait GeneratorUtils {
   }
 
   def idxHelper(idx: Index) = {
-    emit(idx.rhs)
-    Target.text.emit("push ebx")
     emit(idx.lhs)
+    Target.text.emit("push ebx")
+    emit(idx.rhs)
     Target.text.emit(
-      "pop eax",
+      "mov ecx, ebx",
+      "pop ebx",
       Guard(
-        "cmp eax, [ebx+4]", "jl",
+        "cmp ebx, 0", "jne",
+        "not_null"),
+      Guard(
+        "cmp ecx, [ebx+4]", "jl",
         "idx_bounded")
     )
   }

@@ -304,10 +304,11 @@ object Generator extends GeneratorUtils {
           Target.file.reference(parentInit)
 
           Target.text.emit(
-            // TODO: There is a bug here if the initializer changes eax
+            "push eax",
             "push dword [ebp-4]",
             s"call $parentInit",
-            "add esp, 4"
+            "add esp, 4",
+            "pop eax"
           )
         }
 
@@ -316,7 +317,9 @@ object Generator extends GeneratorUtils {
           .fields
           .filter(!_.isStatic)
           .foreach { f =>
+            Target.text.emit("push eax")
             emit(f)
+            Target.text.emit("pop eax")
           }
 
         Target.text.emit(
@@ -544,8 +547,15 @@ object Generator extends GeneratorUtils {
               "mov [ecx], ebx",
               "pop ecx"
             )
-          } else
+          } else {
+            if (currentMethod == null) {
+              Target.text.emit("push ebx")
+              emit(ThisVal())
+              Target.text.emit("mov eax, ebx")
+              Target.text.emit("pop ebx")
+            }
             Target.text.emit(s"mov ${offset.deref}, ebx")
+          }
         }
 
 
@@ -574,8 +584,8 @@ object Generator extends GeneratorUtils {
           case idx: Index =>
             idxHelper(idx)
             Target.text.emit(
-              "imul eax, 4",
-              "add ebx, eax",
+              "imul ecx, 4",
+              "add ebx, ecx",
               "add ebx, 8"
             )
 
@@ -640,7 +650,7 @@ object Generator extends GeneratorUtils {
 
       case idx: Index =>
         idxHelper(idx)
-        Target.text.emit("mov ebx, [ebx+eax*4+8]")
+        Target.text.emit("mov ebx, [ebx+ecx*4+8]")
 
 
 
