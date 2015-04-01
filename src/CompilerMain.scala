@@ -81,7 +81,7 @@ object CompilerMain {
   }
 
   def main(args: Array[String]): Unit = {
-    val run_debug = true
+    val run_debug = false
 
     val (pkgtree, files) =
       if (!run_debug)
