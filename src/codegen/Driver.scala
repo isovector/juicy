@@ -44,6 +44,10 @@ object Driver {
         .flatten
         .filter(_.isInstanceOf[juicy.source.ast.PrimitiveDefn])
 
+    val objectType = pkgtree.getType(Seq("java", "lang", "Object")).get
+
+    val arrayVtable = objectType.asInstanceOf[ClassDefn].vtableLabel.toString
+
     // generate vtable and update classIds simultaneously
     Target.global.rodata.emit(Generator.globalVtable)
     var classId = 0
@@ -65,14 +69,13 @@ object Driver {
             Runtime.setPrimitive(p)
             "0"
 
-          // TODO: we need to generate vtables for arrays
           case _ =>
             "0"
+
         }
       Target.global.rodata.emit(
         s"dd $vtableEntry",
-        // Put one in for arrays
-        "dd 0"
+        s"dd $arrayVtable"
       )
 
       classId += 2
@@ -141,7 +144,6 @@ object Driver {
       }
     }
 
-    val objectType = pkgtree.getType(Seq("java", "lang", "Object")).get
     ArrayDefn.sharedImpls.map(_.r.asInstanceOf[ClassDefn]).foreach { interface =>
       Target.global.rodata.emit(ArrayDefn itableFor interface)
       interface.allMethods.map(_.signature).foreach { sig =>
