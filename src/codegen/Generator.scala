@@ -103,6 +103,7 @@ object Generator extends GeneratorUtils {
         Target.text.emit(s"mov ebx, ${s.interned}")
 
       case Eq(lhs, rhs)    => cmpHelper(lhs, rhs, "e")
+      case NEq(lhs, rhs)   => cmpHelper(lhs, rhs, "ne")
       case GEq(lhs, rhs)   => cmpHelper(lhs, rhs, "ge")
       case LEq(lhs, rhs)   => cmpHelper(lhs, rhs, "le")
       case LThan(lhs, rhs) => cmpHelper(lhs, rhs, "l")
