@@ -694,7 +694,9 @@ object Generator extends GeneratorUtils {
         emit(concat.lhs)
         Target.text.emit("push ebx")
         emit(concat.rhs)
-        Target.file.reference(Runtime.stringConcat)
+        if (Runtime.lookup(currentClass) != Runtime.string) {
+          Target.file.reference(Runtime.stringConcat)
+        }
         Target.text.emit(
           s"push ebx",
           s"call ${Runtime.stringConcat}",
