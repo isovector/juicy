@@ -1123,16 +1123,14 @@ case class StaticMember(lhs: ClassDefn, rhs: Id) extends Expression {
 
   def rewrite(rule: Rewriter, context: Seq[Visitable]) = {
     val newContext = this +: context
-    val res = transfer(rule(
+    val result = transfer(rule(
       StaticMember(
         lhs,
         rhs.rewrite(rule, newContext).asInstanceOf[Id]
-      ), context))
-    res match {
-      case sm: StaticMember => sm.decl = decl
-      case _ =>
-    }
-    res
+      ), context)).asInstanceOf[StaticMember]
+    if (decl.isDefined)
+      result.decl = decl
+    result
   }
 }
 

@@ -665,6 +665,20 @@ object Generator extends GeneratorUtils {
         }
 
 
+      case s: StaticMember =>
+        val v = s.decl.get
+
+
+        val loc = staticLocation(s.decl.get)
+        if (v.containingClass isnt currentClass)
+          Target.file.reference(ExplicitLabel(loc.deref))
+
+        Target.text.emit(
+          s"mov ebx, ${loc.deref}",
+          "mov ebx, [ebx]"
+        )
+
+
 
 
       case op: Add => arithmetic(op, "add")
