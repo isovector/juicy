@@ -509,10 +509,10 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
 
   lazy val clampMask =
     name match {
-      case "int"     => (1 << 32) - 1
-      case "byte"    => (1 <<  8) - 1
-      case "char"    => (1 <<  8) - 1
-      case "short"   => (1 << 16) - 1
+      case "int"     => 0xFFFFFFFF
+      case "byte"    => 0xFF
+      case "char"    => 0xFF
+      case "short"   => 0xFFFF
       case "boolean" => 1
       case _         => throw new Exception("uhhh whacha doing " + name)
     }
