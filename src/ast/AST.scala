@@ -129,6 +129,28 @@ trait TypeDefn extends Definition {
     inheritedMethods ++ interfaceMethods.filterNot(sigs contains _.signature)
   }
 
+  lazy val ancestryAndMe: Seq[TypeDefn] = {
+    extnds.flatMap(_.r.ancestryAndMe) :+ this
+  }
+
+  lazy val vMethods: Seq[MethodDefn] = {
+    // jacob is going to love this
+    ancestryAndMe
+      .map(
+        _.methods.filter(m => !m.isStatic && !m.isCxr))
+      .reduceLeft { (acc, methods) =>
+        (acc /: methods) { (acc2, method) =>
+          val sig = method.signature
+          val found = acc2.indexWhere(_.signature == sig)
+
+          if (found < 0)
+            acc2 :+ method
+          else
+            acc2.patch(found, Seq(method), 1)
+        }
+      }
+  }
+
   lazy val superTypes: Seq[ClassDefn] = {
     val resolvedExtnds = ClassDefn.filterClassDefns(extnds.map(_.resolved.get))
     val resolvedImpls = ClassDefn.filterClassDefns(impls.map(_.resolved.get))
@@ -191,8 +213,7 @@ trait TypeDefn extends Definition {
   def debugTypeLayout = ""
 
   def vmethodIndex(sig: Signature): Int = {
-    allMethods
-      .filter(!_.isCxr)
+    vMethods
       .indexWhere(_.signature == sig)
   }
 

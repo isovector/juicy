@@ -340,7 +340,9 @@ object Generator extends GeneratorUtils {
         c.methods.foreach(emit)
 
         Target.rodata.emit(c.vtableLabel)
-        c.allMethods.foreach { m =>
+        c
+          .vMethods
+          .foreach { m =>
           if (!m.isCxr) {
 
             if (m.containingClass isnt c)
