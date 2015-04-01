@@ -34,31 +34,33 @@ object Checker {
             if (varScope.isEmpty) {
               helper.addError(undefined(id, helper.ThisType))
               id
-            } else if (isIn[MethodDefn]()) {
-              val isStatic = ancestor[MethodDefn].get.isStatic
-              val nonStaticVar = {
-                if (id.scope == varScope) {
-                  !id.scope.get.isLocalScope(name) && helper.ThisCls.fields.find(f => f.name == name && f.isStatic).isEmpty
-                } else {
-                  helper.ThisCls.superTypes.find(s => s.fields.find(
-                        f => f.name == name && !f.isStatic).isDefined).isDefined
-                }
-              }
-              if (isStatic && nonStaticVar) {
-                helper.addError(CheckerError(s"Reference to instance variable $name in static context", id.from))
-              }
+            } else {
               helper.setType(id, varScope.flatMap(_.resolve(name)).get)
-              if (nonStaticVar) {
-                val thval = ThisVal()
-                helper.setType(thval, helper.ThisType)
-                val member = Member(thval, id)
-                helper.setType(member, id.et)
-                member
+              if (isIn[MethodDefn]()) {
+                val isStatic = ancestor[MethodDefn].get.isStatic
+                val nonStaticVar = {
+                  if (id.scope == varScope) {
+                    !id.scope.get.isLocalScope(name) && helper.ThisCls.fields.find(f => f.name == name && f.isStatic).isEmpty
+                  } else {
+                    helper.ThisCls.superTypes.find(s => s.fields.find(
+                          f => f.name == name && !f.isStatic).isDefined).isDefined
+                  }
+                }
+                if (isStatic && nonStaticVar) {
+                  helper.addError(CheckerError(s"Reference to instance variable $name in static context", id.from))
+                }
+                if (nonStaticVar) {
+                  val thval = ThisVal()
+                  helper.setType(thval, helper.ThisType)
+                  val member = Member(thval, id)
+                  helper.setType(member, id.et)
+                  member
+                } else {
+                  id
+                }
               } else {
                 id
               }
-            } else {
-              id
             }
           } else {
             id
