@@ -20,6 +20,7 @@ object Generator extends GeneratorUtils {
   // array allocation
   {
     val loop = AnonLabel()
+    val after = AnonLabel()
     Target.global.text.emit(
       // Array alloc assumes size will be in eax, returns alloc in eax
       globalArrayAlloc,
@@ -29,6 +30,8 @@ object Generator extends GeneratorUtils {
       "add eax, 8",
       "call __malloc",
       "mov [eax+4], ecx",
+      "cmp ecx, 0",
+      s"je $after",
       "mov edx, eax",
       "add edx, 8",
       loop,
@@ -37,6 +40,7 @@ object Generator extends GeneratorUtils {
       "sub ecx, 1",
       "cmp ecx, 0",
       s"jne $loop",
+      after,
       Epilogue()
     )
   }
