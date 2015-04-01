@@ -491,6 +491,15 @@ $companion
   }
 }
 
+object PrimitiveDefn {
+  def ShouldExtend (from: PrimitiveDefn, to: PrimitiveDefn) = {
+    from.name != "char" && from.numBytes < to.numBytes
+  }
+  def ShouldClamp (from: PrimitiveDefn, to: PrimitiveDefn) = {
+    from.numBytes > to.numBytes
+  }
+}
+
 case class PrimitiveDefn(name: String) extends TypeDefn {
   val pkg = Seq()
   val children = Seq()
@@ -518,6 +527,15 @@ case class PrimitiveDefn(name: String) extends TypeDefn {
       case "byte"    => 0xFF
       case "char"    => 0xFFFF
       case "short"   => 0xFFFF
+      case "boolean" => 1
+      case _         => throw new Exception("uhhh whacha doing " + name)
+    }
+  lazy val numBytes = 
+    name match {
+      case "int"     => 4
+      case "byte"    => 1
+      case "char"    => 2 // Who thought this was a good idea?
+      case "short"   => 2
       case "boolean" => 1
       case _         => throw new Exception("uhhh whacha doing " + name)
     }

@@ -652,10 +652,36 @@ object Generator extends GeneratorUtils {
 
       case c: Cast =>
         if (c.tname.r.isPrimitive && c.value.et.isPrimitive) {
-          // TODO: sign extension
-          val mask = c.tname.r.asInstanceOf[PrimitiveDefn].clampMask
+          val from = c.value.t.asInstanceOf[PrimitiveDefn]
+          val to = c.tname.r.asInstanceOf[PrimitiveDefn]
           emit(c.value)
-          Target.text.emit(s"and ebx, dword $mask")
+          if (PrimitiveDefn.ShouldClamp(from, to)) {
+            val mask = to.clampMask
+            Target.text.emit(
+              s"; clamping for ${from.name} => ${to.name}",
+              s"and ebx, dword $mask"
+            )
+          }
+          if (PrimitiveDefn.ShouldExtend(from, to)) {
+            val extend = (from.clampMask ^ to.clampMask)
+            val nshift = from.numBytes * 8 - 1
+            val dontshift = AnonLabel("dontShift")
+            val shifted = AnonLabel("shifted")
+            Target.text.emit(
+              s";sign extension for ${from.name} => ${to.name}",
+              s"push ebx",
+              s";determine MSB of current",
+              s"shr ebx, $nshift",
+              s"test ebx, 1",
+              s"jz $dontshift",
+              s"pop ebx",
+              s"or ebx, $extend",
+              s"jmp $shifted",
+              dontshift,
+              s"pop ebx",
+              shifted
+            )
+          }
         } else {
           val after = AnonLabel("null_cast");
 
