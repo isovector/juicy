@@ -306,7 +306,9 @@ trait GeneratorUtils {
 
   def toStringHelper(toS: ToStringNode, call: Label) = {
     emit(toS.sub)
-    Target.file.reference(call)
+    if(currentClass != Runtime.string) {
+      Target.file.reference(call)
+    }
     Target.text.emit(
       s"push ebx",
       s"call $call",
