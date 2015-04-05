@@ -1,0 +1,177 @@
+\documentclass{article}
+\usepackage{todonotes}
+\usepackage{listings}
+\usepackage[margin=0.5in]{geometry}
+
+\title{CS 444 - A5}
+\author{Jacob Abrahams - 20370104\\ Alexander Maguire - 20396195}
+
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{orange}{rgb}{0.82,0.38,0}
+\definecolor{dkred}{rgb}{0.65,0.0,0}
+
+\lstdefinelanguage{scala}{
+  morekeywords={abstract,case,catch,class,def,%
+    do,else,extends,false,final,finally,%
+    for,if,implicit,import,match,mixin,%
+    new,null,object,override,package,%
+    private,protected,requires,return,sealed,%
+    super,this,throw,trait,true,try,%
+    type,val,var,while,with,yield,Some,None,Option,Before,After,visit,map,foreach,flatMap},
+  otherkeywords={=>,<-,<\%,<:,>:,\#,@}, sensitive=true, morecomment=[l]{//}, morecomment=[n]{/*}{*/}, morestring=[b]",
+  morestring=[b]', morestring=[b]""" }
+
+\lstset{frame=tb, language=scala, aboveskip=3mm, belowskip=3mm, showstringspaces=false, columns=flexible,
+  basicstyle={\small\ttfamily}, numbers=none, numberstyle=\tiny\color{gray}, keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen}, stringstyle=\color{mauve}, frame=single, breaklines=true, breakatwhitespace=true
+  tabsize=3 }
+
+\lstdefinelanguage{nasm}{
+    otherkeywords={},
+    keywords=[0]{dword,word,byte,call,leave,ret},
+    keywords=[1]{eax,ebx,ecx,edx,esp,ebp,eip},sensitive=true,morecomment=[l]{;},morestring=[b]",
+    moredelim=[is][\color{red}\ttfamily]{<}{>},
+    moredelim=[is][\color{dkred}\ttfamily]{\{}{\}},
+    moredelim=[s][\color{orange}\ttfamily]{[}{]}, morestring=[b]' }
+
+\lstset{frame=tb, language=nasm, aboveskip=3mm, belowskip=3mm, showstringspaces=false, columns=flexible,
+    basicstyle={\small\ttfamily}, numbers=none, numberstyle=\tiny\color{gray}, keywordstyle=[0]\color{blue},
+    keywordstyle=[1]\color{mauve},
+  commentstyle=\color{dkgreen}, stringstyle=\color{mauve}, frame=single, breaklines=true, breakatwhitespace=true
+  tabsize=3 }
+
+\begin{document}
+
+\newcommand\type[1]{\texttt{#1}}
+\newcommand\func[1]{\texttt{#1}}
+\newcommand\code[1]{\texttt{#1}}
+\renewcommand\value[1]{\texttt{#1}}
+\newcommand\source[2]{See: \texttt{src/#1.scala}::\type{#2} \\}
+\newcommand\testsrc[1]{See: \texttt{test/#1.scala} \\}
+
+\maketitle
+
+
+\section{Design}
+
+\subsection{Targets}
+\subsubsection{Building the Package Tree}
+
+\begin{lstlisting}[language=Scala]
+\end{lstlisting}
+\source{ast/PackageTree}{PackageTree\#getPackage}
+
+
+\subsection{Code Generation}
+mention generatorutils
+exceptions
+
+% syntax highlighting fun:
+%   wrap global label defns with <>
+%   wrap local label defs with {}
+\begin{lstlisting}[language=nasm]
+<_#.Codegen@static@test#:>
+push ebp
+mov ebp, esp
+    sub esp, 4
+    ; init var x
+    mov ebx, 5
+    mov eax, ebx
+    call __aalloc
+    mov [eax], dword 31
+    mov ebx, eax
+    mov [ebp+-4], ebx
+    ; load var x
+    mov ebx, [ebp+-4]
+    push ebx
+    mov ebx, 0
+    mov ecx, ebx
+    pop ebx
+    cmp ebx, 0
+jne .__anon_352.not_null
+call __exception
+{.__anon_352.not_null:}
+    push dword [ebx]
+    cmp ecx, [ebx+4]
+jl .__anon_353.idx_bounded
+call __exception
+{.__anon_353.idx_bounded:}
+    imul ecx, 4
+    add ebx, ecx
+    add ebx, 8
+    push ebx
+    call _#.Codegen##new
+    push eax
+    call _#.Codegen##ctor
+    add esp, 0
+    pop ebx
+    pop ecx
+    ; *ecx = ebx
+    mov [ecx], ebx
+    ; array store exceptions
+    cmp ebx, 0
+    jne .__anon_354.not_null
+    mov ebx, 0
+    jmp .__anon_355
+{.__anon_354.not_null:}
+    mov eax, [ebx]
+    pop ecx
+    push ebx
+    mov ebx, ecx
+    call __instanceof
+    cmp ebx, 0
+jne .__anon_356.store_ok
+call __exception
+{.__anon_356.store_ok:}
+    pop ebx
+{.__anon_355:}
+    mov ebx, 0
+leave
+ret
+\end{lstlisting}
+
+\subsection{Runtime Type-Information}
+primitives do not keep track; but we do reserve one for them
+first byte of a reference
+no meaningful map between ids and types
+
+
+\subsubsection{Instanceof and Casting}
+global hierarchy table
+lookup your type id
+says what you're allowed to be cast to
+linear scan through
+
+
+\subsection{Virtual Invokes}
+
+\subsection{Interface Invokes}
+
+
+
+
+
+
+\section{Challenges}
+\begin{itemize}
+    \item generation framework wasn't powerful enough to resolve all invokees
+    \item don't store non-ast stuff in the ast
+    \item vmethods weren't sorted
+\end{itemize}
+
+
+
+
+\section{Testing}
+
+we made a debugger interface construct
+hard to unit test, so we just winged it
+tested each feature as we wrote it; assumed modularity would take care of any regressions
+
+\testsrc{*}
+
+\end{document}
+
