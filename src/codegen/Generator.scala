@@ -584,7 +584,7 @@ object Generator extends GeneratorUtils {
 
           case idx: Index =>
             isIndex = true
-            idxHelper(idx)
+            idxHelper(idx, !a.rhs.et.isPrimitive)
             Target.text.emit(
               "imul ecx, 4",
               "add ebx, ecx",
@@ -619,6 +619,7 @@ object Generator extends GeneratorUtils {
               "pop ecx",
               "push ebx",
               "mov ebx, ecx",
+              "sub ebx, 1",
               s"call $gInstanceOf",
               Guard(
                 "cmp ebx, 0", "jne",
@@ -677,10 +678,8 @@ object Generator extends GeneratorUtils {
 
 
       case idx: Index =>
-        idxHelper(idx)
+        idxHelper(idx, false)
         Target.text.emit("mov ebx, [ebx+ecx*4+8]")
-        if (!idx.rhs.et.isPrimitive)
-          Target.text.emit("add esp, 4")
 
 
 

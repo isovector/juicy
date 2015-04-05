@@ -264,7 +264,7 @@ trait GeneratorUtils {
       )
   }
 
-  def idxHelper(idx: Index) = {
+  def idxHelper(idx: Index, needRuntimeType: Boolean) = {
     emit(idx.lhs)
     Target.text.emit("push ebx")
     emit(idx.rhs)
@@ -276,7 +276,7 @@ trait GeneratorUtils {
         "not_null")
     )
 
-    if (!idx.rhs.et.isPrimitive)
+    if (needRuntimeType)
       Target.text.emit("push dword [ebx]")
 
     Target.text.emit(
