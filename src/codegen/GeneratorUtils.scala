@@ -273,8 +273,13 @@ trait GeneratorUtils {
       "pop ebx",
       Guard(
         "cmp ebx, 0", "jne",
-        "not_null"),
-      "push dword [ebx]",
+        "not_null")
+    )
+
+    if (!idx.rhs.et.isPrimitive)
+      Target.text.emit("push dword [ebx]")
+
+    Target.text.emit(
       Guard(
         "cmp ecx, [ebx+4]", "jl",
         "idx_bounded")

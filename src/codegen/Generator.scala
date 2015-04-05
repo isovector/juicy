@@ -603,30 +603,30 @@ object Generator extends GeneratorUtils {
           "mov [ecx], ebx"
         )
 
-        if (isIndex) {
-          val label = AnonLabel("not_null")
-          val after = AnonLabel()
+        if (isIndex && !a.rhs.et.isPrimitive) {
+            val label = AnonLabel("not_null")
+            val after = AnonLabel()
 
-          Target.file.reference(gInstanceOf)
-          Target.text.emit(
-            "; array store exceptions",
-            "cmp ebx, 0",
-            s"jne $label",
-            "mov ebx, 0",
-            s"jmp $after",
-            label,
-            "mov eax, [ebx]",
-            "pop ecx",
-            "push ebx",
-            "mov ebx, ecx",
-            s"call $gInstanceOf",
-            Guard(
-              "cmp ebx, 0", "jne",
-              "store_ok"
-              ),
-            "pop ebx",
-            after
-          )
+            Target.file.reference(gInstanceOf)
+            Target.text.emit(
+              "; array store exceptions",
+              "cmp ebx, 0",
+              s"jne $label",
+              "mov ebx, 0",
+              s"jmp $after",
+              label,
+              "mov eax, [ebx]",
+              "pop ecx",
+              "push ebx",
+              "mov ebx, ecx",
+              s"call $gInstanceOf",
+              Guard(
+                "cmp ebx, 0", "jne",
+                "store_ok"
+                ),
+              "pop ebx",
+              after
+            )
         }
 
 
@@ -678,10 +678,10 @@ object Generator extends GeneratorUtils {
 
       case idx: Index =>
         idxHelper(idx)
-        Target.text.emit(
-          "mov ebx, [ebx+ecx*4+8]",
-          "add esp, 4"
-        )
+        Target.text.emit("mov ebx, [ebx+ecx*4+8]")
+        if (!idx.rhs.et.isPrimitive)
+          Target.text.emit("add esp, 4")
+
 
 
 
