@@ -562,6 +562,7 @@ object Generator extends GeneratorUtils {
       case a: Assignment =>
         // Outermost expr of LHS must not be dereferenced, so we can't just
         // delegate to the other emissions in this file to do it for us
+        var isIndex = false
         a.lhs.expr match {
           case i: Id =>
             val offset = varLocation(i.name, i.scope.get)
@@ -582,6 +583,7 @@ object Generator extends GeneratorUtils {
             staticHelper(s.decl.get)
 
           case idx: Index =>
+            isIndex = true
             idxHelper(idx)
             Target.text.emit(
               "imul ecx, 4",
@@ -600,6 +602,32 @@ object Generator extends GeneratorUtils {
           "; *ecx = ebx",
           "mov [ecx], ebx"
         )
+
+        if (isIndex) {
+          val label = AnonLabel("not_null")
+          val after = AnonLabel()
+
+          Target.file.reference(gInstanceOf)
+          Target.text.emit(
+            "; array store exceptions",
+            "cmp ebx, 0",
+            s"jne $label",
+            "mov ebx, 0",
+            s"jmp $after",
+            label,
+            "mov eax, [ebx]",
+            "pop ecx",
+            "push ebx",
+            "mov ebx, ecx",
+            s"call $gInstanceOf",
+            Guard(
+              "cmp ebx, 0", "jne",
+              "store_ok"
+              ),
+            "pop ebx",
+            after
+          )
+        }
 
 
       case n: NewType =>
@@ -650,7 +678,10 @@ object Generator extends GeneratorUtils {
 
       case idx: Index =>
         idxHelper(idx)
-        Target.text.emit("mov ebx, [ebx+ecx*4+8]")
+        Target.text.emit(
+          "mov ebx, [ebx+ecx*4+8]",
+          "add esp, 4"
+        )
 
 
 
@@ -710,6 +741,7 @@ object Generator extends GeneratorUtils {
             "pop ebx",
             after
           )
+
         }
 
 

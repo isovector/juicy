@@ -274,6 +274,7 @@ trait GeneratorUtils {
       Guard(
         "cmp ebx, 0", "jne",
         "not_null"),
+      "push dword [ebx]",
       Guard(
         "cmp ecx, [ebx+4]", "jl",
         "idx_bounded")
