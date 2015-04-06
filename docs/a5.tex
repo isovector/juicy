@@ -155,11 +155,6 @@ leave
 ret
 \end{lstlisting}
 
-\subsection{Runtime Type-Information}
-primitives do not keep track; but we do reserve one for them
-first byte of a reference
-no meaningful map between ids and types
-
 
 \subsubsection{Instanceof and Casting}
 global hierarchy table
@@ -173,7 +168,46 @@ linear scan through
 \subsection{Interface Invokes}
 
 
+\section{Object Layout}
+\subsection{Physical Layout}
+Our objects are laid out in memory according to the following transformation:
 
+Joos:
+\begin{lstlisting}[language=java]
+class Base extends Parent {
+    public int a;
+    public Base *inner;
+}
+\end{lstlisting}
+
+Equivalent C struct:
+\begin{lstlisting}[language=C++]
+struct Base_Layout {
+    int a;
+    struct Base *inner;
+};
+
+struct Base {
+    int typeID;
+    struct Parent_Layout parent; // this is elided if Parent has no fields
+    struct Base_Layout me;
+};
+\end{lstlisting}
+
+Such a layout occurs a couple of significant benefits, primarily that objects behave polymorphically without special
+handling. Additionally, it comes with the useful property that \code{*(int*)\&object} is the object's runtime type ID,
+allowing for convenient accessing of generated structures indexed by type ID (eg. the global vtable).
+
+
+
+\subsection{Runtime Type-Information}
+Type IDs are chosen carefully to ensure a few rules hold: type IDs must be contiguous, and the array of type ID $t$ must
+have type ID $t + 1$. The first property allows us to treat type IDs as array indices, and the latter makes
+\type{ArrayStoreException}s to have only an additional constant overhead when compared to \texttt{instanceof} checks.
+
+No other constraints are enforced on type IDs (for example, we do \textbf{not} require \type{Object} to have id 0, or
+anything of the nature). In fact, type IDs are not guaranteed to be deterministic across multiple invocations of the
+compiler.
 
 
 
