@@ -1,6 +1,7 @@
 \documentclass{article}
 \usepackage{todonotes}
 \usepackage{listings}
+\usepackage{amsmath}
 \usepackage[margin=0.5in]{geometry}
 
 \title{CS 444 - A5}
@@ -20,7 +21,7 @@
     new,null,object,override,package,%
     private,protected,requires,return,sealed,%
     super,this,throw,trait,true,try,%
-    type,val,var,while,with,yield,Some,None,Option,Before,After,visit,map,foreach,flatMap},
+    type,val,var,while,with,yield,Some,None,Option,Before,After,visit,map,foreach,flatMap,Target,AnonLabel,NamedLabel},
   otherkeywords={=>,<-,<\%,<:,>:,\#,@}, sensitive=true, morecomment=[l]{//}, morecomment=[n]{/*}{*/}, morestring=[b]",
   morestring=[b]', morestring=[b]""" }
 
@@ -57,12 +58,33 @@
 
 \section{Design}
 
-\subsection{Targets}
-\subsubsection{Building the Package Tree}
+\subsection{Target Infrastructure}
+We created a class which represented a codegen target; generally this corresponded to a compilation unit, but one also
+existed for globals. Each target tracked symbols imported and exported, and had three sections code could be generated
+in: \type{text}, \type{data} and \type{rodata}. Each section had an \func{emit} method, which took a variadic number of
+\type{Instruction} arguments. Originally \type{Instruction}s were intended to provide type-safety to our assembly -- if it
+compiled in Scala, we could be assured it would assemble as well -- but this quickly proved to be too large an
+undertaking for our shaky knowledge of x86. The end result provides special support for labels, but for the most part
+allows strings to be implicitly transformed into \type{Instruction}s.
+
+The following code sample, which creates allocators for classes, illustrates the basic usage of \type{Target}s:
 
 \begin{lstlisting}[language=Scala]
+// Inform the assembly we will export this label
+Target.file.export(c.allocLabel)
+Target.text.emit( // Target.text automatically resolves to Target.file.text
+  c.allocLabel,    // procedure name
+  Prologue(),      // function prologue
+  s"mov eax, ${c.allocSize + 4}",
+  "call __malloc",
+  s"mov [eax], dword ${c.classId}",
+  "push eax",
+  s"call ${c.initLabel}", // call the object initializer
+  "pop ebx",
+  Epilogue()
+  )
 \end{lstlisting}
-\source{ast/PackageTree}{PackageTree\#getPackage}
+\source{codegen/Generator}{Generator\#emit:234}
 
 
 \subsection{Code Generation}
@@ -157,21 +179,46 @@ linear scan through
 
 \section{Challenges}
 \begin{itemize}
-    \item generation framework wasn't powerful enough to resolve all invokees
-    \item don't store non-ast stuff in the ast
-    \item vmethods weren't sorted
+    \item One issue we started butting heads against in A4, but which really came back to bite us was that we were
+        storing metadata in the AST, things like giving type names a reference to the type definition to which they
+        resolve. While this works well for static ASTs, it quickly falls apart when rewriting an immutable tree. As a
+        result, our AST became significantly fractured, with newer rewrites having backwards references to old trees and
+        similar issues. Luckily this didn't cause too many issues, since the things we were referencing were unlikely to
+        be significantly rewritten.
+
+        In particular, however, this made generating runtime type IDs quite an ordeal, since we wanted them to be
+        automatic, ordered and contiguous. In the end, we simply generated all type IDs immediately before codegen, but
+        we considered this to be an inelegant solutioIn the end, we simply generated all type IDs immediately before
+        codegen, but we considered this to be an inelegant solution.
+    \item Similarly, the natural functional approach to resolving inherited methods is a recursive fold over your
+        ancestors, but this proved not to create a deterministically useful list of methods for creating a vtable --
+        overriding a parent's method updated the method to be at the \textit{end} of the vtable, not in the original
+        location. In the end we used some terrifyingly arcane functional wizardry to ensure a consistent ordering.
+        Despite having not done the analysis, we suspect the approach to be roughly on the order of $O(\text{terrible})$.
 \end{itemize}
 
 
 
 
 \section{Testing}
+One of our earliest implementations for A5 was extending the parser to allow for a special debug command, which took a
+string literal and would generate code to print it out at runtime. Such an approach allowed took only a few minutes to
+implement, but immediately allowed us to begin debugging complicated control-flow before the entire ecosystem was in
+place.
 
-we made a debugger interface construct
-hard to unit test, so we just winged it
-tested each feature as we wrote it; assumed modularity would take care of any regressions
+Unfortunately, our Scalatest suite seemed incapable of keeping up with our development on this assignment, mostly in
+that it was designed to test Scala, and not arbitrary system commands. Getting it to work with marmoset tests on earlier
+assignments was a significant undertaking, and we didn't feel it worthwhile to jump through the requisite hoops in order
+to get it assembling, linking and comparing the output of our generated code.
 
-\testsrc{*}
+Instead, we meticulously tested each feature as it was implemented, relying on the fact that code generation is already
+quite modularized; any regressions we were likely to cause wouldn't be subtle, and would probably cause a segfault in
+most programs. We facilitated this by creating a special debug mode for the compiler which would run iteratively in a
+REPL with identical parameters each time, so code generation of test programs was quite painless.
+
+Additionally, we wrote code which would generate C++ structs for our Joos types, which was invaluable when debugging
+with GDB. We were afforded the ability to typecast arbitrary pointers to our types and see if they lined up, since most
+bugs we encountered were caused by data not being what we expected it to be.
 
 \end{document}
 
