@@ -195,6 +195,22 @@ linear scan through
         overriding a parent's method updated the method to be at the \textit{end} of the vtable, not in the original
         location. In the end we used some terrifyingly arcane functional wizardry to ensure a consistent ordering.
         Despite having not done the analysis, we suspect the approach to be roughly on the order of $O(\text{terrible})$.
+    \item As an attempt at optimization at an earlier step in compilation, vacuously true \texttt{instanceof} expressions
+       were replaced with the boolean expression \texttt{true}. However, this became an increasingly serious problem as
+       we began implementing actual code generation, as the left-hand side of the expression is not necessarily constant
+       nor free of generated exceptions. Moreover, a casted null value would return true here, when a null variable is,
+       by definition, never an instance of anything. Thus, we actually had to make some parts of constant folding \textit{less}
+       clever, to preserve the actual expected behaviour.
+    \item The syntax tree had no understanding of the difference between arithmetic addition and string concatenation.
+       This was initially necessary during AST building, as the AST had no concept of expression type or variable resolution.
+       However, the type checker had knowledge of these things, and thus, prior to implementing string concatenation, we
+       had to modify it to properly handle strings. This required us to create a conceptual \texttt{Stringable} AST node
+       (an expression necessarily containing a string), which was implemented by the pre-existing String literal node, a new
+       \texttt{RefToStr} node that could be turned into a call to the sub-expression's \texttt{toString} method, and one
+       node for each primitive type which could be translated to the corresponding overload of \texttt{String\#valueOf}.
+       Once this was done, \texttt{Add} nodes that contained stringable arguments would be rewritten into \texttt{StringConcat}
+       nodes, such that all additions would be ensured to be arithmetic, and the code for dealing with string concatenation
+       could be appropriately placed elsewhere.
 \end{itemize}
 
 
