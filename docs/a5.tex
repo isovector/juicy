@@ -88,7 +88,11 @@ Target.text.emit( // Target.text automatically resolves to Target.file.text
 
 
 \subsection{Code Generation}
-Code generation was implemented using a modified form of the Visitor used in parts of A1 and A2, which only expands and traverses nodes explicitly when the nodes are meant to generate code. The result of evaluating an expression is always expected to be in \texttt{ebx}. An example of this structure is the code for computing the \emph{not} of a boolean variable:
+Code generation was implemented using a modified form of the Visitor used in parts of A1 and A2, which only expands and
+traverses nodes explicitly when the nodes are meant to generate code. The result of evaluating an expression is always
+expected to be in \texttt{ebx}. An example of this structure is the code for computing the \emph{not} of a boolean
+variable:
+
 \begin{lstlisting}
   case Not(subExpression) =>
     emit(subExpression) // recurse, place result in $ebx
@@ -99,12 +103,17 @@ Code generation was implemented using a modified form of the Visitor used in par
     )
 \end{lstlisting}
 \source{codegen/Generator}{Generator\#emit:121}
-We also implemented a variety of helpers in the \texttt{GeneratorUtil} static object, often to abstract shared functionality across expressions (eg. different types of numeric comparisons). An extremely useful function used was the Guard function, which takes a statement generating a comparison, the type of comparison to branch on, and the label to append to the ``non-error'' state, and generates the appropriate exception code. For instance, a null check looks like:
+
+We also implemented a variety of helpers in the \texttt{GeneratorUtils} trait, often to abstract shared functionality
+across expressions (eg. different types of numeric comparisons). An extremely useful function used was the Guard
+function, which takes a statement generating a comparison, the type of comparison to branch on, and the label to append
+to the ``non-error'' state, and generates the appropriate exception code. For instance, a null check looks like:
+
 \begin{lstlisting}
   Target.text.emit(
     Guard(
       "cmp ebx, 0", // Compare the reference to 0 (NULL)
-      "jne", // It's okay iff not null
+      "jne", // Its okay iff not null
       "ref_ok", // The label suffix to use for the after-label
     ),
     s"push ebx" // The rest of the assembly
@@ -112,97 +121,51 @@ We also implemented a variety of helpers in the \texttt{GeneratorUtil} static ob
   )
 \end{lstlisting}
 \source{codegen/Generator}{Generator\#emit:165}
-% syntax highlighting fun:
-%   wrap global label defns with <>
-%   wrap local label defs with {}
-\begin{lstlisting}[language=nasm]
-<_#.Codegen@static@test#:>
-push ebp
-mov ebp, esp
-    sub esp, 4
-    ; init var x
-    mov ebx, 5
-    mov eax, ebx
-    call __aalloc
-    mov [eax], dword 31
-    mov ebx, eax
-    mov [ebp+-4], ebx
-    ; load var x
-    mov ebx, [ebp+-4]
-    push ebx
-    mov ebx, 0
-    mov ecx, ebx
-    pop ebx
-    cmp ebx, 0
-jne .__anon_352.not_null
-call __exception
-{.__anon_352.not_null:}
-    push dword [ebx]
-    cmp ecx, [ebx+4]
-jl .__anon_353.idx_bounded
-call __exception
-{.__anon_353.idx_bounded:}
-    imul ecx, 4
-    add ebx, ecx
-    add ebx, 8
-    push ebx
-    call _#.Codegen##new
-    push eax
-    call _#.Codegen##ctor
-    add esp, 0
-    pop ebx
-    pop ecx
-    ; *ecx = ebx
-    mov [ecx], ebx
-    ; array store exceptions
-    cmp ebx, 0
-    jne .__anon_354.not_null
-    mov ebx, 0
-    jmp .__anon_355
-{.__anon_354.not_null:}
-    mov eax, [ebx]
-    pop ecx
-    push ebx
-    mov ebx, ecx
-    call __instanceof
-    cmp ebx, 0
-jne .__anon_356.store_ok
-call __exception
-{.__anon_356.store_ok:}
-    pop ebx
-{.__anon_355:}
-    mov ebx, 0
-leave
-ret
-\end{lstlisting}
-
 
 
 
 \subsection{Virtual Invokes}
-One of the labels exported by the Global file is called \texttt{\_\_vtable} and is as many rows as there are declared class IDs (as discussed in the section on object layout). This table is laid out such that, for a given concrete type with id $k$, $\_\_vtable\lbrack k \rbrack$ contains a table of the form:
+One of the labels exported by the Global file is called \texttt{\_\_vtable} and is as many rows as there are declared
+class IDs (as discussed in the section on object layout). This table is laid out such that, for a given concrete type
+with id $k$, its vtable $\_\_vtable\lbrack k \rbrack$ itself points to a table of the form:
+
 \begin{lstlisting}[language=nasm]
- <__vtable##className:>
-  dd methodLabel1
-  dd methodLabel2
+<__vtable##className:>
+  dd {methodLabel1}
+  dd {methodLabel2}
   ;...
-  dd methodLabelN
+  dd {methodLabelN}
 \end{lstlisting}
-This table is structured such that, if a class' parent has $k$ non-static functions, then the table's first $k$ rows refer to the corresponding implementations in the current class (ie. there is consistent ordering across all classes equal to or extending a given class). This way, for accessing a given instance method on a runtime object, it turns into a simple fixed-index dereference of the appropriate field in the table.\\
-As all arrays support the exact same methods as the class \texttt{java.lang.Object} and cannot override them, the entries for arrays in the global vtable simply point to the vtable for Object.
+
+This table is structured such that, if a class' parent has $k$ non-static functions, then the table's first $k$ rows
+refer to the corresponding implementations in the current class (ie. there is consistent ordering across all classes
+equal to or extending a given class). This way, for accessing a given instance method on a runtime object, it turns into
+a simple fixed-index dereference of the appropriate field in the table.
+
+As all arrays extend only from the class \texttt{java.lang.Object} and cannot override any of its methods, the entries
+for arrays in the global vtable simply point to the vtable for Object.
 
 \subsection{Interface Invokes}
-Every single interface generates its own unique table similar to the single global vtable, where the $k^{th}$ row of the table is $0$ if the runtime type of the instance doesn't implement the interface, and, if it does, a pointer to a table like the following:
+Every single interface generates its own unique table similar to the single global vtable, where the $k^{th}$ row of the
+interface's table is $0$ if the runtime type of the instance doesn't implement the interface. If it does, a pointer to a
+table of the pair $(\text{Interface},\text{Class})$ exemplified by:
+
 \begin{lstlisting}[language=nasm]
 <__interfaceTable##className##InterfaceName>
-  dd meth1
-  dd meth2
+  dd {imethod1}
+  dd {imethod2}
   ;...
-  dd methN
+  dd {imethodN}
 \end{lstlisting}
-In this case, the table includes any and all methods expected by the interface, including those specified by \texttt{java.lang.Object} and any interfaces the interface itself extends. Similar to above, this order is fixed for all types implementing a given interface, to turn any access to an interface method to a simple table row dereference.\\
 
-Similar to for vtables, as all arrays implement Cloneable and Serializable, every array points tothe same, appropriate table labelled \texttt{\#\#Array\#\#Cloneable} and \texttt{\#\#Array\#\#Cloneable}, respectively, which follow the same rules as the above tables.
+In this case, the table includes any and all methods expected by the interface, including those specified by
+\texttt{java.lang.Object} and any interfaces the interface itself extends. Similar to above, this order is fixed for all
+types implementing a given interface, to turn any access to an interface method to a simple table row dereference.
+
+Similar to for vtables, as all arrays implement \type{Cloneable} and \type{Serializable}, every array points to the
+same tables: \texttt{\#\#Array\#\#Cloneable} and \texttt{\#\#Array\#\#Serializable}.
+
+
 
 \section{Object Layout}
 \subsection{Physical Layout}
@@ -245,24 +208,33 @@ No other constraints are enforced on type IDs (for example, we do \textbf{not} r
 anything of the nature). In fact, type IDs are not guaranteed to be deterministic across multiple invocations of the
 compiler.
 
-\subsubsection{Instanceof and Casting}
-Each instantiable object type except for primitives (ie. concrete classes and arrays of anything) generates a table of the following form:
+\subsubsection{Casting and \code{instanceof}}
+Each instantiable object type except for primitives (ie. concrete classes and arrays of anything) generates a table of
+the following form:
+
 \begin{lstlisting}[language=nasm]
-MyClass_Hierarchy:
-  dd MyClassId
-  dd MyBaseClassId
-  dd MyImplementedInterfaceId
-  dd MyBaseBaseClassId
-  dd MyBaseClassImplementedInterfaceId
+<MyClass_Hierarchy:>
+  dd {MyClassId}
+  dd {MyParentClassId}
+  dd {MyImplementedInterfaceId}
+  dd {MyGrandparentClassId}
+  dd {MyGrandparentImplementedInterfaceId}
   ;...
   dd -1
 \end{lstlisting}
-This hierarchy table flattens any and every possible class or interface that the type could be cast to, followed by a -1 to signal the end
-of the table. We then generate a table labelled \texttt{\_\_hierarchy}, where \texttt{\_\_hierarchy[classId]} points to the hierarchy table
-for the specified class, or 0 if it doesn't have a hierarchy (which should really never happen). 
-For arrays of primitives, this table is simply the array's original type and the IDs of Cloneable, Serializable, and Object. For arrays of primitives, the hierarchy is the table for primitive arrays plus the ID of every array with elements of type \texttt{T}, where T is an extended class or implemented interface of the runtime array's element type.
-In this way, instanceof checks can be implemented
-using the following algorithm:
+
+This hierarchy table flattens any and every possible class or interface that the type could be cast to, followed by a -1
+to signal the end of the table. We then generate a table labeled \texttt{\_\_hierarchy}, where
+\texttt{\_\_hierarchy[classId]} points to the hierarchy table for the specified class, or 0 if it doesn't have a
+hierarchy (the case for primitives).
+
+For arrays of primitives, this table is simply the array's original type and the IDs of \type{Cloneable},
+\type{Serializable}, and Object. For arrays of references, the hierarchy is the table for primitive arrays plus the ID
+of every array with elements of type \type{T}, where \type{T} is an extended class or implemented interface of the
+runtime array's element type.
+
+In this way, instanceof checks can be implemented using the following algorithm:
+
 \begin{lstlisting}
 define instanceof(obj, otherType):
   if obj is null: return false
@@ -270,18 +242,21 @@ define instanceof(obj, otherType):
     if id == otherType.classId: return true
   return false
 \end{lstlisting}
+
 And reference-type casting can work as follows:
+
 \begin{lstlisting}
 define cast(obj, otherType):
   if obj is null: return // OK
   if instanceof(obj, otherType): return // OK
   throw Exception
 \end{lstlisting}
-Casting a value type to its requisite boxed type was simpler, as it just required generating a call to that type's constructor. Similarly,
-casting a boxed value type to its underlying unboxed type was simply translated into the appropriate method call on the object, with a null
-check throwing an exception if necessary. As we implemented all value types as 4-byte dwords, casting between numeric value types only required
-applying a mask to clamp the value down to the requisite range if the new type was smaller, and extending the sign bit if the new type was bigger and
-the old type were signed.
+
+Casting a value type to its requisite boxed type was simpler, as it just required generating a call to that type's
+constructor. Similarly, casting a boxed value type to its underlying primitive type was simply translated into a
+dereference of the object's \type{value} field, with a null check.  As we implemented all value types as 4-byte dwords,
+casting between numeric value types only required applying a mask to clamp the value down to the requisite range if the
+new type was smaller, and extending the sign bit if the new type was bigger and the old type were signed.
 
 \section{Challenges}
 \begin{itemize}
